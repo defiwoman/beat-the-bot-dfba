@@ -1,0 +1,120 @@
+# ACCURACY_RULES — what this game may and may not say
+
+These rules bind every user-facing string in **Beat the Bot: The 40ms Market**. All copy lives in a
+single file, `src/content/copy.ts`, and `src/content/copy.test.ts` checks that file against the
+rules below on every test run. If you add copy, add it there and keep the test green.
+
+The game is a **community-built educational project**. It is not an official specification of any
+venue, and it is not financial advice.
+
+---
+
+## 1. Claims the app MAY make
+
+### About a continuous limit order book (CLOB)
+
+- A CLOB matches **continuously**: an incoming order is checked against the book the moment it arrives.
+- A CLOB uses **arrival-time priority** among orders at the same price: whichever eligible order
+  reaches the matching engine first is matched first.
+- Because matching is continuous, when new information moves the fair price, a resting quote can
+  become **stale**, and **small latency advantages can determine who reaches that stale or attractive
+  quote first**.
+- Latency advantages of a few milliseconds **can be decisive** in that race.
+- This is a property of the **market design**, not an accusation against any participant.
+
+### About a discrete frequent batch auction (DFBA)
+
+- A DFBA **collects orders into a short batch** instead of matching each one on arrival.
+- The batch modelled in this game is **40ms**. This is the value the game uses for teaching; the
+  on-screen window is slowed down so it is visible.
+- A DFBA **separates maker flow and taker flow**.
+- At the end of a batch the venue runs a **bid auction and an ask auction**.
+- **Each auction has its own uniform clearing price.** The bid auction's clearing price and the ask
+  auction's clearing price are **separate** and need not be equal.
+- Every order matched within one auction receives that auction's **uniform clearing price**.
+- Batching **removes arrival-time priority within the batch**: being first to arrive inside the same
+  batch does not by itself put an order ahead of another order in the same batch.
+- **Price priority and size still matter.** A better limit price still ranks ahead of a worse one,
+  and order size still affects how much of an order fills.
+- Reducing speed-based pick-off risk **can support** market makers quoting **tighter spreads**.
+- Tighter spreads and deeper liquidity **can benefit** natural-flow traders — traders who are trading
+  for their own reasons rather than racing on speed.
+
+### Required hedging vocabulary
+
+Use conditional, mechanism-level language. These phrasings are the house style and the copy test
+requires them to appear:
+
+- "designed to reduce"
+- "can support"
+- "can benefit"
+- "removes arrival-time priority within the batch"
+- "separate clearing price" / "its own uniform clearing price"
+- "price priority" and "size" still matter
+- "illustrative"
+
+## 2. Claims the app MUST NOT make
+
+| Forbidden | Why |
+| --- | --- |
+| DFBA **guarantees profit** | No market design guarantees profit to anyone. |
+| DFBA **guarantees every trader a better fill** | Batching changes the matching rule, not every outcome. Some orders fill worse. |
+| DFBA **eliminates all possible MEV** | It is designed to reduce specific speed-based advantages. "All MEV" is not a claim this project can support. |
+| The game **uses live Superluminal data** | There is no network call, no feed, no backend. |
+| Illustrative game numbers are **measured market statistics** | Every number here was invented to teach a mechanism. |
+| Latency arbitrage is **cheating / theft / fraud** | It is a rational response to a market design. Keep it mechanism-level and neutral. |
+| Any **risk-free**, **always wins**, or **can't lose** framing | Untrue and reckless. |
+| Any **price prediction, yield, APY or return** | Out of scope entirely. |
+| Any claim about a venue's **real throughput, uptime or latency** | Unverified by this project. |
+| Anything implying the player is **trading real money** | There is no wallet, no funds, no order routing. |
+
+## 3. Nuances the app must actively preserve
+
+These are the places where a simplification would tip into a false claim, so the copy states them
+outright rather than leaving them implied:
+
+1. **Two auctions, two prices.** Never say "the batch clears at one price". Say the **bid auction**
+   and the **ask auction** each clear at their **own** uniform price.
+2. **Priority is not abolished, only arrival-time priority within the batch.** Price priority and
+   size still matter. Say so on the reveal screen, not only in a footnote.
+3. **Missing a batch is a delay, not a loss.** An order that arrives after the window closes joins
+   the next batch.
+4. **Human reaction time is not a flaw.** ~200–350ms is normal. The point is that the venue design,
+   not the player, decided the CLOB race.
+5. **Tighter spreads are an incentive, not a promise.** Say pick-off risk is *designed to be reduced*
+   and that this *can support* tighter quoting. Never state the spread will be tighter.
+6. **Other risks remain.** Inventory risk, volatility, and adverse selection from informed traders
+   are not removed by batching. The market maker act says this explicitly.
+7. **Slowed-down time.** The visible batch window is stretched for playability. The screen says the
+   modelled batch is 40ms and the view is slowed.
+8. **Illustrative numbers.** A disclaimer is visible on the landing screen and the results screen,
+   and the instrument is an obviously fictional ticker (`SLX-PERP`).
+
+## 4. Brand asset rules
+
+The official logo assets in `public/brands/` are used **as supplied**:
+
+- `public/brands/fogo-logo.jpg`
+- `public/brands/superluminal-logo.png`
+
+They must not be edited, recoloured, cropped, distorted, traced or replaced. They are rendered at
+their natural aspect ratio, on adequate clear space, with descriptive `alt` text, and are never used
+as a background, mask, or animated element. The app's own colour choices are its own and are not
+applied to the marks.
+
+> The brief referenced `fogo-logo.png`; the file supplied in this repository is `fogo-logo.jpg`. The
+> asset was left exactly as provided and is referenced by its real filename rather than converted,
+> because converting it would count as replacing the asset.
+
+## 5. How the rules are enforced
+
+`src/content/copy.test.ts`:
+
+1. Flattens every string in the `copy` object.
+2. Splits each string into sentences.
+3. Fails if any sentence matches a **forbidden claim pattern** without a negation ("does not
+   guarantee profit" is allowed; "guarantees profit" is not).
+4. Fails if any **required hedged phrase** is missing from the copy as a whole.
+
+Adding a screen therefore cannot quietly introduce an overclaim: the string has to go through
+`copy.ts`, and `copy.ts` is checked.
