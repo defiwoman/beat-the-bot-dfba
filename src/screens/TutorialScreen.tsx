@@ -1,8 +1,10 @@
 import { ArrowRight } from 'lucide-react';
+import { BatchPulse } from '@/components/BatchPulse';
 import { Button } from '@/components/Button';
 import { Screen } from '@/components/Screen';
 import { TeachList } from '@/components/TeachList';
 import type { TeachLine } from '@/components/TeachList';
+import { copy } from '@/content/copy';
 
 /** Shared layout for the three tutorial phases. All text comes from the caller's copy slice. */
 export function TutorialScreen({
@@ -10,24 +12,36 @@ export function TutorialScreen({
   heading,
   lines,
   continueLabel,
-  tone = 'accent',
+  showPulse = false,
   onContinue,
-  footnote,
 }: {
   eyebrow: string;
   heading: string;
   lines: readonly TeachLine[];
   continueLabel: string;
-  tone?: 'accent' | 'speed';
+  /** The DFBA tutorial introduces the 40ms motif, expanded and labelled as slowed down. */
+  showPulse?: boolean;
   onContinue: () => void;
-  footnote?: string;
 }) {
   return (
     <Screen label={heading}>
-      <p className={tone === 'speed' ? 'eyebrow eyebrow--speed' : 'eyebrow'}>{eyebrow}</p>
+      <p className="eyebrow">{eyebrow}</p>
       <h1 className="title">{heading}</h1>
+
+      {showPulse ? (
+        <div className="panel panel--accent">
+          <BatchPulse caption={copy.pulse.caption} />
+        </div>
+      ) : null}
+
       <TeachList lines={lines} />
-      {footnote ? <p className="note">{footnote}</p> : null}
+
+      {showPulse ? (
+        <>
+          <p className="note">{copy.dfbaGame.slowedNote}</p>
+          <p className="tiny">{copy.pulse.notBenchmark}</p>
+        </>
+      ) : null}
 
       <div className="screen__actions">
         <Button block icon={<ArrowRight size={18} />} onClick={onContinue}>

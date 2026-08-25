@@ -23,11 +23,13 @@ export function ClobRevealScreen({
 
   return (
     <Screen label={copy.clobReveal.heading}>
-      <p className="eyebrow eyebrow--speed">{copy.clobReveal.eyebrow}</p>
-      <h1 className="title">{copy.clobReveal.heading}</h1>
+      <div>
+        <p className="eyebrow">{copy.clobReveal.eyebrow}</p>
+        <h1 className="title">{copy.clobReveal.heading}</h1>
+      </div>
       <p className="lede">{copy.clobReveal.lede}</p>
 
-      <div className="card">
+      <div className="panel panel--accent">
         <span className="stat__label">{copy.clobReveal.scoreLabel}</span>
         <p className="stat__value stat__value--speed">
           {wins} / {results.length}

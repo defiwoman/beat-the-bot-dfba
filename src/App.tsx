@@ -1,11 +1,14 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { BrandFooter } from '@/components/BrandFooter';
+import { AboutPanel } from '@/components/AboutPanel';
+import { AmbientBackdrop } from '@/components/AmbientBackdrop';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { PhaseProgress } from '@/components/PhaseProgress';
+import { GameFooter } from '@/components/GameFooter';
+import { GameHeader } from '@/components/GameHeader';
 import { copy } from '@/content/copy';
 import { CLOB_ROUNDS, DFBA_ROUNDS, MARKET_MAKER_ROUNDS } from '@/data/rounds';
 import { computeScore } from '@/lib/scoring';
+import { themeForPhase } from '@/lib/stages';
 import { ClobGameScreen } from '@/screens/ClobGameScreen';
 import { ClobRevealScreen } from '@/screens/ClobRevealScreen';
 import { DfbaGameScreen } from '@/screens/DfbaGameScreen';
@@ -15,7 +18,9 @@ import { MarketMakerGameScreen } from '@/screens/MarketMakerGameScreen';
 import { ResultsScreen } from '@/screens/ResultsScreen';
 import { TutorialScreen } from '@/screens/TutorialScreen';
 import { GameProvider } from '@/state/GameProvider';
+import { SoundProvider } from '@/state/SoundProvider';
 import { useGame } from '@/state/useGame';
+import { useSound } from '@/state/useSound';
 import type {
   ClobRoundResult,
   DfbaRoundResult,
@@ -28,9 +33,17 @@ function clampIndex(index: number, length: number): number {
 
 function GameRouter() {
   const { state, dispatch } = useGame();
+  const { play } = useSound();
 
-  const advance = useCallback(() => dispatch({ type: 'ADVANCE_PHASE' }), [dispatch]);
-  const restart = useCallback(() => dispatch({ type: 'RESTART' }), [dispatch]);
+  const advance = useCallback(() => {
+    play('advance');
+    dispatch({ type: 'ADVANCE_PHASE' });
+  }, [dispatch, play]);
+
+  const restart = useCallback(() => {
+    play('advance');
+    dispatch({ type: 'RESTART' });
+  }, [dispatch, play]);
 
   const score = useMemo(
     () => computeScore(state.clobResults, state.dfbaResults, state.makerResults),
@@ -63,12 +76,18 @@ function GameRouter() {
 
   switch (state.phase) {
     case 'intro':
-      return <IntroScreen onStart={() => dispatch({ type: 'START_GAME' })} />;
+      return (
+        <IntroScreen
+          onStart={() => {
+            play('advance');
+            dispatch({ type: 'START_GAME' });
+          }}
+        />
+      );
 
     case 'clobTutorial':
       return (
         <TutorialScreen
-          tone="speed"
           eyebrow={copy.clobTutorial.eyebrow}
           heading={copy.clobTutorial.heading}
           lines={copy.clobTutorial.lines}
@@ -103,7 +122,7 @@ function GameRouter() {
           heading={copy.dfbaTutorial.heading}
           lines={copy.dfbaTutorial.lines}
           continueLabel={copy.dfbaTutorial.continueLabel}
-          footnote={copy.dfbaGame.slowedNote}
+          showPulse
           onContinue={advance}
         />
       );
@@ -159,21 +178,33 @@ function GameRouter() {
 
 function GameShell() {
   const { state, dispatch } = useGame();
+  const [aboutOpen, setAboutOpen] = useState(false);
+  const theme = themeForPhase(state.phase);
+
+  const closeAbout = useCallback(() => setAboutOpen(false), []);
 
   return (
-    <div className="shell">
-      <PhaseProgress phase={state.phase} />
-      <main className="shell__main">
-        <ErrorBoundary
-          key={`${state.phase}-${state.playthrough}`}
-          onReset={() => dispatch({ type: 'RESTART' })}
-        >
-          <AnimatePresence mode="wait" initial={false}>
-            <GameRouter key={`${state.phase}-${state.roundIndex}-${state.playthrough}`} />
-          </AnimatePresence>
-        </ErrorBoundary>
-      </main>
-      <BrandFooter />
+    <div data-act={theme}>
+      <AmbientBackdrop theme={theme} />
+
+      <div className="shell">
+        <GameHeader phase={state.phase} onOpenAbout={() => setAboutOpen(true)} />
+
+        <main className="shell__main">
+          <ErrorBoundary
+            key={`${state.phase}-${state.playthrough}`}
+            onReset={() => dispatch({ type: 'RESTART' })}
+          >
+            <AnimatePresence mode="wait" initial={false}>
+              <GameRouter key={`${state.phase}-${state.roundIndex}-${state.playthrough}`} />
+            </AnimatePresence>
+          </ErrorBoundary>
+        </main>
+
+        <GameFooter />
+      </div>
+
+      <AnimatePresence>{aboutOpen ? <AboutPanel onClose={closeAbout} /> : null}</AnimatePresence>
     </div>
   );
 }
@@ -181,9 +212,11 @@ function GameShell() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <GameProvider>
-        <GameShell />
-      </GameProvider>
+      <SoundProvider>
+        <GameProvider>
+          <GameShell />
+        </GameProvider>
+      </SoundProvider>
     </ErrorBoundary>
   );
 }

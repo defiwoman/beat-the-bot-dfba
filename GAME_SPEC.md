@@ -134,9 +134,11 @@ Same three market events as Act I, so the comparison is like-for-like.
 Outcomes per round: `filled` (submitted inside the window) or `missedBatch` (window closed first —
 the order simply waits for the next batch, which is not a penalty, just a delay).
 
-**Display timing note.** A real 40ms window is far too short to see. The on-screen window is stretched
-to roughly 1500ms so the mechanism is visible, and the UI labels this as a slowed-down view. The
-*modelled* batch is 40ms; the *displayed* batch is slowed. This distinction is stated on screen.
+**Display timing note.** A real 40ms window is far too short to examine by eye. The on-screen window
+is stretched to roughly 1200–1600ms so the mechanism is visible, and every expanded batch carries
+the label **"40ms shown in slow motion"**. The *modelled* batch is 40ms; the *displayed* batch is
+slowed. A browser animation is never presented as a network benchmark — see
+[ACCURACY_RULES.md §3a](./ACCURACY_RULES.md).
 
 ### 6.3 `dfbaReveal`
 
@@ -209,13 +211,15 @@ who loses every CLOB round has understood the lesson perfectly.
 ```
 public/brands/          Official logo assets — never edited, recoloured, cropped or replaced
 src/
-  components/           Reusable UI: Button, Card, ErrorBoundary, PhaseProgress, BrandFooter, …
+  components/           BrandBar, GameHeader, GameFooter, StageProgress, MuteToggle,
+                        AmbientBackdrop, BatchPulse, BigMs, ShareCard, AboutPanel,
+                        Button, Meter, Stat, TeachList, Screen, ErrorBoundary
   content/copy.ts       SINGLE SOURCE OF TRUTH for every user-facing string
   data/rounds.ts        Illustrative round + market-event fixtures
-  lib/                  Pure helpers: scoring, formatting, simulation
+  lib/                  Pure helpers: scoring, formatting, simulation, stages, share, sound
   screens/              One component per phase
-  state/                gameMachine.ts (pure reducer) + useGame.ts (context hook)
-  styles/               tokens.css + global.css, mobile-first
+  state/                gameMachine.ts (pure reducer), GameProvider, SoundProvider, hooks
+  styles/               tokens.css (identity) + global.css, mobile-first
   types/game.ts         Shared types: phases, rounds, events, results, scores
 ```
 
@@ -230,16 +234,86 @@ src/
 - An `ErrorBoundary` wraps the app and each screen, so a failure in one phase shows a recovery card
   rather than a blank page.
 
+## 10a. Visual identity — "the heat and the prism"
+
+The look is built on one idea: **two opposing energies**, and the contrast between them *is* the
+argument the game is making.
+
+| | HEAT — Fogo-inspired | PRISM — Superluminal-inspired |
+| --- | --- | --- |
+| Palette | orange, yellow, ember red | blue, cyan, prism violet |
+| Stands for | the continuous market, the race, arrival-time priority | the batch auction, ordered light, one clearing price per auction |
+| Ambient motion | horizontal speed lines + restrained embers | slow vertical prism rays |
+| Lights | Act 1 | Acts 2 and 3, plus the opening and the result |
+
+A screen never picks its own accent. `themeForPhase()` maps the phase to `heat` or `prism`, the
+shell sets `data-act` on a wrapper, and every accent token (`--accent`, `--accent-core`,
+`--accent-edge`, glow, button fill) is redefined under that attribute in `tokens.css`. Adding a
+screen therefore inherits the right half of the identity for free.
+
+**Ground.** A near-black terminal field (`--void` `#04070c`) with an act-tinted radial wash and a
+very low-contrast 48px grid, masked to fade out at the edges — texture, not a data table.
+
+**Surfaces.** `.panel` uses a clipped top-right corner (`clip-path`) so cards read as game HUD
+rather than dashboard tiles. Buttons are chunky, gradient-filled and glow with the act colour.
+
+**The 40ms anchor.** `<BigMs>` renders the number in a tabular mono display face with a gradient
+fill and a soft glow. It recurs on the opening screen, inside every batch pulse, on the DFBA
+screens and on the result card, so the number becomes the signature of the game.
+
+**Deliberately not.** No KPI grid, no sparkline wall, no generic admin-dashboard chrome, and no
+imitation of any existing simulator's layout. This is a three-act game with a stage rail and one
+big action button per screen.
+
+### New identity components
+
+| Component | What it does |
+| --- | --- |
+| `BrandBar` / `BrandMarks` / `BrandLockup` | The Superluminal x Fogo lockup. The single place either logo is rendered. |
+| `GameHeader` | Persistent: brand bar, stage rail, mute, About. |
+| `StageProgress` | Five labelled stages (Start / Race / Batch / Quote / Result) as an ARIA `progressbar`. |
+| `MuteToggle` | Real button, `aria-pressed`, 44px, name states both current state and action. |
+| `AmbientBackdrop` | Speed lines + embers, or prism rays, by act. Decorative and `aria-hidden`. |
+| `BatchPulse` | The 40ms motif: expanding rings, a sweep, and the slow-motion label. |
+| `BigMs` | The recurring 40ms typography anchor. |
+| `ShareCard` | The final shareable result card, with both marks and a copy-to-clipboard summary. |
+| `AboutPanel` | The educational About section as a labelled modal dialog. |
+
+### Sound
+
+A tiny synthesised engine (`lib/sound.ts`) built on the Web Audio API — no audio files, no network,
+no third-party service. Cues are short percussive blips for the event firing, a win, a loss, a fill
+and a selection. The context is created lazily so it always starts inside a user gesture, every
+entry point is wrapped so a failure can never interrupt the game loop, and the muted preference
+persists to `localStorage` behind a `try/catch`.
+
+## 10b. Accessibility and responsiveness
+
+- **Touch targets.** Every button is at least 44px high; verified in a browser at 360px.
+- **Accessible names** always contain the visible label (WCAG 2.5.3).
+- **Stage rail** is a labelled `progressbar` with `aria-valuetext` naming the stage.
+- **About** is a labelled `role="dialog"`, `aria-modal`, Escape to close, focus moved in on open
+  and returned to the trigger on close.
+- **Live regions** announce round outcomes and the batch window state.
+- **Responsive** from 360px to desktop; the shell widens at 60rem. Verified with zero horizontal
+  overflow at 360 / 390 / 768 / 1280px.
+- **Contrast**: body ink `#f2f7fc` and muted `#b6c8dc` on a near-black ground.
+
 ## 11. Motion
 
 Framer Motion is used only where motion carries meaning:
 
+- the ambient act backdrop (speed lines vs prism rays),
+- the 40ms batch pulse,
 - the countdown/batch window filling,
 - the stale-quote flash when a market event fires,
 - the reveal of the two auction clearing prices,
 - phase cross-fades.
 
-Decorative animation is avoided, and all of it is suppressed under `prefers-reduced-motion`.
+**Reduced motion is a first-class path, not an afterthought.** Under `prefers-reduced-motion` the
+ambient particles are not rendered at all, the pulse renders in its resting state, transitions drop
+to zero duration, and a global CSS rule neutralises anything left. Nothing that carries meaning is
+lost — the batch pulse still shows the 40ms anchor and its slow-motion label.
 
 ## 12. Testing
 
@@ -247,10 +321,18 @@ Vitest + React Testing Library:
 
 - `gameMachine.test.ts` — phase order, action handling, reset, immutability of results.
 - `scoring.test.ts` — score maths and grade boundaries.
+- `simulation.test.ts` — round resolution and the maker model, including that the batch venue
+  reduces but never zeroes pick-off exposure.
 - `copy.test.ts` — enforces ACCURACY_RULES.md programmatically: forbidden claims absent,
-  required hedged phrasings present.
-- `App.test.tsx` — landing screen renders, **Start Game** advances the machine, accessible names.
-- `screens.test.tsx` — each phase renders its heading and its primary control.
+  required hedged phrasings present, the exact slow-motion label, the footer legal line.
+- `identity.test.tsx` — brand marks unmodified and pointing at the real files, the 40ms anchor,
+  the batch pulse's slow-motion label, stage mapping and act theming, ambient backdrop motifs,
+  and the result card carrying the disclaimer into the copied text.
+- `sound.test.ts` — silent and non-throwing without Web Audio, silent when muted, synthesises
+  when available, and swallows audio-graph failures.
+- `App.test.tsx` — landing screen, logos in header and opening, stage rail, mute toggle, About
+  dialog open/close/Escape, footer disclaimer, and **Start Game** advancing the machine.
+- `screens.test.tsx` — each phase renders its heading, primary control and slow-motion labelling.
 
 ## 13. Explicitly out of scope
 

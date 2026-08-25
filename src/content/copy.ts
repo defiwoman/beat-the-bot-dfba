@@ -27,9 +27,87 @@ export const copy = {
 
   brands: {
     heading: 'Campaign partners',
+    lockup: 'Superluminal × Fogo',
     fogoAlt: 'Fogo logo',
     superluminalAlt: 'Superluminal logo',
     note: 'Logos are shown as supplied by their owners.',
+  },
+
+  /** The 40ms motif. Used anywhere a batch window is drawn. */
+  pulse: {
+    label: '40ms batch pulse',
+    unit: 'ms',
+    value: '40',
+    caption: 'One batch',
+    /**
+     * Required wherever a batch is expanded for teaching. A real 40ms window cannot be
+     * examined by eye, and a browser animation is not a network measurement.
+     */
+    slowMotion: '40ms shown in slow motion',
+    notBenchmark:
+      'This animation is a teaching aid, not a benchmark. It does not measure any network or venue.',
+  },
+
+  controls: {
+    soundOn: 'Sound on',
+    soundOff: 'Sound off',
+    muteHint: 'Sound on — mute the game',
+    unmuteHint: 'Sound off — unmute the game',
+    aboutLabel: 'About',
+    aboutHint: 'About — what this game teaches and what it does not claim',
+    closeLabel: 'Close',
+    closeHint: 'Close — return to the game',
+  },
+
+  stages: {
+    label: 'Game stages',
+    names: {
+      intro: 'Start',
+      clob: 'Race',
+      dfba: 'Batch',
+      maker: 'Quote',
+      results: 'Result',
+    },
+    stageOf: 'Stage',
+  },
+
+  about: {
+    heading: 'About this game',
+    lede: 'Beat the Bot is a short, community-built lesson about how a market decides who trades first. It is not a simulator, a benchmark, or a trading product.',
+    teachesHeading: 'What it teaches',
+    teaches: [
+      'A CLOB matches continuously and uses arrival-time priority, so a small latency advantage can determine who reaches a stale or attractive quote.',
+      'A DFBA collects orders into a short 40ms batch and separates maker and taker flows.',
+      'Each batch runs a bid auction and an ask auction, and each has its own uniform clearing price.',
+      'Arrival time inside the same batch does not determine matching priority, while price priority and size still matter.',
+      'Reducing speed-based pick-off risk can support market makers quoting tighter spreads, which can benefit natural-flow traders.',
+    ],
+    limitsHeading: 'What it does not claim',
+    limits: [
+      'It does not claim a batch auction guarantees profit to anyone.',
+      'It does not claim every trader gets a better fill in a batch.',
+      'It does not claim batching eliminates all possible MEV.',
+      'It does not use live Superluminal data, and none of these numbers are measured market statistics.',
+      'It does not benchmark any network. The animations are slowed down so a person can follow them.',
+    ],
+    creditsHeading: 'Credits',
+    credits:
+      'A community-built educational game associated with the Superluminal x Fogo DFBA campaign. Logos are shown as supplied by their owners.',
+  },
+
+  share: {
+    heading: 'Your result card',
+    title: 'Beat the Bot — the 40ms market',
+    copyLabel: 'Copy result',
+    copiedLabel: 'Copied',
+    copyHint: 'Copy result — copy a text summary to your clipboard',
+    racesLabel: 'Races won on the continuous book',
+    batchesLabel: 'Batches joined',
+    makerLabel: 'Net ticks as a market maker',
+  },
+
+  footer: {
+    legal: 'Community-built educational game — not financial advice.',
   },
 
   intro: {

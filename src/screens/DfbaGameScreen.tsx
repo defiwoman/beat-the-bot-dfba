@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowRight, Layers } from 'lucide-react';
+import { ArrowRight, Clock, Layers } from 'lucide-react';
 import { Button } from '@/components/Button';
 import { Meter } from '@/components/Meter';
 import { Screen } from '@/components/Screen';
@@ -7,6 +7,7 @@ import { Stat } from '@/components/Stat';
 import { copy } from '@/content/copy';
 import { formatMs, formatPrice } from '@/lib/format';
 import { resolveDfbaRound } from '@/lib/simulation';
+import { useSound } from '@/state/useSound';
 import type { DfbaRound, DfbaRoundResult } from '@/types/game';
 
 type Stage = 'opening' | 'open' | 'matching' | 'resolved';
@@ -33,6 +34,7 @@ export function DfbaGameScreen({
   isLastRound: boolean;
   onComplete: (result: DfbaRoundResult) => void;
 }) {
+  const { play } = useSound();
   const [stage, setStage] = useState<Stage>('opening');
   const [result, setResult] = useState<DfbaRoundResult | null>(null);
   const openedAtRef = useRef<number | null>(null);
@@ -45,9 +47,11 @@ export function DfbaGameScreen({
     const openTimer = window.setTimeout(() => {
       openedAtRef.current = performance.now();
       setStage('open');
+      play('tick');
     }, OPENING_DELAY_MS);
 
     return () => window.clearTimeout(openTimer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [round.id]);
 
   useEffect(() => {
@@ -55,14 +59,20 @@ export function DfbaGameScreen({
     const closeTimer = window.setTimeout(() => {
       setResult(resolveDfbaRound(round, null));
       setStage('resolved');
+      play('lose');
     }, round.displayWindowMs);
     return () => window.clearTimeout(closeTimer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage, round]);
 
   useEffect(() => {
     if (stage !== 'matching') return;
-    const matchTimer = window.setTimeout(() => setStage('resolved'), MATCHING_DELAY_MS);
+    const matchTimer = window.setTimeout(() => {
+      setStage('resolved');
+      play('fill');
+    }, MATCHING_DELAY_MS);
     return () => window.clearTimeout(matchTimer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage]);
 
   const handleSubmit = useCallback(() => {
@@ -70,15 +80,18 @@ export function DfbaGameScreen({
     const submittedAtMs = performance.now() - openedAtRef.current;
     setResult(resolveDfbaRound(round, submittedAtMs));
     setStage('matching');
-  }, [round, stage]);
+    play('select');
+  }, [play, round, stage]);
 
   const isOpen = stage === 'open';
   const showResult = stage === 'resolved' && result !== null;
 
   return (
     <Screen label={copy.dfbaGame.heading}>
-      <p className="eyebrow">{copy.dfbaGame.eyebrow}</p>
-      <h1 className="section-title">{copy.dfbaGame.heading}</h1>
+      <div>
+        <p className="eyebrow">{copy.dfbaGame.eyebrow}</p>
+        <h1 className="section-title">{copy.dfbaGame.heading}</h1>
+      </div>
       <p className="faint">
         {copy.dfbaGame.roundLabel} {roundNumber} {copy.common.of} {totalRounds}
       </p>
@@ -88,19 +101,20 @@ export function DfbaGameScreen({
         <span className="event__detail">{round.event.detail}</span>
       </div>
 
-      <div className="card">
-        <p className="card__title" aria-live="polite">
+      <div className="panel panel--accent">
+        <p className="panel__title" aria-live="polite">
           {isOpen || stage === 'opening' ? copy.dfbaGame.windowOpen : copy.dfbaGame.windowClosed}
         </p>
-        <div style={{ marginTop: 'var(--space-3)' }}>
+        <div style={{ marginTop: 'var(--s3)' }}>
           <Meter
             label={copy.dfbaGame.windowOpen}
             progress={isOpen ? 1 : 0}
             durationMs={isOpen ? round.displayWindowMs : 0}
           />
         </div>
-        <p className="faint" style={{ marginTop: 'var(--space-3)' }}>
-          {copy.dfbaGame.slowedNote}
+        <p className="slowmo" style={{ marginTop: 'var(--s3)' }}>
+          <Clock size={12} aria-hidden="true" />
+          {copy.pulse.slowMotion}
         </p>
       </div>
 
@@ -129,9 +143,9 @@ export function DfbaGameScreen({
           >
             {copy.dfbaGame.outcomes[result.outcome]}
           </span>
-          <span className="card__body">{copy.dfbaGame.outcomeDetail[result.outcome]}</span>
+          <span className="panel__body">{copy.dfbaGame.outcomeDetail[result.outcome]}</span>
           {result.outcome === 'filled' ? (
-            <div className="stat-row" style={{ marginTop: 'var(--space-2)' }}>
+            <div className="stat-row" style={{ marginTop: 'var(--s2)' }}>
               <Stat
                 label={copy.dfbaGame.clearingPriceLabel}
                 value={formatPrice(result.clearingPrice)}
@@ -157,7 +171,6 @@ export function DfbaGameScreen({
           <Button
             block
             jumbo
-            variant={isOpen ? 'primary' : 'secondary'}
             disabled={!isOpen}
             icon={<Layers size={22} />}
             aria-label={copy.dfbaGame.actionHint}

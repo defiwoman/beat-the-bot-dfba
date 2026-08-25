@@ -6,6 +6,7 @@ import { Stat } from '@/components/Stat';
 import { copy } from '@/content/copy';
 import { formatTicks, formatUnits } from '@/lib/format';
 import { simulateMakerRound } from '@/lib/simulation';
+import { useSound } from '@/state/useSound';
 import type { MarketMakerRound, MarketMakerRoundResult, SpreadOption } from '@/types/game';
 
 export function MarketMakerGameScreen({
@@ -17,25 +18,30 @@ export function MarketMakerGameScreen({
   isLastRound: boolean;
   onComplete: (result: MarketMakerRoundResult) => void;
 }) {
+  const { play } = useSound();
   const [result, setResult] = useState<MarketMakerRoundResult | null>(null);
 
   const handleChoose = useCallback(
     (option: SpreadOption) => {
       if (result) return;
-      setResult(simulateMakerRound(round, option));
+      const outcome = simulateMakerRound(round, option);
+      setResult(outcome);
+      play(outcome.netTicks >= 0 ? 'win' : 'lose');
     },
-    [result, round],
+    [play, result, round],
   );
 
   return (
     <Screen label={copy.marketMakerGame.heading}>
-      <p className="eyebrow">{copy.marketMakerGame.eyebrow}</p>
-      <h1 className="section-title">{copy.marketMakerGame.heading}</h1>
+      <div>
+        <p className="eyebrow">{copy.marketMakerGame.eyebrow}</p>
+        <h1 className="section-title">{copy.marketMakerGame.heading}</h1>
+      </div>
 
-      <div className="card">
+      <div className={round.venue === 'clob' ? 'panel' : 'panel panel--accent'}>
         <span className="stat__label">{copy.marketMakerGame.venueLabel}</span>
-        <p className="card__title">{copy.marketMakerGame.venueNames[round.venue]}</p>
-        <p className="card__body" style={{ marginTop: 'var(--space-2)' }}>
+        <p className="panel__title">{copy.marketMakerGame.venueNames[round.venue]}</p>
+        <p className="panel__body" style={{ marginTop: 'var(--s2)' }}>
           {copy.marketMakerGame.venuePrompt[round.venue]}
         </p>
       </div>
@@ -62,7 +68,7 @@ export function MarketMakerGameScreen({
       {result ? (
         <div className="outcome" role="status">
           <span className="outcome__title">{copy.marketMakerGame.resultHeading}</span>
-          <div className="stat-grid">
+          <div className="stat-grid" style={{ marginTop: 'var(--s2)' }}>
             <Stat
               label={copy.marketMakerGame.pickedOffLabel}
               value={formatUnits(result.pickedOffUnits)}
@@ -84,7 +90,9 @@ export function MarketMakerGameScreen({
               tone="accent"
             />
           </div>
-          <span className="faint">{copy.marketMakerGame.caveat}</span>
+          <span className="faint" style={{ marginTop: 'var(--s2)' }}>
+            {copy.marketMakerGame.caveat}
+          </span>
         </div>
       ) : null}
 

@@ -12,8 +12,8 @@ export function TeachList({ lines }: { lines: readonly TeachLine[] }) {
             {index + 1}
           </span>
           <span>
-            <span className="card__title">{line.title}</span>
-            <span className="card__body" style={{ display: 'block', marginTop: 2 }}>
+            <span className="panel__title">{line.title}</span>
+            <span className="panel__body" style={{ display: 'block', marginTop: 2 }}>
               {line.body}
             </span>
           </span>

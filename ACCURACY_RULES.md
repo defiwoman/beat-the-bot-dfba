@@ -67,6 +67,31 @@ requires them to appear:
 | Any **price prediction, yield, APY or return** | Out of scope entirely. |
 | Any claim about a venue's **real throughput, uptime or latency** | Unverified by this project. |
 | Anything implying the player is **trading real money** | There is no wallet, no funds, no order routing. |
+| Any framing of an **animation as a benchmark or measurement** | See section 3a. A browser animation measures nothing. |
+
+## 3a. Slow motion — the rule that governs every batch visual
+
+A true 40ms interval is far too fast for a person to examine visually. Every batch visual in this
+game is therefore **expanded in time**, and that expansion must always be declared.
+
+**The rule:** wherever a batch window is expanded for education, the exact label
+
+> **40ms shown in slow motion**
+
+must be visible alongside it. It is stored once, as `copy.pulse.slowMotion`, and a test asserts its
+exact wording. It currently appears on the DFBA tutorial, the DFBA game screen, the DFBA reveal
+(twice — beside the pulse and beside the arrival list) and in the About panel.
+
+**Never** present a browser animation as an authoritative network benchmark. The rendered timing is
+a function of the animation code and the device's frame rate, nothing else. The companion line
+`copy.pulse.notBenchmark` states this outright:
+
+> This animation is a teaching aid, not a benchmark. It does not measure any network or venue.
+
+The words *benchmark*, *measured latency*, *throughput*, *tps* and *proves that* are in the
+forbidden-pattern list precisely so this cannot drift.
+
+The distinction the copy keeps: the **modelled** batch is 40ms; the **displayed** window is slowed.
 
 ## 3. Nuances the app must actively preserve
 
@@ -101,6 +126,18 @@ They must not be edited, recoloured, cropped, distorted, traced or replaced. The
 their natural aspect ratio, on adequate clear space, with descriptive `alt` text, and are never used
 as a background, mask, or animated element. The app's own colour choices are its own and are not
 applied to the marks.
+
+Both marks appear in four places, always through the same `BrandBar` module so the rules hold in
+one file: the **opening screen**, the **persistent header**, the **shareable result card**, and the
+**About panel**.
+
+Concretely, the marks carry no `filter`, no `mask`, no `transform`, no `mix-blend-mode` and no
+animation. The rounded frame around each one belongs to the container behind it, never to the
+artwork. A test asserts this, and asserts the source paths point at the real supplied files.
+
+**The identity is inspired by the brands; it is not applied to them.** The flame palette is
+Fogo-*inspired* and the prism palette Superluminal-*inspired*, but neither palette is ever painted
+onto the marks themselves.
 
 > The brief referenced `fogo-logo.png`; the file supplied in this repository is `fogo-logo.jpg`. The
 > asset was left exactly as provided and is referenced by its real filename rather than converted,

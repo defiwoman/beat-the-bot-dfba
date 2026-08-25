@@ -39,6 +39,28 @@ npm run preview    # serve the production build
 
 No backend, no database, no wallet connection, no API keys, no real money, no real trading data.
 
+## Visual identity — "the heat and the prism"
+
+The look is built from two opposing energies, and the contrast between them is the argument:
+
+- **HEAT** — Fogo-inspired orange, yellow and ember, with speed lines and restrained flame
+  particles. Lights **Act 1**: the continuous market, the race, arrival-time priority.
+- **PRISM** — Superluminal-inspired blue, cyan and prism light, with slow vertical rays. Lights
+  **Acts 2 and 3**: the batch auction, ordered light, one clearing price per auction.
+
+A screen never picks its own accent — the phase maps to an act theme, the shell sets `data-act`,
+and every accent token follows. On top of that sit a near-black trading-terminal ground, HUD panels
+with clipped corners, a repeating **40ms batch pulse**, and the large **40ms** typography that
+recurs as the game's signature. Both logos appear in the persistent header, on the opening screen,
+on the shareable result card and in the About panel.
+
+> **Slow motion, always labelled.** A real 40ms window is too fast to examine by eye, so every
+> expanded batch carries the label **"40ms shown in slow motion"**. A browser animation is never
+> presented as a network benchmark. See [ACCURACY_RULES.md §3a](./ACCURACY_RULES.md).
+
+Sound is synthesised in the browser with the Web Audio API — no audio files, no network — and there
+is a mute control in the header that persists your choice.
+
 ## Stack
 
 React 19 · Vite 6 · TypeScript (strict) · npm · custom responsive CSS · Framer Motion (only where
@@ -49,14 +71,15 @@ motion carries meaning) · Lucide React · Vitest + React Testing Library.
 ```
 public/brands/       Official logo assets — used exactly as supplied, never edited
 src/
-  components/        Button, Card-ish primitives, ErrorBoundary, PhaseProgress, Meter, BrandFooter
+  components/        BrandBar, GameHeader/Footer, StageProgress, MuteToggle, AmbientBackdrop,
+                     BatchPulse, BigMs, ShareCard, AboutPanel, Button, Meter, ErrorBoundary
   content/copy.ts    Single source of truth for every user-facing string
   content/copy.test.ts   Enforces ACCURACY_RULES.md against that copy
   data/rounds.ts     Illustrative round and market-event fixtures
-  lib/               Pure helpers: scoring, formatting, round simulation
+  lib/               Pure helpers: scoring, formatting, simulation, stages, share, sound
   screens/           One component per game phase
-  state/             gameMachine.ts (pure reducer) + provider + useGame hook
-  styles/            tokens.css + global.css, mobile-first
+  state/             gameMachine.ts (pure reducer) + game/sound providers + hooks
+  styles/            tokens.css (identity) + global.css, mobile-first
   types/game.ts      Shared types: phases, rounds, market events, results, scores
 ```
 
@@ -79,7 +102,11 @@ supplied asset.
 ## Accessibility
 
 Every control is a real `<button>` with a visible focus ring and a 44px minimum touch target;
-accessible names always contain the visible label; the phase rail is a labelled `progressbar`;
-outcomes announce through live regions; and all non-essential motion is suppressed under
-`prefers-reduced-motion`. An error boundary wraps the app and each phase, so a failure shows a
-recovery card instead of a blank page.
+accessible names always contain the visible label; the stage rail is a labelled `progressbar`;
+About is a labelled modal dialog with Escape-to-close and focus return; outcomes announce through
+live regions; and the layout runs from 360px to desktop with no horizontal overflow.
+
+Under `prefers-reduced-motion` the ambient particles are not rendered at all and every transition
+drops to zero — without losing meaning, since the batch pulse still shows the 40ms anchor and its
+slow-motion label. An error boundary wraps the app and each phase, so a failure shows a recovery
+card instead of a blank page.

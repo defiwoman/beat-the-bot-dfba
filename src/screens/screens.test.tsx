@@ -49,7 +49,7 @@ describe('DfbaGameScreen', () => {
     expect(screen.getByRole('button', { name: copy.dfbaGame.actionHint })).toBeDisabled();
   });
 
-  it('tells the player the on-screen window is a slowed-down view of a 40ms batch', () => {
+  it('labels the expanded batch window as slow motion', () => {
     render(
       <DfbaGameScreen
         round={DFBA_ROUNDS[0]}
@@ -60,7 +60,7 @@ describe('DfbaGameScreen', () => {
       />,
     );
 
-    expect(screen.getByText(copy.dfbaGame.slowedNote)).toBeInTheDocument();
+    expect(screen.getByText(copy.pulse.slowMotion)).toBeInTheDocument();
   });
 });
 

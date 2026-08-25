@@ -1,58 +1,133 @@
-/* Design tokens. Mobile-first, dark surface, high contrast. */
+/**
+ * BEAT THE BOT — THE 40MS MARKET
+ * Visual identity tokens.
+ *
+ * Two opposing energies drive the whole look:
+ *
+ *   HEAT  (Fogo-inspired)         orange / yellow / flame — the continuous market, the race,
+ *                                 arrival-time priority, urgency.
+ *   PRISM (Superluminal-inspired) blue / cyan / prism light — the batch auction, ordered light,
+ *                                 fairness, one clearing price per auction.
+ *
+ * Act 1 is lit by HEAT. Acts 2 and 3 are lit by PRISM. The contrast is the argument.
+ */
 
 :root {
-  /* surfaces */
-  --bg: #080e15;
-  --bg-elevated: #0f1a25;
-  --surface: #13202d;
-  --surface-2: #1a2a3a;
-  --border: #26394c;
-  --border-strong: #3a5470;
+  /* ---------------------------------------------------------- terminal ground */
+  --void: #04070c;
+  --void-2: #070c14;
+  --panel: #0c141f;
+  --panel-2: #111d2b;
+  --panel-3: #17273a;
+  --line: #1e3149;
+  --line-strong: #2f4a68;
 
-  /* ink */
-  --ink: #eef5fb;
-  --ink-muted: #9db0c4;
-  --ink-faint: #6b8099;
+  /* ------------------------------------------------------------------- ink */
+  --ink: #f2f7fc;
+  --ink-2: #b6c8dc;
+  --ink-3: #8298b0;
+  --ink-4: #64809b;
+  --ink-faint: #64809b;
 
-  /* accents */
-  --accent: #dffb8c; /* batch / DFBA */
-  --accent-ink: #0d1520;
-  --speed: #ff8a4c; /* continuous / speed */
-  --danger: #ff6b7a;
-  --success: #56e2a4;
-  --info: #7fc3ff;
+  /* ------------------------------------------------------- HEAT — Fogo side */
+  --heat-glow: #ffe08a;
+  --heat-core: #ffc247;
+  --heat: #ff8a3d;
+  --heat-deep: #ff4f2e;
+  --heat-ember: #c62d1a;
+  --heat-ink: #2a0f04;
 
-  /* type */
+  /* ------------------------------------------- PRISM — Superluminal side */
+  --prism-glow: #b9f4ff;
+  --prism-cyan: #5ee7ff;
+  --prism: #4d9cff;
+  --prism-deep: #3d6bf5;
+  --prism-violet: #9f8bfa;
+  --prism-ink: #04121f;
+
+  /* --------------------------------------------------------------- status */
+  --good: #4fe3a6;
+  --bad: #ff6b83;
+  --warn: var(--heat-core);
+
+  /* ----------------------------------------------------------------- type */
+  --font-display:
+    'Archivo Black', 'Arial Black', 'Helvetica Neue', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-sans:
-    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
-    sans-serif;
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
 
-  --step--1: clamp(0.78rem, 0.74rem + 0.2vw, 0.85rem);
-  --step-0: clamp(0.95rem, 0.9rem + 0.25vw, 1.05rem);
-  --step-1: clamp(1.12rem, 1.03rem + 0.45vw, 1.3rem);
-  --step-2: clamp(1.4rem, 1.2rem + 0.9vw, 1.8rem);
-  --step-3: clamp(1.85rem, 1.5rem + 1.7vw, 2.6rem);
-  --step-4: clamp(2.5rem, 1.9rem + 3vw, 3.8rem);
+  --step--2: clamp(0.68rem, 0.66rem + 0.12vw, 0.74rem);
+  --step--1: clamp(0.78rem, 0.75rem + 0.18vw, 0.86rem);
+  --step-0: clamp(0.94rem, 0.9rem + 0.22vw, 1.04rem);
+  --step-1: clamp(1.1rem, 1.02rem + 0.4vw, 1.3rem);
+  --step-2: clamp(1.35rem, 1.18rem + 0.8vw, 1.8rem);
+  --step-3: clamp(1.8rem, 1.45rem + 1.6vw, 2.7rem);
+  --step-4: clamp(2.4rem, 1.8rem + 2.9vw, 4rem);
+  --step-5: clamp(3.2rem, 2.2rem + 4.6vw, 6rem);
 
-  /* space */
-  --space-1: 0.25rem;
-  --space-2: 0.5rem;
-  --space-3: 0.75rem;
-  --space-4: 1rem;
-  --space-5: 1.5rem;
-  --space-6: 2rem;
-  --space-7: 3rem;
+  /* ---------------------------------------------------------------- space */
+  --s1: 0.25rem;
+  --s2: 0.5rem;
+  --s3: 0.75rem;
+  --s4: 1rem;
+  --s5: 1.5rem;
+  --s6: 2rem;
+  --s7: 3rem;
 
-  --radius-sm: 8px;
-  --radius: 14px;
-  --radius-lg: 20px;
+  --r-sm: 6px;
+  --r: 12px;
+  --r-lg: 18px;
+  --cut: 14px; /* HUD corner cut */
 
-  --tap-target: 44px;
+  --tap: 44px;
   --shell-max: 30rem;
+  --shell-max-wide: 64rem;
 
-  --shadow-1: 0 1px 2px rgb(0 0 0 / 40%);
-  --shadow-2: 0 12px 32px rgb(0 0 0 / 45%);
+  /* --------------------------------------------------------------- effects */
+  --glow-heat: 0 0 24px rgb(255 138 61 / 35%);
+  --glow-prism: 0 0 24px rgb(94 231 255 / 30%);
+  --shadow: 0 18px 40px rgb(0 0 0 / 55%);
+  --ring: 0 0 0 2px var(--void), 0 0 0 4px var(--prism-cyan);
 
-  --ring: 0 0 0 3px var(--bg), 0 0 0 5px var(--accent);
+  /* The 40ms motif. One pulse cycle = one modelled batch, slowed for the eye. */
+  --pulse-cycle: 1600ms;
+}
+
+/**
+ * Act theming. Screens set data-act on a wrapper and every accent below follows,
+ * so a component never has to know which act it is in.
+ */
+[data-act='heat'] {
+  --accent-glow: var(--heat-glow);
+  --accent-core: var(--heat-core);
+  --accent: var(--heat);
+  --accent-deep: var(--heat-deep);
+  --accent-ink: var(--heat-ink);
+  --accent-soft: rgb(255 138 61 / 12%);
+  --accent-edge: rgb(255 138 61 / 38%);
+  --accent-glow-shadow: var(--glow-heat);
+}
+
+[data-act='prism'] {
+  --accent-glow: var(--prism-glow);
+  --accent-core: var(--prism-cyan);
+  --accent: var(--prism);
+  --accent-deep: var(--prism-deep);
+  --accent-ink: var(--prism-ink);
+  --accent-soft: rgb(77 156 255 / 12%);
+  --accent-edge: rgb(94 231 255 / 38%);
+  --accent-glow-shadow: var(--glow-prism);
+}
+
+/* Neutral default so anything rendered outside an act still has an accent. */
+:root {
+  --accent-glow: var(--prism-glow);
+  --accent-core: var(--prism-cyan);
+  --accent: var(--prism);
+  --accent-deep: var(--prism-deep);
+  --accent-ink: var(--prism-ink);
+  --accent-soft: rgb(77 156 255 / 12%);
+  --accent-edge: rgb(94 231 255 / 38%);
+  --accent-glow-shadow: var(--glow-prism);
 }

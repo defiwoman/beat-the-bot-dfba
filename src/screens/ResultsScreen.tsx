@@ -1,8 +1,9 @@
 import { RotateCcw } from 'lucide-react';
+import { BrandLockup } from '@/components/BrandBar';
 import { Button } from '@/components/Button';
 import { Screen } from '@/components/Screen';
+import { ShareCard } from '@/components/ShareCard';
 import { copy } from '@/content/copy';
-import { formatTicks } from '@/lib/format';
 import type { ScoreBreakdown } from '@/types/game';
 
 export function ResultsScreen({
@@ -14,40 +15,14 @@ export function ResultsScreen({
 }) {
   return (
     <Screen label={copy.results.heading}>
-      <p className="eyebrow">{copy.results.eyebrow}</p>
-      <h1 className="title">{copy.results.heading}</h1>
-
-      <div className="score">
-        <span className="stat__label">{copy.results.scoreLabel}</span>
-        <span className="score__value">{score.totalPoints}</span>
-        <span className="faint">{copy.results.outOf}</span>
-        <span className="score__grade">{score.grade}</span>
+      <div>
+        <p className="eyebrow">{copy.results.eyebrow}</p>
+        <h1 className="title">{copy.results.heading}</h1>
       </div>
 
-      <p className="faint">{copy.results.notSkill}</p>
+      <ShareCard score={score} />
 
-      <h2 className="section-title">{copy.results.breakdownHeading}</h2>
-      <ul className="round-list">
-        <li className="round-row">
-          <span className="round-row__index">1</span>
-          <span>{copy.results.clobLine}</span>
-          <span className="round-row__value">
-            {score.clobRoundsWon} / {score.clobRoundsPlayed}
-          </span>
-        </li>
-        <li className="round-row">
-          <span className="round-row__index">2</span>
-          <span>{copy.results.dfbaLine}</span>
-          <span className="round-row__value">
-            {score.dfbaRoundsFilled} / {score.dfbaRoundsPlayed}
-          </span>
-        </li>
-        <li className="round-row">
-          <span className="round-row__index">3</span>
-          <span>{copy.results.makerLine}</span>
-          <span className="round-row__value">{formatTicks(score.makerNetTicks)}</span>
-        </li>
-      </ul>
+      <p className="faint">{copy.results.notSkill}</p>
 
       <h2 className="section-title">{copy.results.takeawaysHeading}</h2>
       <div className="teach">
@@ -57,8 +32,8 @@ export function ResultsScreen({
               {index + 1}
             </span>
             <span>
-              <span className="card__title">{takeaway.title}</span>
-              <span className="card__body" style={{ display: 'block', marginTop: 2 }}>
+              <span className="panel__title">{takeaway.title}</span>
+              <span className="panel__body" style={{ display: 'block', marginTop: 2 }}>
                 {takeaway.body}
               </span>
             </span>
@@ -77,6 +52,12 @@ export function ResultsScreen({
       </ul>
 
       <p className="disclaimer">{copy.meta.disclaimer}</p>
+
+      <div className="divider" />
+      <BrandLockup size="sm" />
+      <p className="tiny" style={{ textAlign: 'center' }}>
+        {copy.meta.campaign}
+      </p>
 
       <div className="screen__actions">
         <Button

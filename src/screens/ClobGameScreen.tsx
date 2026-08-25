@@ -7,6 +7,7 @@ import { Stat } from '@/components/Stat';
 import { copy } from '@/content/copy';
 import { formatMs, formatPrice } from '@/lib/format';
 import { resolveClobRound } from '@/lib/simulation';
+import { useSound } from '@/state/useSound';
 import type { ClobRound, ClobRoundResult } from '@/types/game';
 
 type Stage = 'waiting' | 'armed' | 'resolved';
@@ -28,11 +29,14 @@ export function ClobGameScreen({
   onComplete: (result: ClobRoundResult) => void;
 }) {
   const reduceMotion = useReducedMotion();
+  const { play } = useSound();
   const [stage, setStage] = useState<Stage>('waiting');
   const [showEarly, setShowEarly] = useState(false);
   const [result, setResult] = useState<ClobRoundResult | null>(null);
   const armedAtRef = useRef<number | null>(null);
 
+  // `play` is intentionally excluded: it changes identity when the mute setting changes, and
+  // re-running this effect would restart the round mid-play.
   useEffect(() => {
     setStage('waiting');
     setShowEarly(false);
@@ -43,9 +47,11 @@ export function ClobGameScreen({
     const armTimer = window.setTimeout(() => {
       armedAtRef.current = performance.now();
       setStage('armed');
+      play('arm');
     }, delay);
 
     return () => window.clearTimeout(armTimer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [round.id]);
 
   useEffect(() => {
@@ -53,8 +59,10 @@ export function ClobGameScreen({
     const timeoutTimer = window.setTimeout(() => {
       setResult(resolveClobRound(round, null));
       setStage('resolved');
+      play('lose');
     }, round.timeoutMs);
     return () => window.clearTimeout(timeoutTimer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage, round]);
 
   const handleTake = useCallback(() => {
@@ -64,16 +72,21 @@ export function ClobGameScreen({
     }
     if (stage !== 'armed' || armedAtRef.current === null) return;
     const reactionMs = performance.now() - armedAtRef.current;
-    setResult(resolveClobRound(round, reactionMs));
+    const outcome = resolveClobRound(round, reactionMs);
+    setResult(outcome);
     setStage('resolved');
-  }, [round, stage]);
+    play(outcome.outcome === 'won' ? 'win' : 'lose');
+  }, [play, round, stage]);
 
   const armed = stage === 'armed';
+  const revealed = armed || stage === 'resolved';
 
   return (
     <Screen label={copy.clobGame.heading}>
-      <p className="eyebrow eyebrow--speed">{copy.clobGame.eyebrow}</p>
-      <h1 className="section-title">{copy.clobGame.heading}</h1>
+      <div>
+        <p className="eyebrow">{copy.clobGame.eyebrow}</p>
+        <h1 className="section-title">{copy.clobGame.heading}</h1>
+      </div>
       <p className="faint">
         {copy.clobGame.roundLabel} {roundNumber} {copy.common.of} {totalRounds}
       </p>
@@ -83,38 +96,30 @@ export function ClobGameScreen({
         <Stat
           label={copy.clobGame.restingAsk}
           value={formatPrice(round.staleQuote.price)}
-          tone={armed || stage === 'resolved' ? 'speed' : 'default'}
+          tone={revealed ? 'speed' : 'default'}
         />
         <Stat
           label={copy.clobGame.fairValue}
-          value={formatPrice(
-            armed || stage === 'resolved' ? round.postEventFairValue : round.staleQuote.price,
-          )}
+          value={formatPrice(revealed ? round.postEventFairValue : round.staleQuote.price)}
         />
       </div>
 
       <motion.div
-        className={armed || stage === 'resolved' ? 'event' : 'event event--idle'}
-        animate={
-          reduceMotion || !armed ? { opacity: 1 } : { opacity: [0.4, 1], scale: [0.98, 1] }
-        }
+        className={revealed ? 'event' : 'event event--idle'}
+        animate={reduceMotion || !armed ? { opacity: 1 } : { opacity: [0.4, 1], scale: [0.98, 1] }}
         transition={{ duration: 0.18 }}
         aria-live="assertive"
       >
         <span className="event__headline">
-          {armed || stage === 'resolved' ? round.event.headline : copy.clobGame.waiting}
+          {revealed ? round.event.headline : copy.clobGame.waiting}
         </span>
         <span className="event__detail">
-          {armed || stage === 'resolved' ? round.event.detail : copy.clobGame.instruction}
+          {revealed ? round.event.detail : copy.clobGame.instruction}
         </span>
       </motion.div>
 
       <div className="stat-row">
-        <Stat
-          label={copy.clobGame.botLabel}
-          value={formatMs(round.botLatencyMs)}
-          tone="speed"
-        />
+        <Stat label={copy.clobGame.botLabel} value={formatMs(round.botLatencyMs)} tone="speed" />
         {result?.reactionMs != null ? (
           <Stat
             label={copy.clobGame.youLabel}
@@ -142,7 +147,7 @@ export function ClobGameScreen({
           >
             {copy.clobGame.outcomes[result.outcome]}
           </span>
-          <span className="card__body">{copy.clobGame.outcomeDetail[result.outcome]}</span>
+          <span className="panel__body">{copy.clobGame.outcomeDetail[result.outcome]}</span>
         </div>
       ) : null}
 
@@ -155,7 +160,7 @@ export function ClobGameScreen({
           <Button
             block
             jumbo
-            variant={armed ? 'danger' : 'secondary'}
+            variant={armed ? 'heat' : 'secondary'}
             icon={armed ? <Zap size={22} /> : <Bot size={22} />}
             aria-label={armed ? copy.clobGame.actionHint : copy.clobGame.waitingHint}
             onClick={handleTake}

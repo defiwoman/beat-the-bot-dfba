@@ -35,18 +35,18 @@ export class ErrorBoundary extends Component<Props, State> {
     if (!error) return this.props.children;
 
     return (
-      <div className="card card--speed" role="alert">
+      <div className="panel panel--accent" role="alert">
         <h2 className="section-title">{copy.errors.heading}</h2>
-        <p className="card__body" style={{ marginTop: 'var(--space-2)' }}>
+        <p className="panel__body" style={{ marginTop: 'var(--s2)' }}>
           {copy.errors.body}
         </p>
-        <details style={{ marginTop: 'var(--space-3)' }}>
+        <details style={{ marginTop: 'var(--s3)' }}>
           <summary className="faint">{copy.errors.detailsLabel}</summary>
-          <p className="faint mono" style={{ marginTop: 'var(--space-2)' }}>
+          <p className="faint mono" style={{ marginTop: 'var(--s2)' }}>
             {error.message}
           </p>
         </details>
-        <div style={{ marginTop: 'var(--space-4)' }}>
+        <div style={{ marginTop: 'var(--s4)' }}>
           <Button block icon={<RotateCcw size={18} />} onClick={this.handleReset}>
             {copy.errors.retryLabel}
           </Button>

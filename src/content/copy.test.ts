@@ -35,6 +35,10 @@ const FORBIDDEN: Array<{ label: string; pattern: RegExp }> = [
   { label: 'return or yield promise', pattern: /\b(apy|guaranteed returns?|profit is assured)\b/i },
   { label: 'moralising about latency arbitrage', pattern: /\b(cheating|theft|stealing|fraud|scam)\b/i },
   { label: 'financial advice', pattern: /\byou should (buy|sell|trade|invest)\b/i },
+  {
+    label: 'presents an animation as a benchmark',
+    pattern: /\b(benchmark|measured latency|throughput|tps|proves? that)\b/i,
+  },
 ];
 
 const REQUIRED_PHRASES = [
@@ -124,6 +128,22 @@ describe('nuances that must stay visible (ACCURACY_RULES.md section 3)', () => {
   it('flags that the on-screen batch window is slowed down', () => {
     expect(copy.dfbaGame.slowedNote.toLowerCase()).toContain('slowed down');
     expect(copy.dfbaGame.slowedNote).toContain('40ms');
+  });
+
+  it('carries the exact slow-motion label required wherever a batch is expanded', () => {
+    expect(copy.pulse.slowMotion).toBe('40ms shown in slow motion');
+  });
+
+  it('says plainly that the animation is not a benchmark', () => {
+    const text = copy.pulse.notBenchmark.toLowerCase();
+    expect(text).toContain('not a benchmark');
+    expect(text).toContain('does not measure');
+  });
+
+  it('states the not-financial-advice line for the footer', () => {
+    expect(copy.footer.legal).toBe(
+      'Community-built educational game — not financial advice.',
+    );
   });
 
   it('keeps the illustrative-numbers disclaimer on the landing and results copy', () => {

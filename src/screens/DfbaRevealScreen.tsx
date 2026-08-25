@@ -1,5 +1,6 @@
 import { motion, useReducedMotion } from 'framer-motion';
-import { ArrowRight, Scale } from 'lucide-react';
+import { ArrowRight, Clock, Scale } from 'lucide-react';
+import { BatchPulse } from '@/components/BatchPulse';
 import { Button } from '@/components/Button';
 import { Screen } from '@/components/Screen';
 import { copy } from '@/content/copy';
@@ -47,9 +48,15 @@ export function DfbaRevealScreen({
 
   return (
     <Screen label={copy.dfbaReveal.heading}>
-      <p className="eyebrow">{copy.dfbaReveal.eyebrow}</p>
-      <h1 className="title">{copy.dfbaReveal.heading}</h1>
+      <div>
+        <p className="eyebrow">{copy.dfbaReveal.eyebrow}</p>
+        <h1 className="title">{copy.dfbaReveal.heading}</h1>
+      </div>
       <p className="lede">{copy.dfbaReveal.lede}</p>
+
+      <div className="panel panel--accent">
+        <BatchPulse caption={copy.pulse.caption} />
+      </div>
 
       <div className="auctions">
         <AuctionPanel
@@ -69,6 +76,10 @@ export function DfbaRevealScreen({
       </p>
 
       <h2 className="section-title">{copy.dfbaReveal.arrivalHeading}</h2>
+      <p className="slowmo">
+        <Clock size={12} aria-hidden="true" />
+        {copy.pulse.slowMotion}
+      </p>
       <ul className="batch-list">
         {ordersByArrival.map((order) => (
           <li
@@ -86,6 +97,7 @@ export function DfbaRevealScreen({
         ))}
       </ul>
       <p className="note">{copy.dfbaReveal.arrivalNote}</p>
+      <p className="tiny">{copy.pulse.notBenchmark}</p>
 
       <h2 className="section-title">{copy.dfbaReveal.stillMattersHeading}</h2>
       <ul className="bullet-list">
