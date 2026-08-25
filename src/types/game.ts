@@ -1,8 +1,8 @@
 /**
  * Shared types for Beat the Bot: The 40ms Market.
  *
- * Every value modelled here is illustrative and invented for teaching. Nothing in this file
- * describes measured market data.
+ * Every value modelled here is illustrative game data, invented for teaching. Nothing in this
+ * file describes measured market data, and no price here is a real BTC price.
  */
 
 /* ------------------------------------------------------------------ phases */
@@ -24,64 +24,88 @@ export type GamePhase = (typeof GAME_PHASES)[number];
 
 export type Act = 'clob' | 'dfba' | 'marketMaker';
 
-/* ----------------------------------------------------------- market events */
+/** Injectable randomness, so replay variation is real in the app and deterministic in tests. */
+export type Rng = () => number;
 
-export type MarketEventKind = 'headline' | 'oracleUpdate' | 'largePrint';
+/* ---------------------------------------------------------- market signals */
 
-export type PriceDirection = 'up' | 'down';
+/** What the player picks. A long is a taker buy; a short is a taker sell. */
+export type Direction = 'long' | 'short';
 
-export interface MarketEvent {
+export type SignalKind = 'headline' | 'oracleUpdate' | 'largePrint' | 'funding' | 'liquidation';
+
+export interface MarketSignal {
   id: string;
-  kind: MarketEventKind;
-  /** Short headline shown when the event fires. */
+  kind: SignalKind;
+  /** Shown the moment the signal fires. */
   headline: string;
-  /** One clause of extra context. */
+  /** One clause of context. */
   detail: string;
-  direction: PriceDirection;
-  /** How far the illustrative fair value moves, in ticks. */
-  fairValueShiftTicks: number;
+  /** The direction this signal points to — the answer the player is reading for. */
+  direction: Direction;
 }
 
 /* ----------------------------------------------------------------- quoting */
 
 export type Side = 'bid' | 'ask';
 
-export interface RestingQuote {
-  side: Side;
-  price: number;
-  sizeUnits: number;
+/**
+ * A taker buy lifts the ask, so a long routes to the ask auction.
+ * A taker sell hits the bid, so a short routes to the bid auction.
+ */
+export function auctionSideForDirection(direction: Direction): Side {
+  return direction === 'long' ? 'ask' : 'bid';
 }
 
-/* -------------------------------------------------------------- CLOB rounds */
+/* ------------------------------------------------- LEVEL A — CLOB rounds */
 
 export interface ClobRound {
   id: string;
   index: number;
-  event: MarketEvent;
-  /** The quote that goes stale when the event fires. */
-  staleQuote: RestingQuote;
-  /** Illustrative fair value once the event is priced in. */
-  postEventFairValue: number;
-  /** The racing bot's fixed reaction time, in milliseconds. */
-  botLatencyMs: number;
-  /** How long the player has before the round times out, in milliseconds. */
+  signal: MarketSignal;
+  /** Illustrative BTC price shown before the signal fires. */
+  basePrice: number;
+  /** How far the illustrative price moves once the signal is priced in, in dollars. */
+  signalMoveUsd: number;
+  /** Milliseconds to wait before the signal appears. Randomised 600–1500. */
+  signalDelayMs: number;
+  /** The fictional low-latency bot's illustrative reaction, 8–25ms. */
+  botReactionMs: number;
+  /** Illustrative price the player pays away from the attractive quote, in dollars. */
+  slippageUsd: number;
+  /** How long the player has to answer before the round closes. */
   timeoutMs: number;
-  /** Edge awarded for winning the race, in ticks. */
-  edgeTicks: number;
 }
 
-export type ClobOutcome = 'won' | 'lostToBot' | 'missed';
+export type ClobOutcome =
+  /** Read the market right, but the bot reached the quote first. */
+  | 'correctButOutpaced'
+  /** Read the market wrong; the bot was still first. */
+  | 'wrongDirection'
+  /** Never answered before the round closed. */
+  | 'noAnswer';
 
 export interface ClobRoundResult {
   roundId: string;
-  /** Player reaction time from the event firing, or null if they never acted. */
+  chosenDirection: Direction | null;
+  correctDirection: Direction;
+  /** True when the player's read matched the signal, regardless of the race. */
+  wasCorrect: boolean;
+  /** Player reaction measured from the signal firing, or null if they never answered. */
   reactionMs: number | null;
-  botLatencyMs: number;
+  botReactionMs: number;
+  /** Whether the bot's order reached the quote first. */
+  botFirst: boolean;
   outcome: ClobOutcome;
-  edgeTicks: number;
+  /** The attractive quote the player was aiming at. Illustrative game data. */
+  targetPrice: number;
+  /** The worse price the player actually got. Illustrative game data. */
+  filledPrice: number;
+  /** Positive dollars of illustrative slippage versus the target. */
+  slippageUsd: number;
 }
 
-/* -------------------------------------------------------------- DFBA rounds */
+/* ------------------------------------------------- LEVEL B — DFBA rounds */
 
 export interface AuctionResult {
   side: Side;
@@ -89,48 +113,68 @@ export interface AuctionResult {
   clearingPrice: number;
   matchedUnits: number;
   participatingOrders: number;
+  /**
+   * Resting liquidity available on the opposite side of this auction. Filling depends on it,
+   * which is why nothing in this game promises that every submitted order fills.
+   */
+  restingLiquidityUnits: number;
 }
 
 export interface BatchOrder {
   id: string;
   label: string;
+  /** Which auction this order participates in. */
   side: Side;
-  limitPrice: number;
+  direction: Direction;
   sizeUnits: number;
-  /** Where inside the batch window the order landed, in milliseconds. */
+  /** Where inside the 40ms batch the order landed. */
   arrivalMs: number;
   isPlayer: boolean;
+  isBot: boolean;
   isMaker: boolean;
 }
 
 export interface DfbaRound {
   id: string;
   index: number;
-  event: MarketEvent;
+  signal: MarketSignal;
   /** The modelled batch length. */
   batchWindowMs: number;
-  /** The slowed-down on-screen window length, so the mechanism is visible. */
-  displayWindowMs: number;
-  /** The bot's arrival inside the window — always earlier than a human's. */
+  /** How long the slow-motion replay of that batch runs on screen. */
+  replayMs: number;
+  /** The bot's illustrative arrival inside the batch, in milliseconds. */
   botArrivalMs: number;
+  /** The player's illustrative arrival inside the batch — always later than the bot's. */
+  playerArrivalMs: number;
   bidAuction: AuctionResult;
   askAuction: AuctionResult;
-  /** Other orders sharing the batch, used for the reveal. */
-  batchOrders: BatchOrder[];
-  /** Price improvement versus the pre-batch quote, in ticks. */
-  priceImprovementTicks: number;
+  /** Maker orders sharing the batch, used for the slow-motion replay. */
+  makerOrders: BatchOrder[];
+  timeoutMs: number;
 }
 
-export type DfbaOutcome = 'filled' | 'missedBatch';
+export type DfbaOutcome =
+  | 'filledSameprice'
+  | 'wrongDirectionFilled'
+  | 'noAnswer';
 
 export interface DfbaRoundResult {
   roundId: string;
-  /** Where in the display window the player submitted, or null if they missed it. */
-  submittedAtMs: number | null;
-  insideBatch: boolean;
+  chosenDirection: Direction | null;
+  correctDirection: Direction;
+  wasCorrect: boolean;
+  reactionMs: number | null;
+  /** The auction the order routed to: long → ask, short → bid. */
+  auctionSide: Side | null;
+  /** That auction's own uniform clearing price. */
+  clearingPrice: number | null;
+  /** Whether player and bot both landed inside the same modelled batch. */
+  sameBatch: boolean;
+  botArrivalMs: number;
+  playerArrivalMs: number;
+  /** Whether both received that auction's clearing price. */
+  samePriceAsBot: boolean;
   outcome: DfbaOutcome;
-  clearingPrice: number;
-  priceImprovementTicks: number;
 }
 
 /* ------------------------------------------------------ market maker rounds */
@@ -148,9 +192,7 @@ export interface MarketMakerRound {
   id: string;
   index: number;
   venue: Venue;
-  /** Natural-flow orders looking to trade this round. */
   naturalFlowUnits: number;
-  /** Illustrative pick-off pressure from speed-advantaged flow. */
   fastFlowUnits: number;
   spreadOptions: SpreadOption[];
 }
@@ -160,11 +202,8 @@ export interface MarketMakerRoundResult {
   venue: Venue;
   chosenSpreadId: string;
   halfSpreadTicks: number;
-  /** Units of the quote taken on stale prices. */
   pickedOffUnits: number;
-  /** Units matched against natural flow. */
   naturalFlowUnits: number;
-  /** Illustrative net ticks earned or lost across the round. */
   netTicks: number;
 }
 
@@ -173,28 +212,37 @@ export interface MarketMakerRoundResult {
 export type Grade = 'Batch Boss' | 'Auction Apprentice' | 'Latency Learner' | 'Speed Bump';
 
 export interface ScoreBreakdown {
-  clobRoundsWon: number;
+  clobCorrect: number;
   clobRoundsPlayed: number;
-  clobPoints: number;
-  dfbaRoundsFilled: number;
+  dfbaCorrect: number;
   dfbaRoundsPlayed: number;
-  dfbaPoints: number;
+  /** Longest run of correct direction reads across both levels. */
+  bestStreak: number;
+  directionPoints: number;
+  comboBonus: number;
   makerNetTicks: number;
   makerPoints: number;
   totalPoints: number;
   grade: Grade;
+  /** Mean player reaction across every round they answered, or null. */
+  averageReactionMs: number | null;
+  /** Mean bot reaction across the CLOB rounds. Illustrative game data. */
+  averageBotReactionMs: number | null;
 }
 
 /* -------------------------------------------------------------- game state */
 
 export interface GameState {
   phase: GamePhase;
-  /** Index of the active round inside the current act. */
   roundIndex: number;
   clobResults: ClobRoundResult[];
   dfbaResults: DfbaRoundResult[];
   makerResults: MarketMakerRoundResult[];
-  /** Incremented on every restart so screens can remount cleanly. */
+  /** Current run of correct direction reads. */
+  streak: number;
+  /** Longest run this playthrough. */
+  bestStreak: number;
+  /** Incremented on every restart, so a replay draws fresh randomised rounds. */
   playthrough: number;
 }
 

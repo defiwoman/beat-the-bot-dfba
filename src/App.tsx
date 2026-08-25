@@ -6,7 +6,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { GameFooter } from '@/components/GameFooter';
 import { GameHeader } from '@/components/GameHeader';
 import { copy } from '@/content/copy';
-import { CLOB_ROUNDS, DFBA_ROUNDS, MARKET_MAKER_ROUNDS } from '@/data/rounds';
+import { buildClobRounds, buildDfbaRounds, MARKET_MAKER_ROUNDS } from '@/data/rounds';
 import { computeScore } from '@/lib/scoring';
 import { themeForPhase } from '@/lib/stages';
 import { ClobGameScreen } from '@/screens/ClobGameScreen';
@@ -22,7 +22,9 @@ import { SoundProvider } from '@/state/SoundProvider';
 import { useGame } from '@/state/useGame';
 import { useSound } from '@/state/useSound';
 import type {
+  ClobRound,
   ClobRoundResult,
+  DfbaRound,
   DfbaRoundResult,
   MarketMakerRoundResult,
 } from '@/types/game';
@@ -31,7 +33,12 @@ function clampIndex(index: number, length: number): number {
   return Math.min(Math.max(index, 0), length - 1);
 }
 
-function GameRouter() {
+export interface GeneratedRounds {
+  clob: ClobRound[];
+  dfba: DfbaRound[];
+}
+
+function GameRouter({ rounds }: { rounds: GeneratedRounds }) {
   const { state, dispatch } = useGame();
   const { play } = useSound();
 
@@ -97,16 +104,17 @@ function GameRouter() {
       );
 
     case 'clobGame': {
-      const index = clampIndex(state.roundIndex, CLOB_ROUNDS.length);
-      const round = CLOB_ROUNDS[index];
-      const isLast = index === CLOB_ROUNDS.length - 1;
+      const index = clampIndex(state.roundIndex, rounds.clob.length);
+      const round = rounds.clob[index];
+      const isLast = index === rounds.clob.length - 1;
       return (
         <ClobGameScreen
           key={round.id}
           round={round}
           roundNumber={index + 1}
-          totalRounds={CLOB_ROUNDS.length}
+          totalRounds={rounds.clob.length}
           isLastRound={isLast}
+          streak={state.streak}
           onComplete={(result) => handleClobRound(result, isLast)}
         />
       );
@@ -128,23 +136,26 @@ function GameRouter() {
       );
 
     case 'dfbaGame': {
-      const index = clampIndex(state.roundIndex, DFBA_ROUNDS.length);
-      const round = DFBA_ROUNDS[index];
-      const isLast = index === DFBA_ROUNDS.length - 1;
+      const index = clampIndex(state.roundIndex, rounds.dfba.length);
+      const round = rounds.dfba[index];
+      const isLast = index === rounds.dfba.length - 1;
       return (
         <DfbaGameScreen
           key={round.id}
           round={round}
           roundNumber={index + 1}
-          totalRounds={DFBA_ROUNDS.length}
+          totalRounds={rounds.dfba.length}
           isLastRound={isLast}
+          streak={state.streak}
           onComplete={(result) => handleDfbaRound(result, isLast)}
         />
       );
     }
 
     case 'dfbaReveal':
-      return <DfbaRevealScreen round={DFBA_ROUNDS[DFBA_ROUNDS.length - 1]} onContinue={advance} />;
+      return (
+        <DfbaRevealScreen round={rounds.dfba[rounds.dfba.length - 1]} onContinue={advance} />
+      );
 
     case 'marketMakerTutorial':
       return (
@@ -181,6 +192,14 @@ function GameShell() {
   const [aboutOpen, setAboutOpen] = useState(false);
   const theme = themeForPhase(state.phase);
 
+  // Fresh randomised rounds per playthrough, so signal timing and market direction both vary
+  // on replay. Generated here rather than in GameRouter, which remounts on every phase change.
+  const rounds = useMemo<GeneratedRounds>(
+    () => ({ clob: buildClobRounds(), dfba: buildDfbaRounds() }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [state.playthrough],
+  );
+
   const closeAbout = useCallback(() => setAboutOpen(false), []);
 
   return (
@@ -196,7 +215,10 @@ function GameShell() {
             onReset={() => dispatch({ type: 'RESTART' })}
           >
             <AnimatePresence mode="wait" initial={false}>
-              <GameRouter key={`${state.phase}-${state.roundIndex}-${state.playthrough}`} />
+              <GameRouter
+                key={`${state.phase}-${state.roundIndex}-${state.playthrough}`}
+                rounds={rounds}
+              />
             </AnimatePresence>
           </ErrorBoundary>
         </main>

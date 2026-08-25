@@ -1,142 +1,227 @@
 /**
- * Illustrative round fixtures.
+ * Illustrative round fixtures and the randomised builders behind replay variation.
  *
- * None of these values are measured market statistics. They are chosen to make a mechanism
- * visible in a few seconds on a phone screen.
+ * NONE of these values are measured market statistics, and no price here is a real BTC price.
+ * They are illustrative game data, chosen so a mechanism is visible in a couple of seconds.
+ *
+ * Every builder takes an injectable `Rng`, so the app gets fresh rounds on every replay while
+ * tests stay deterministic.
  */
 
 import type {
   ClobRound,
   DfbaRound,
-  MarketEvent,
+  Direction,
   MarketMakerRound,
+  MarketSignal,
+  Rng,
   SpreadOption,
 } from '@/types/game';
 
-export const TICK_SIZE = 0.01;
 export const BATCH_WINDOW_MS = 40;
+export const ROUNDS_PER_LEVEL = 3;
 
-export const MARKET_EVENTS: readonly MarketEvent[] = [
+/** Illustrative BTC reference used by the whole game. Not a real price. */
+export const BASE_PRICE = 100_000;
+
+/* --------------------------------------------------------------- ranges */
+
+/** The signal appears somewhere in this window, so the player cannot pre-fire. */
+export const SIGNAL_DELAY_MS = { min: 600, max: 1500 } as const;
+
+/**
+ * The fictional low-latency bot's illustrative reaction. A human cannot reach this, which is
+ * the whole point of Level A — the player is not meant to win by clicking faster.
+ */
+export const BOT_REACTION_MS = { min: 8, max: 25 } as const;
+
+export const SLIPPAGE_USD = { min: 9, max: 38 } as const;
+export const SIGNAL_MOVE_USD = { min: 70, max: 180 } as const;
+export const ROUND_TIMEOUT_MS = 2600;
+
+/* -------------------------------------------------------------- signals */
+
+/**
+ * A pool of paired signals. Each playthrough draws three, and every signal exists in an
+ * up-pointing and a down-pointing form so market direction genuinely varies on replay.
+ */
+export const SIGNAL_POOL: readonly MarketSignal[] = [
   {
-    id: 'evt-funding',
-    kind: 'headline',
+    id: 'sig-funding-up',
+    kind: 'funding',
     headline: 'Funding flips positive',
     detail: 'Longs start paying shorts.',
-    direction: 'up',
-    fairValueShiftTicks: 18,
+    direction: 'long',
   },
   {
-    id: 'evt-print',
+    id: 'sig-funding-down',
+    kind: 'funding',
+    headline: 'Funding flips negative',
+    detail: 'Shorts start paying longs.',
+    direction: 'short',
+  },
+  {
+    id: 'sig-print-up',
     kind: 'largePrint',
-    headline: 'Large print on another venue',
-    detail: '40,000 units lifted at a higher price.',
-    direction: 'up',
-    fairValueShiftTicks: 24,
+    headline: 'Large buy print elsewhere',
+    detail: 'A size block lifts offers on another venue.',
+    direction: 'long',
   },
   {
-    id: 'evt-oracle',
+    id: 'sig-print-down',
+    kind: 'largePrint',
+    headline: 'Large sell print elsewhere',
+    detail: 'A size block hits bids on another venue.',
+    direction: 'short',
+  },
+  {
+    id: 'sig-oracle-up',
     kind: 'oracleUpdate',
-    headline: 'Oracle price update',
-    detail: 'The reference price steps up.',
-    direction: 'up',
-    fairValueShiftTicks: 30,
+    headline: 'Oracle steps up',
+    detail: 'The reference price revises higher.',
+    direction: 'long',
+  },
+  {
+    id: 'sig-oracle-down',
+    kind: 'oracleUpdate',
+    headline: 'Oracle steps down',
+    detail: 'The reference price revises lower.',
+    direction: 'short',
+  },
+  {
+    id: 'sig-liq-short',
+    kind: 'liquidation',
+    headline: 'Short liquidations cascade',
+    detail: 'Forced buying hits the book.',
+    direction: 'long',
+  },
+  {
+    id: 'sig-liq-long',
+    kind: 'liquidation',
+    headline: 'Long liquidations cascade',
+    detail: 'Forced selling hits the book.',
+    direction: 'short',
   },
 ];
 
-/**
- * The bot's latency shrinks each round. That escalation is the lesson of act one:
- * as the gap closes, the outcome stops depending on the player at all.
- */
-export const CLOB_ROUNDS: readonly ClobRound[] = [
-  {
-    id: 'clob-1',
-    index: 0,
-    event: MARKET_EVENTS[0],
-    staleQuote: { side: 'ask', price: 100.0, sizeUnits: 500 },
-    postEventFairValue: 100.18,
-    botLatencyMs: 400,
-    timeoutMs: 2200,
-    edgeTicks: 18,
-  },
-  {
-    id: 'clob-2',
-    index: 1,
-    event: MARKET_EVENTS[1],
-    staleQuote: { side: 'ask', price: 100.2, sizeUnits: 500 },
-    postEventFairValue: 100.44,
-    botLatencyMs: 180,
-    timeoutMs: 2200,
-    edgeTicks: 24,
-  },
-  {
-    id: 'clob-3',
-    index: 2,
-    event: MARKET_EVENTS[2],
-    staleQuote: { side: 'ask', price: 100.45, sizeUnits: 500 },
-    postEventFairValue: 100.75,
-    botLatencyMs: 12,
-    timeoutMs: 2200,
-    edgeTicks: 30,
-  },
-];
+/* -------------------------------------------------------------- helpers */
+
+function between(rng: Rng, min: number, max: number): number {
+  return min + rng() * (max - min);
+}
+
+function intBetween(rng: Rng, min: number, max: number): number {
+  return Math.round(between(rng, min, max));
+}
+
+function pick<T>(rng: Rng, items: readonly T[]): T {
+  return items[Math.min(items.length - 1, Math.floor(rng() * items.length))];
+}
 
 /**
- * The same three events, matched in batches instead. The bid and ask auctions clear at
- * deliberately different prices so the two-price rule is impossible to miss.
+ * Draw `count` signals whose directions are not all identical, so a player cannot coast by
+ * pressing the same button every round.
  */
-export const DFBA_ROUNDS: readonly DfbaRound[] = [
-  {
-    id: 'dfba-1',
-    index: 0,
-    event: MARKET_EVENTS[0],
-    batchWindowMs: BATCH_WINDOW_MS,
-    displayWindowMs: 1600,
-    botArrivalMs: 3,
-    bidAuction: { side: 'bid', clearingPrice: 100.14, matchedUnits: 900, participatingOrders: 5 },
-    askAuction: { side: 'ask', clearingPrice: 100.17, matchedUnits: 1200, participatingOrders: 6 },
-    batchOrders: [
-      { id: 'b1-1', label: 'Bot', side: 'ask', limitPrice: 100.2, sizeUnits: 500, arrivalMs: 3, isPlayer: false, isMaker: false },
-      { id: 'b1-2', label: 'Maker A', side: 'bid', limitPrice: 100.12, sizeUnits: 400, arrivalMs: 9, isPlayer: false, isMaker: true },
-      { id: 'b1-3', label: 'Natural flow', side: 'ask', limitPrice: 100.19, sizeUnits: 300, arrivalMs: 21, isPlayer: false, isMaker: false },
-      { id: 'b1-4', label: 'You', side: 'ask', limitPrice: 100.2, sizeUnits: 500, arrivalMs: 34, isPlayer: true, isMaker: false },
-    ],
-    priceImprovementTicks: 3,
-  },
-  {
-    id: 'dfba-2',
-    index: 1,
-    event: MARKET_EVENTS[1],
-    batchWindowMs: BATCH_WINDOW_MS,
-    displayWindowMs: 1400,
-    botArrivalMs: 2,
-    bidAuction: { side: 'bid', clearingPrice: 100.39, matchedUnits: 1100, participatingOrders: 6 },
-    askAuction: { side: 'ask', clearingPrice: 100.42, matchedUnits: 1400, participatingOrders: 7 },
-    batchOrders: [
-      { id: 'b2-1', label: 'Bot', side: 'ask', limitPrice: 100.45, sizeUnits: 600, arrivalMs: 2, isPlayer: false, isMaker: false },
-      { id: 'b2-2', label: 'Maker B', side: 'bid', limitPrice: 100.37, sizeUnits: 500, arrivalMs: 11, isPlayer: false, isMaker: true },
-      { id: 'b2-3', label: 'Natural flow', side: 'ask', limitPrice: 100.44, sizeUnits: 300, arrivalMs: 18, isPlayer: false, isMaker: false },
-      { id: 'b2-4', label: 'You', side: 'ask', limitPrice: 100.45, sizeUnits: 500, arrivalMs: 29, isPlayer: true, isMaker: false },
-    ],
-    priceImprovementTicks: 3,
-  },
-  {
-    id: 'dfba-3',
-    index: 2,
-    event: MARKET_EVENTS[2],
-    batchWindowMs: BATCH_WINDOW_MS,
-    displayWindowMs: 1200,
-    botArrivalMs: 1,
-    bidAuction: { side: 'bid', clearingPrice: 100.68, matchedUnits: 1300, participatingOrders: 7 },
-    askAuction: { side: 'ask', clearingPrice: 100.71, matchedUnits: 1500, participatingOrders: 8 },
-    batchOrders: [
-      { id: 'b3-1', label: 'Bot', side: 'ask', limitPrice: 100.75, sizeUnits: 700, arrivalMs: 1, isPlayer: false, isMaker: false },
-      { id: 'b3-2', label: 'Maker C', side: 'bid', limitPrice: 100.66, sizeUnits: 600, arrivalMs: 8, isPlayer: false, isMaker: true },
-      { id: 'b3-3', label: 'Natural flow', side: 'ask', limitPrice: 100.73, sizeUnits: 400, arrivalMs: 16, isPlayer: false, isMaker: false },
-      { id: 'b3-4', label: 'You', side: 'ask', limitPrice: 100.75, sizeUnits: 500, arrivalMs: 37, isPlayer: true, isMaker: false },
-    ],
-    priceImprovementTicks: 4,
-  },
-];
+export function drawSignals(rng: Rng, count: number): MarketSignal[] {
+  const longs = SIGNAL_POOL.filter((signal) => signal.direction === 'long');
+  const shorts = SIGNAL_POOL.filter((signal) => signal.direction === 'short');
+
+  const directions: Direction[] = [];
+  for (let index = 0; index < count; index += 1) {
+    directions.push(rng() < 0.5 ? 'long' : 'short');
+  }
+  // Force at least one of each whenever more than one round is drawn.
+  if (count > 1 && directions.every((direction) => direction === directions[0])) {
+    directions[count - 1] = directions[0] === 'long' ? 'short' : 'long';
+  }
+
+  const used = new Set<string>();
+  return directions.map((direction) => {
+    const options = (direction === 'long' ? longs : shorts).filter(
+      (signal) => !used.has(signal.id),
+    );
+    const signal = pick(rng, options.length > 0 ? options : direction === 'long' ? longs : shorts);
+    used.add(signal.id);
+    return signal;
+  });
+}
+
+/* ------------------------------------------------------ LEVEL A builders */
+
+export function buildClobRounds(rng: Rng = Math.random): ClobRound[] {
+  const signals = drawSignals(rng, ROUNDS_PER_LEVEL);
+
+  return signals.map((signal, index) => ({
+    id: `clob-${index + 1}`,
+    index,
+    signal,
+    basePrice: Math.round(between(rng, BASE_PRICE - 700, BASE_PRICE + 700)),
+    signalMoveUsd: intBetween(rng, SIGNAL_MOVE_USD.min, SIGNAL_MOVE_USD.max),
+    signalDelayMs: intBetween(rng, SIGNAL_DELAY_MS.min, SIGNAL_DELAY_MS.max),
+    botReactionMs: intBetween(rng, BOT_REACTION_MS.min, BOT_REACTION_MS.max),
+    slippageUsd: intBetween(rng, SLIPPAGE_USD.min, SLIPPAGE_USD.max),
+    timeoutMs: ROUND_TIMEOUT_MS,
+  }));
+}
+
+/* ------------------------------------------------------ LEVEL B builders */
+
+const MAKER_LABELS = ['Maker A', 'Maker B', 'Maker C', 'Maker D'] as const;
+
+export function buildDfbaRounds(rng: Rng = Math.random): DfbaRound[] {
+  const signals = drawSignals(rng, ROUNDS_PER_LEVEL);
+
+  return signals.map((signal, index) => {
+    const mid = Math.round(between(rng, BASE_PRICE - 700, BASE_PRICE + 700));
+    // The two auctions clear at deliberately different prices: a batch never collapses to one.
+    const halfGap = intBetween(rng, 6, 22);
+    const bidClearing = mid - halfGap;
+    const askClearing = mid + halfGap;
+
+    const botArrivalMs = intBetween(rng, 1, 6);
+    const playerArrivalMs = intBetween(rng, 18, BATCH_WINDOW_MS - 3);
+
+    const makerOrders = MAKER_LABELS.slice(0, 2).map((label, makerIndex) => ({
+      id: `${index}-maker-${makerIndex}`,
+      label,
+      side: (makerIndex % 2 === 0 ? 'bid' : 'ask') as 'bid' | 'ask',
+      direction: (makerIndex % 2 === 0 ? 'long' : 'short') as Direction,
+      sizeUnits: intBetween(rng, 3, 9) * 100,
+      arrivalMs: intBetween(rng, 4, BATCH_WINDOW_MS - 6),
+      isPlayer: false,
+      isBot: false,
+      isMaker: true,
+    }));
+
+    return {
+      id: `dfba-${index + 1}`,
+      index,
+      signal,
+      batchWindowMs: BATCH_WINDOW_MS,
+      replayMs: 1400,
+      botArrivalMs,
+      playerArrivalMs,
+      bidAuction: {
+        side: 'bid',
+        clearingPrice: bidClearing,
+        matchedUnits: intBetween(rng, 8, 14) * 100,
+        participatingOrders: intBetween(rng, 4, 8),
+        restingLiquidityUnits: intBetween(rng, 16, 26) * 100,
+      },
+      askAuction: {
+        side: 'ask',
+        clearingPrice: askClearing,
+        matchedUnits: intBetween(rng, 8, 14) * 100,
+        participatingOrders: intBetween(rng, 4, 8),
+        restingLiquidityUnits: intBetween(rng, 16, 26) * 100,
+      },
+      makerOrders,
+      timeoutMs: ROUND_TIMEOUT_MS,
+    };
+  });
+}
+
+/* ----------------------------------------------------------- act 3 (maker) */
 
 export const SPREAD_OPTIONS: readonly SpreadOption[] = [
   { id: 'wide', label: 'Wide', halfSpreadTicks: 12, hint: 'Safe for you, expensive for everyone else.' },

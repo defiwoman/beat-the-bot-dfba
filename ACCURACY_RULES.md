@@ -79,8 +79,8 @@ game is therefore **expanded in time**, and that expansion must always be declar
 > **40ms shown in slow motion**
 
 must be visible alongside it. It is stored once, as `copy.pulse.slowMotion`, and a test asserts its
-exact wording. It currently appears on the DFBA tutorial, the DFBA game screen, the DFBA reveal
-(twice — beside the pulse and beside the arrival list) and in the About panel.
+exact wording. It currently appears on the DFBA tutorial, on the Level B batch replay, on the DFBA
+reveal, and in the About panel.
 
 **Never** present a browser animation as an authoritative network benchmark. The rendered timing is
 a function of the animation code and the device's frame rate, nothing else. The companion line
@@ -114,6 +114,32 @@ outright rather than leaving them implied:
    modelled batch is 40ms and the view is slowed.
 8. **Illustrative numbers.** A disclaimer is visible on the landing screen and the results screen,
    and the instrument is an obviously fictional ticker (`SLX-PERP`).
+
+## 3b. Illustrative game data — the labelling rule
+
+The game trades **BTC-PERP at an illustrative price around $100,000**. That number is close enough
+to a real BTC price to be mistaken for one, so the labelling rule is strict:
+
+- Every price, slippage figure and latency in the game is **illustrative game data**, stored as
+  `copy.meta.illustrativeTag` and stamped **on screen beside the numbers** — on the Level A price
+  box, on both round results, and on the Level A reveal.
+- The bot's 8–25ms reaction is an **illustrative** figure for a fictional low-latency bot. It is
+  not a measurement of any real system, and no venue's latency is ever named or implied.
+- Slippage is illustrative and invented. It is not a spread estimate for any real market.
+
+## 3c. The unwinnable race — do not frustrate without explaining
+
+Level A cannot be won by clicking faster: at an illustrative 8–25ms the bot is beyond any human
+hand. That unfairness is the demonstration, and the rules that keep it honest are:
+
+- **Never tell the player to click faster.** The prompt asks them to read the signal, not to hurry.
+- **Never score speed.** Points come from direction reads and the streak, so losing every race
+  costs nothing.
+- **Say so explicitly, in the game.** When the read is right, `copy.clobGame.analysisCorrect`
+  states "Your analysis was correct." before the loss is explained, and the reveal
+  (`copy.clobReveal.unfairNote`) says the race was not winnable and why that is the point.
+- **Stay neutral about the bot.** Racing is a rational response to a venue that rewards arriving
+  first — never cheating, theft or fraud.
 
 ## 4. Brand asset rules
 

@@ -1,80 +1,240 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { ClobGameScreen } from './ClobGameScreen';
 import { ClobRevealScreen } from './ClobRevealScreen';
 import { DfbaGameScreen } from './DfbaGameScreen';
 import { DfbaRevealScreen } from './DfbaRevealScreen';
 import { MarketMakerGameScreen } from './MarketMakerGameScreen';
 import { ResultsScreen } from './ResultsScreen';
 import { copy } from '@/content/copy';
-import { DFBA_ROUNDS, MARKET_MAKER_ROUNDS } from '@/data/rounds';
-import { formatPrice } from '@/lib/format';
+import { buildClobRounds, buildDfbaRounds, MARKET_MAKER_ROUNDS } from '@/data/rounds';
+import { formatUsd } from '@/lib/format';
+import { seededRng } from '@/lib/rng';
 import { computeScore } from '@/lib/scoring';
 import type { ClobRoundResult } from '@/types/game';
 
+const clobRounds = buildClobRounds(seededRng(3));
+const dfbaRounds = buildDfbaRounds(seededRng(3));
+
 const clobResults: ClobRoundResult[] = [
-  { roundId: 'clob-1', reactionMs: 260, botLatencyMs: 400, outcome: 'won', edgeTicks: 18 },
-  { roundId: 'clob-2', reactionMs: 240, botLatencyMs: 180, outcome: 'lostToBot', edgeTicks: 0 },
-  { roundId: 'clob-3', reactionMs: null, botLatencyMs: 12, outcome: 'missed', edgeTicks: 0 },
+  {
+    roundId: 'clob-1',
+    chosenDirection: 'long',
+    correctDirection: 'long',
+    wasCorrect: true,
+    reactionMs: 260,
+    botReactionMs: 12,
+    botFirst: true,
+    outcome: 'correctButOutpaced',
+    targetPrice: 100_000,
+    filledPrice: 100_020,
+    slippageUsd: 20,
+  },
+  {
+    roundId: 'clob-2',
+    chosenDirection: 'long',
+    correctDirection: 'short',
+    wasCorrect: false,
+    reactionMs: 240,
+    botReactionMs: 18,
+    botFirst: true,
+    outcome: 'wrongDirection',
+    targetPrice: 100_200,
+    filledPrice: 100_220,
+    slippageUsd: 20,
+  },
 ];
 
+describe('ClobGameScreen', () => {
+  it('offers LONG and SHORT with accessible names containing their visible labels', () => {
+    render(
+      <ClobGameScreen
+        round={clobRounds[0]}
+        roundNumber={1}
+        totalRounds={3}
+        isLastRound={false}
+        streak={0}
+        onComplete={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: copy.direction.longHint })).toHaveTextContent(
+      copy.direction.long,
+    );
+    expect(screen.getByRole('button', { name: copy.direction.shortHint })).toHaveTextContent(
+      copy.direction.short,
+    );
+  });
+
+  it('labels the price as illustrative game data', () => {
+    render(
+      <ClobGameScreen
+        round={clobRounds[0]}
+        roundNumber={1}
+        totalRounds={3}
+        isLastRound={false}
+        streak={0}
+        onComplete={vi.fn()}
+      />,
+    );
+    expect(screen.getAllByText(copy.meta.illustrativeTag).length).toBeGreaterThan(0);
+  });
+
+  it('warns instead of scoring when the player answers before the signal', async () => {
+    const user = userEvent.setup();
+    const onComplete = vi.fn();
+    render(
+      <ClobGameScreen
+        round={clobRounds[0]}
+        roundNumber={1}
+        totalRounds={3}
+        isLastRound={false}
+        streak={0}
+        onComplete={onComplete}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: copy.direction.longHint }));
+
+    expect(screen.getByText(copy.clobGame.earlyBody)).toBeInTheDocument();
+    expect(onComplete).not.toHaveBeenCalled();
+  });
+
+  it('says the analysis was correct and that the bot still took the queue', async () => {
+    const user = userEvent.setup();
+    const round = clobRounds[0];
+    render(
+      <ClobGameScreen
+        round={round}
+        roundNumber={1}
+        totalRounds={3}
+        isLastRound={false}
+        streak={0}
+        onComplete={vi.fn()}
+      />,
+    );
+
+    // Wait for the signal to fire, then answer in its direction.
+    await screen.findByText(round.signal.headline, {}, { timeout: 3000 });
+    const hint =
+      round.signal.direction === 'long' ? copy.direction.longHint : copy.direction.shortHint;
+    await user.click(screen.getByRole('button', { name: hint }));
+
+    expect(screen.getByText(copy.clobGame.analysisCorrect)).toBeInTheDocument();
+    expect(screen.getByText(copy.clobGame.queueLine)).toBeInTheDocument();
+  });
+
+  it('shows the reaction time and the bot reaction side by side', async () => {
+    const user = userEvent.setup();
+    const round = clobRounds[0];
+    render(
+      <ClobGameScreen
+        round={round}
+        roundNumber={1}
+        totalRounds={3}
+        isLastRound={false}
+        streak={0}
+        onComplete={vi.fn()}
+      />,
+    );
+
+    await screen.findByText(round.signal.headline, {}, { timeout: 3000 });
+    await user.click(screen.getByRole('button', { name: copy.direction.longHint }));
+
+    expect(screen.getByText(copy.combo.reactionLabel)).toBeInTheDocument();
+    expect(screen.getByText(copy.combo.botReactionLabel)).toBeInTheDocument();
+  });
+});
+
 describe('ClobRevealScreen', () => {
-  it('shows the round tally and the latency lesson', async () => {
+  it('lands the reveal line and the three explanation lines', async () => {
     const user = userEvent.setup();
     const onContinue = vi.fn();
     render(<ClobRevealScreen results={clobResults} onContinue={onContinue} />);
 
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(copy.clobReveal.heading);
-    expect(screen.getByText('1 / 3')).toBeInTheDocument();
-    expect(screen.getByText(copy.clobReveal.points[2])).toBeInTheDocument();
-    expect(screen.getByText(copy.clobReveal.neutrality)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+      'You read the market correctly. You lost the queue.',
+    );
+    expect(copy.clobReveal.points).toHaveLength(3);
+    for (const point of copy.clobReveal.points) {
+      expect(screen.getByText(point)).toBeInTheDocument();
+    }
 
     await user.click(screen.getByRole('button', { name: copy.clobReveal.continueLabel }));
     expect(onContinue).toHaveBeenCalledOnce();
   });
+
+  it('explains the unfairness rather than leaving the player annoyed', () => {
+    render(<ClobRevealScreen results={clobResults} onContinue={vi.fn()} />);
+    expect(screen.getByText(copy.clobReveal.unfairNote)).toBeInTheDocument();
+  });
 });
 
 describe('DfbaGameScreen', () => {
-  it('keeps the submit control disabled until the batch window opens', () => {
+  it('keeps the direction buttons disabled until the signal fires', () => {
     render(
       <DfbaGameScreen
-        round={DFBA_ROUNDS[0]}
+        round={dfbaRounds[0]}
         roundNumber={1}
         totalRounds={3}
         isLastRound={false}
+        streak={0}
         onComplete={vi.fn()}
       />,
     );
-
-    expect(screen.getByRole('button', { name: copy.dfbaGame.actionHint })).toBeDisabled();
+    expect(screen.getByRole('button', { name: copy.direction.longHint })).toBeDisabled();
   });
 
-  it('labels the expanded batch window as slow motion', () => {
+  it('replays the batch in labelled slow motion, then shows both auction prices', async () => {
+    const user = userEvent.setup();
+    const round = dfbaRounds[0];
     render(
       <DfbaGameScreen
-        round={DFBA_ROUNDS[0]}
+        round={round}
         roundNumber={1}
         totalRounds={3}
         isLastRound={false}
+        streak={0}
         onComplete={vi.fn()}
       />,
     );
 
+    await screen.findByText(round.signal.headline, {}, { timeout: 3000 });
+    await user.click(screen.getByRole('button', { name: copy.direction.longHint }));
+
+    // The replay is labelled as slow motion the moment it appears.
     expect(screen.getByText(copy.pulse.slowMotion)).toBeInTheDocument();
+
+    await waitFor(
+      () => expect(screen.getByText(copy.dfbaGame.liquidityCaveat)).toBeInTheDocument(),
+      { timeout: 4000 },
+    );
+
+    // A long routes to the ask auction, and the other auction's separate price is still shown.
+    expect(screen.getByText(copy.dfbaGame.routedLong)).toBeInTheDocument();
+    expect(screen.getByText(formatUsd(round.askAuction.clearingPrice))).toBeInTheDocument();
+    expect(screen.getByText(formatUsd(round.bidAuction.clearingPrice))).toBeInTheDocument();
+    expect(screen.getByText(copy.dfbaGame.otherAuctionNote)).toBeInTheDocument();
   });
 });
 
 describe('DfbaRevealScreen', () => {
-  const round = DFBA_ROUNDS[DFBA_ROUNDS.length - 1];
+  const round = dfbaRounds[dfbaRounds.length - 1];
 
   it('renders the bid auction and the ask auction with two different clearing prices', () => {
     render(<DfbaRevealScreen round={round} onContinue={vi.fn()} />);
 
     expect(screen.getByText(copy.dfbaReveal.bidAuctionLabel)).toBeInTheDocument();
     expect(screen.getByText(copy.dfbaReveal.askAuctionLabel)).toBeInTheDocument();
-    expect(screen.getByText(formatPrice(round.bidAuction.clearingPrice))).toBeInTheDocument();
-    expect(screen.getByText(formatPrice(round.askAuction.clearingPrice))).toBeInTheDocument();
+    expect(screen.getByText(formatUsd(round.bidAuction.clearingPrice))).toBeInTheDocument();
+    expect(screen.getByText(formatUsd(round.askAuction.clearingPrice))).toBeInTheDocument();
     expect(round.bidAuction.clearingPrice).not.toBe(round.askAuction.clearingPrice);
+  });
+
+  it('says the two clearing prices are separate', () => {
+    render(<DfbaRevealScreen round={round} onContinue={vi.fn()} />);
+    expect(screen.getByText(copy.dfbaReveal.separateNote)).toBeInTheDocument();
   });
 
   it('says arrival-time priority is removed within the batch, and what still matters', () => {
@@ -86,14 +246,15 @@ describe('DfbaRevealScreen', () => {
     }
   });
 
-  it('lists the batch orders in arrival order with the player highlighted', () => {
+  it('carries the comparison of the two levels', () => {
     render(<DfbaRevealScreen round={round} onContinue={vi.fn()} />);
 
-    const items = screen.getAllByRole('listitem').filter((item) =>
-      item.className.includes('batch-order'),
-    );
-    expect(items).toHaveLength(round.batchOrders.length);
-    expect(items.some((item) => item.className.includes('batch-order--player'))).toBe(true);
+    expect(screen.getByRole('table', { name: copy.comparison.heading })).toBeInTheDocument();
+    for (const row of copy.comparison.rows) {
+      expect(screen.getByText(row.clob)).toBeInTheDocument();
+      expect(screen.getByText(row.dfba)).toBeInTheDocument();
+    }
+    expect(screen.getByText(copy.comparison.verdict)).toBeInTheDocument();
   });
 });
 
@@ -106,7 +267,6 @@ describe('MarketMakerGameScreen', () => {
 
     const choices = screen.getAllByRole('button', { pressed: false });
     expect(choices).toHaveLength(round.spreadOptions.length);
-    expect(screen.getByRole('button', { name: copy.marketMakerGame.nextLabel })).toBeDisabled();
 
     await user.click(choices[2]);
 
@@ -120,17 +280,14 @@ describe('MarketMakerGameScreen', () => {
 });
 
 describe('ResultsScreen', () => {
-  it('shows the score, the three takeaways and what the game does not claim', async () => {
+  it('shows the score, the breakdown and what the game does not claim', async () => {
     const user = userEvent.setup();
     const onReplay = vi.fn();
     const score = computeScore([], [], []);
     render(<ResultsScreen score={score} onReplay={onReplay} />);
 
-    expect(screen.getByText(String(score.totalPoints))).toBeInTheDocument();
     expect(screen.getByText(score.grade)).toBeInTheDocument();
-    for (const takeaway of copy.results.takeaways) {
-      expect(screen.getByText(takeaway.title)).toBeInTheDocument();
-    }
+    expect(screen.getByText(copy.results.streakLine)).toBeInTheDocument();
     for (const line of copy.results.honesty) {
       expect(screen.getByText(line)).toBeInTheDocument();
     }

@@ -116,8 +116,20 @@ describe('phase machine through the UI', () => {
 
     await user.click(screen.getByRole('button', { name: copy.clobTutorial.continueLabel }));
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(copy.clobGame.heading);
-    // Before the news fires the control announces what it is really doing, not "HIT THE ASK".
-    expect(screen.getByRole('button', { name: copy.clobGame.waitingHint })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: copy.clobGame.actionHint })).toBeNull();
+    // Level A is played with the two direction buttons, present from the start so their
+    // position never shifts when the signal fires.
+    expect(screen.getByRole('button', { name: copy.direction.longHint })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: copy.direction.shortHint })).toBeInTheDocument();
+  });
+
+  it('shows the combo meter during Level A', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: copy.intro.startHint }));
+    await user.click(screen.getByRole('button', { name: copy.clobTutorial.continueLabel }));
+
+    const meter = screen.getByRole('progressbar', { name: copy.combo.meterLabel });
+    expect(meter).toHaveAttribute('aria-valuenow', '0');
   });
 });

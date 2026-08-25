@@ -2,6 +2,23 @@ export function formatPrice(price: number): string {
   return price.toFixed(2);
 }
 
+/** Illustrative game prices, shown in the BTC-scale format the game uses. */
+export function formatUsd(value: number): string {
+  return `$${value.toLocaleString('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  })}`;
+}
+
+/** A signed dollar delta, for slippage and price gaps. */
+export function formatUsdDelta(value: number): string {
+  const sign = value > 0 ? '+' : value < 0 ? '−' : '';
+  return `${sign}$${Math.abs(value).toLocaleString('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  })}`;
+}
+
 export function formatMs(ms: number): string {
   return `${Math.round(ms)}ms`;
 }

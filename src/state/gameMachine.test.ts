@@ -5,25 +5,42 @@ import type {
   ClobRoundResult,
   DfbaRoundResult,
   GamePhase,
+  GameState,
   MarketMakerRoundResult,
 } from '@/types/game';
 
-const clobResult: ClobRoundResult = {
-  roundId: 'clob-1',
-  reactionMs: 250,
-  botLatencyMs: 400,
-  outcome: 'won',
-  edgeTicks: 18,
-};
+function clob(wasCorrect: boolean): ClobRoundResult {
+  return {
+    roundId: `clob-${wasCorrect}`,
+    chosenDirection: 'long',
+    correctDirection: wasCorrect ? 'long' : 'short',
+    wasCorrect,
+    reactionMs: 250,
+    botReactionMs: 14,
+    botFirst: true,
+    outcome: wasCorrect ? 'correctButOutpaced' : 'wrongDirection',
+    targetPrice: 100_000,
+    filledPrice: 100_020,
+    slippageUsd: 20,
+  };
+}
 
-const dfbaResult: DfbaRoundResult = {
-  roundId: 'dfba-1',
-  submittedAtMs: 600,
-  insideBatch: true,
-  outcome: 'filled',
-  clearingPrice: 100.17,
-  priceImprovementTicks: 3,
-};
+function dfba(wasCorrect: boolean): DfbaRoundResult {
+  return {
+    roundId: `dfba-${wasCorrect}`,
+    chosenDirection: 'long',
+    correctDirection: wasCorrect ? 'long' : 'short',
+    wasCorrect,
+    reactionMs: 300,
+    auctionSide: 'ask',
+    clearingPrice: 100_058,
+    sameBatch: true,
+    botArrivalMs: 3,
+    playerArrivalMs: 31,
+    samePriceAsBot: true,
+    outcome: wasCorrect ? 'filledSameprice' : 'wrongDirectionFilled',
+  };
+}
 
 const makerResult: MarketMakerRoundResult = {
   roundId: 'mm-clob',
@@ -35,7 +52,9 @@ const makerResult: MarketMakerRoundResult = {
   netTicks: -55,
 };
 
-describe('phase order', () => {
+/* ------------------------------------------------------ phase progression */
+
+describe('game-phase progression', () => {
   it('declares the ten required phases in running order', () => {
     expect([...GAME_PHASES]).toEqual([
       'intro',
@@ -61,8 +80,24 @@ describe('phase order', () => {
     expect(visited).toEqual([...GAME_PHASES]);
   });
 
+  it('advances through every phase by dispatching alone', () => {
+    let state = gameReducer(initialGameState, { type: 'START_GAME' });
+    expect(state.phase).toBe('clobTutorial');
+
+    const seen: GamePhase[] = [state.phase];
+    while (state.phase !== 'results') {
+      state = gameReducer(state, { type: 'ADVANCE_PHASE' });
+      seen.push(state.phase);
+    }
+
+    expect(seen).toEqual([...GAME_PHASES].slice(1));
+    expect(state.phase).toBe('results');
+  });
+
   it('treats results as terminal', () => {
     expect(nextPhase('results')).toBe('results');
+    const atEnd: GameState = { ...initialGameState, phase: 'results' };
+    expect(gameReducer(atEnd, { type: 'ADVANCE_PHASE' })).toBe(atEnd);
   });
 
   it('knows which phases run rounds', () => {
@@ -80,60 +115,94 @@ describe('phase order', () => {
     expect(actNumber('dfbaReveal')).toBe(2);
     expect(actNumber('marketMakerGame')).toBe(3);
   });
-});
-
-describe('gameReducer', () => {
-  it('starts at intro with no results recorded', () => {
-    expect(initialGameState.phase).toBe('intro');
-    expect(initialGameState.clobResults).toHaveLength(0);
-    expect(initialGameState.dfbaResults).toHaveLength(0);
-    expect(initialGameState.makerResults).toHaveLength(0);
-  });
-
-  it('START_GAME moves to the first tutorial', () => {
-    expect(gameReducer(initialGameState, { type: 'START_GAME' }).phase).toBe('clobTutorial');
-  });
 
   it('ADVANCE_PHASE resets the round index', () => {
-    const state = { ...initialGameState, phase: 'clobGame' as const, roundIndex: 2 };
+    const state: GameState = { ...initialGameState, phase: 'clobGame', roundIndex: 2 };
     const next = gameReducer(state, { type: 'ADVANCE_PHASE' });
     expect(next.phase).toBe('clobReveal');
     expect(next.roundIndex).toBe(0);
   });
 
   it('NEXT_ROUND only advances inside a round phase', () => {
-    const playing = { ...initialGameState, phase: 'dfbaGame' as const };
+    const playing: GameState = { ...initialGameState, phase: 'dfbaGame' };
     expect(gameReducer(playing, { type: 'NEXT_ROUND' }).roundIndex).toBe(1);
 
-    const reading = { ...initialGameState, phase: 'dfbaReveal' as const };
+    const reading: GameState = { ...initialGameState, phase: 'dfbaReveal' };
     expect(gameReducer(reading, { type: 'NEXT_ROUND' })).toBe(reading);
   });
+});
 
+/* ------------------------------------------------------------- recording */
+
+describe('recording results', () => {
   it('appends results without mutating the previous state', () => {
     const afterClob = gameReducer(initialGameState, {
       type: 'RECORD_CLOB_ROUND',
-      result: clobResult,
+      result: clob(true),
     });
-    const afterDfba = gameReducer(afterClob, { type: 'RECORD_DFBA_ROUND', result: dfbaResult });
-    const afterMaker = gameReducer(afterDfba, { type: 'RECORD_MAKER_ROUND', result: makerResult });
+    const afterDfba = gameReducer(afterClob, { type: 'RECORD_DFBA_ROUND', result: dfba(true) });
+    const afterMaker = gameReducer(afterDfba, {
+      type: 'RECORD_MAKER_ROUND',
+      result: makerResult,
+    });
 
-    expect(afterMaker.clobResults).toEqual([clobResult]);
-    expect(afterMaker.dfbaResults).toEqual([dfbaResult]);
+    expect(afterMaker.clobResults).toHaveLength(1);
+    expect(afterMaker.dfbaResults).toHaveLength(1);
     expect(afterMaker.makerResults).toEqual([makerResult]);
     expect(initialGameState.clobResults).toHaveLength(0);
     expect(afterClob.dfbaResults).toHaveLength(0);
   });
+});
 
-  it('RESTART clears results and bumps the playthrough counter', () => {
+/* ------------------------------------------------------------ the streak */
+
+describe('correct-direction streak', () => {
+  it('extends on a correct read', () => {
+    let state = gameReducer(initialGameState, { type: 'RECORD_CLOB_ROUND', result: clob(true) });
+    expect(state.streak).toBe(1);
+    state = gameReducer(state, { type: 'RECORD_CLOB_ROUND', result: clob(true) });
+    expect(state.streak).toBe(2);
+    expect(state.bestStreak).toBe(2);
+  });
+
+  it('resets on a wrong read but keeps the best run', () => {
+    let state = gameReducer(initialGameState, { type: 'RECORD_CLOB_ROUND', result: clob(true) });
+    state = gameReducer(state, { type: 'RECORD_CLOB_ROUND', result: clob(true) });
+    state = gameReducer(state, { type: 'RECORD_CLOB_ROUND', result: clob(false) });
+
+    expect(state.streak).toBe(0);
+    expect(state.bestStreak).toBe(2);
+  });
+
+  it('carries the streak across the two levels', () => {
+    let state = gameReducer(initialGameState, { type: 'RECORD_CLOB_ROUND', result: clob(true) });
+    state = gameReducer(state, { type: 'RECORD_DFBA_ROUND', result: dfba(true) });
+    expect(state.streak).toBe(2);
+  });
+
+  it('is not disturbed by a market maker round', () => {
+    let state = gameReducer(initialGameState, { type: 'RECORD_CLOB_ROUND', result: clob(true) });
+    state = gameReducer(state, { type: 'RECORD_MAKER_ROUND', result: makerResult });
+    expect(state.streak).toBe(1);
+  });
+});
+
+/* ---------------------------------------------------------------- restart */
+
+describe('RESTART', () => {
+  it('clears results and the streak, and bumps the playthrough counter', () => {
     const dirty = gameReducer(
       { ...initialGameState, phase: 'results', roundIndex: 2 },
-      { type: 'RECORD_CLOB_ROUND', result: clobResult },
+      { type: 'RECORD_CLOB_ROUND', result: clob(true) },
     );
     const fresh = gameReducer(dirty, { type: 'RESTART' });
 
     expect(fresh.phase).toBe('intro');
     expect(fresh.roundIndex).toBe(0);
     expect(fresh.clobResults).toHaveLength(0);
+    expect(fresh.streak).toBe(0);
+    expect(fresh.bestStreak).toBe(0);
+    // A new playthrough number is what draws a fresh set of randomised rounds.
     expect(fresh.playthrough).toBe(1);
   });
 });

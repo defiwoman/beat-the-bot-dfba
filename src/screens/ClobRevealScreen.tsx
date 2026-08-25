@@ -1,15 +1,14 @@
 import { ArrowRight, Check, X } from 'lucide-react';
 import { Button } from '@/components/Button';
 import { Screen } from '@/components/Screen';
+import { Stat } from '@/components/Stat';
 import { copy } from '@/content/copy';
 import { formatMs } from '@/lib/format';
 import type { ClobRoundResult } from '@/types/game';
 
-function gapLabel(result: ClobRoundResult): string {
-  if (result.reactionMs === null) return '—';
-  const gap = result.reactionMs - result.botLatencyMs;
-  const sign = gap > 0 ? '+' : '';
-  return `${sign}${formatMs(gap)}`;
+function average(values: readonly number[]): number | null {
+  if (values.length === 0) return null;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
 export function ClobRevealScreen({
@@ -19,7 +18,11 @@ export function ClobRevealScreen({
   results: readonly ClobRoundResult[];
   onContinue: () => void;
 }) {
-  const wins = results.filter((result) => result.outcome === 'won').length;
+  const correct = results.filter((result) => result.wasCorrect).length;
+  const playerAvg = average(
+    results.map((result) => result.reactionMs).filter((value): value is number => value !== null),
+  );
+  const botAvg = average(results.map((result) => result.botReactionMs));
 
   return (
     <Screen label={copy.clobReveal.heading}>
@@ -30,26 +33,45 @@ export function ClobRevealScreen({
       <p className="lede">{copy.clobReveal.lede}</p>
 
       <div className="panel panel--accent">
-        <span className="stat__label">{copy.clobReveal.scoreLabel}</span>
-        <p className="stat__value stat__value--speed">
-          {wins} / {results.length}
+        <div className="stat-grid">
+          <Stat
+            label={copy.clobReveal.readsLabel}
+            value={`${correct} / ${results.length}`}
+            tone="success"
+          />
+          <Stat
+            label={copy.clobReveal.reactionLabel}
+            value={playerAvg === null ? '—' : formatMs(playerAvg)}
+          />
+          <Stat
+            label={copy.clobReveal.botReactionLabel}
+            value={botAvg === null ? '—' : formatMs(botAvg)}
+            tone="speed"
+          />
+        </div>
+        <p className="tiny" style={{ marginTop: 'var(--s2)' }}>
+          {copy.meta.illustrativeTag}
         </p>
       </div>
 
-      <ul className="round-list" aria-label={copy.clobReveal.gapLabel}>
+      <ul className="round-list" aria-label={copy.clobReveal.readsLabel}>
         {results.map((result, index) => (
           <li key={result.roundId} className="round-row">
             <span className="round-row__index">
               {copy.clobGame.roundLabel} {index + 1}
             </span>
-            <span>{copy.clobGame.outcomes[result.outcome]}</span>
+            <span>
+              {result.wasCorrect ? copy.combo.correct : copy.combo.wrong}
+              {' · '}
+              {copy.clobGame.outcomes[result.outcome]}
+            </span>
             <span className="round-row__value">
-              {result.outcome === 'won' ? (
+              {result.wasCorrect ? (
                 <Check size={14} aria-hidden="true" />
               ) : (
                 <X size={14} aria-hidden="true" />
               )}{' '}
-              {gapLabel(result)}
+              {result.reactionMs === null ? '—' : formatMs(result.reactionMs)}
             </span>
           </li>
         ))}
@@ -64,7 +86,8 @@ export function ClobRevealScreen({
         ))}
       </ul>
 
-      <p className="note">{copy.clobReveal.neutrality}</p>
+      <p className="note">{copy.clobReveal.unfairNote}</p>
+      <p className="tiny">{copy.clobReveal.neutrality}</p>
 
       <div className="screen__actions">
         <Button block icon={<ArrowRight size={18} />} onClick={onContinue}>

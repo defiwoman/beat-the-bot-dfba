@@ -14,8 +14,16 @@ export const initialGameState: GameState = {
   clobResults: [],
   dfbaResults: [],
   makerResults: [],
+  streak: 0,
+  bestStreak: 0,
   playthrough: 0,
 };
+
+/** A correct read extends the streak; anything else breaks it. */
+function applyStreak(state: GameState, wasCorrect: boolean): Pick<GameState, 'streak' | 'bestStreak'> {
+  const streak = wasCorrect ? state.streak + 1 : 0;
+  return { streak, bestStreak: Math.max(state.bestStreak, streak) };
+}
 
 /** The next phase in the fixed running order. `results` is terminal. */
 export function nextPhase(phase: GamePhase): GamePhase {
@@ -53,10 +61,18 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return { ...state, roundIndex: state.roundIndex + 1 };
 
     case 'RECORD_CLOB_ROUND':
-      return { ...state, clobResults: [...state.clobResults, action.result] };
+      return {
+        ...state,
+        clobResults: [...state.clobResults, action.result],
+        ...applyStreak(state, action.result.wasCorrect),
+      };
 
     case 'RECORD_DFBA_ROUND':
-      return { ...state, dfbaResults: [...state.dfbaResults, action.result] };
+      return {
+        ...state,
+        dfbaResults: [...state.dfbaResults, action.result],
+        ...applyStreak(state, action.result.wasCorrect),
+      };
 
     case 'RECORD_MAKER_ROUND':
       return { ...state, makerResults: [...state.makerResults, action.result] };

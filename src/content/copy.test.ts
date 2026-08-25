@@ -106,8 +106,18 @@ describe('nuances that must stay visible (ACCURACY_RULES.md section 3)', () => {
     expect(stillMatters).toContain('size still matters');
   });
 
-  it('says a missed batch is a delay rather than a lost order', () => {
-    expect(copy.dfbaGame.outcomeDetail.missedBatch.toLowerCase()).toContain('next batch');
+  it('never implies every submitted order is guaranteed to fill', () => {
+    const caveat = copy.dfbaGame.liquidityCaveat.toLowerCase();
+    expect(caveat).toContain('resting liquidity');
+    expect(caveat).toContain('not guaranteed');
+  });
+
+  it('never implies one universal price across both auctions', () => {
+    expect(copy.dfbaGame.otherAuctionNote.toLowerCase()).toContain('own separate price');
+  });
+
+  it('says the arrival gap inside the batch created no priority', () => {
+    expect(copy.dfbaGame.noPriorityLine.toLowerCase()).toContain('created no priority');
   });
 
   it('tells the player that human reaction time is normal', () => {
@@ -154,9 +164,8 @@ describe('nuances that must stay visible (ACCURACY_RULES.md section 3)', () => {
   it('keeps every accessible-name hint containing its visible label (WCAG 2.5.3)', () => {
     const pairs: Array<[label: string, hint: string]> = [
       [copy.intro.startLabel, copy.intro.startHint],
-      [copy.clobGame.actionLabel, copy.clobGame.actionHint],
-      [copy.clobGame.waiting.replace('…', ''), copy.clobGame.waitingHint],
-      [copy.dfbaGame.actionLabel, copy.dfbaGame.actionHint],
+      [copy.direction.long, copy.direction.longHint],
+      [copy.direction.short, copy.direction.shortHint],
       [copy.results.replayLabel, copy.results.replayHint],
     ];
     for (const [label, hint] of pairs) {

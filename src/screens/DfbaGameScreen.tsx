@@ -1,90 +1,103 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowRight, Clock, Layers } from 'lucide-react';
+import { motion, useReducedMotion } from 'framer-motion';
+import { ArrowRight, Check, Layers, X } from 'lucide-react';
+import { BatchReplay } from '@/components/BatchReplay';
 import { Button } from '@/components/Button';
-import { Meter } from '@/components/Meter';
+import { ComboMeter } from '@/components/ComboMeter';
+import { DirectionButtons } from '@/components/DirectionButtons';
 import { Screen } from '@/components/Screen';
 import { Stat } from '@/components/Stat';
 import { copy } from '@/content/copy';
-import { formatMs, formatPrice } from '@/lib/format';
-import { resolveDfbaRound } from '@/lib/simulation';
+import { formatMs, formatUsd } from '@/lib/format';
+import { vibrate } from '@/lib/haptics';
+import { reactionTimeMs } from '@/lib/reaction';
+import { auctionForDirection, resolveDfbaRound } from '@/lib/simulation';
 import { useSound } from '@/state/useSound';
-import type { DfbaRound, DfbaRoundResult } from '@/types/game';
+import type { DfbaRound, DfbaRoundResult, Direction } from '@/types/game';
 
-type Stage = 'opening' | 'open' | 'matching' | 'resolved';
+type Stage = 'waiting' | 'armed' | 'replay' | 'resolved';
 
-const OPENING_DELAY_MS = 500;
-const MATCHING_DELAY_MS = 450;
-
-/** Map a moment in the slowed-down on-screen window back onto the modelled 40ms batch. */
-function toBatchTime(displayMs: number, round: DfbaRound): number {
-  const fraction = Math.min(Math.max(displayMs / round.displayWindowMs, 0), 1);
-  return fraction * round.batchWindowMs;
-}
+const SIGNAL_DELAY_MS = 550;
 
 export function DfbaGameScreen({
   round,
   roundNumber,
   totalRounds,
   isLastRound,
+  streak,
   onComplete,
 }: {
   round: DfbaRound;
   roundNumber: number;
   totalRounds: number;
   isLastRound: boolean;
+  streak: number;
   onComplete: (result: DfbaRoundResult) => void;
 }) {
-  const { play } = useSound();
-  const [stage, setStage] = useState<Stage>('opening');
+  const reduceMotion = useReducedMotion();
+  const { play, muted } = useSound();
+  const [stage, setStage] = useState<Stage>('waiting');
   const [result, setResult] = useState<DfbaRoundResult | null>(null);
-  const openedAtRef = useRef<number | null>(null);
+  const signalAtRef = useRef<number | null>(null);
 
   useEffect(() => {
-    setStage('opening');
+    setStage('waiting');
     setResult(null);
-    openedAtRef.current = null;
+    signalAtRef.current = null;
 
-    const openTimer = window.setTimeout(() => {
-      openedAtRef.current = performance.now();
-      setStage('open');
-      play('tick');
-    }, OPENING_DELAY_MS);
+    const armTimer = window.setTimeout(() => {
+      signalAtRef.current = performance.now();
+      setStage('armed');
+      play('arm');
+      vibrate('tap', !muted);
+    }, SIGNAL_DELAY_MS);
 
-    return () => window.clearTimeout(openTimer);
+    return () => window.clearTimeout(armTimer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [round.id]);
 
   useEffect(() => {
-    if (stage !== 'open') return;
-    const closeTimer = window.setTimeout(() => {
-      setResult(resolveDfbaRound(round, null));
+    if (stage !== 'armed') return;
+    const timeoutTimer = window.setTimeout(() => {
+      setResult(resolveDfbaRound(round, null, null));
       setStage('resolved');
       play('lose');
-    }, round.displayWindowMs);
-    return () => window.clearTimeout(closeTimer);
+    }, round.timeoutMs);
+    return () => window.clearTimeout(timeoutTimer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage, round]);
 
+  // The slow-motion replay runs, then the auctions resolve.
   useEffect(() => {
-    if (stage !== 'matching') return;
-    const matchTimer = window.setTimeout(() => {
-      setStage('resolved');
-      play('fill');
-    }, MATCHING_DELAY_MS);
-    return () => window.clearTimeout(matchTimer);
+    if (stage !== 'replay') return;
+    const replayTimer = window.setTimeout(
+      () => {
+        setStage('resolved');
+        play('fill');
+        vibrate('batch', !muted);
+      },
+      reduceMotion ? 250 : round.replayMs,
+    );
+    return () => window.clearTimeout(replayTimer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage]);
+  }, [stage, round, reduceMotion]);
 
-  const handleSubmit = useCallback(() => {
-    if (stage !== 'open' || openedAtRef.current === null) return;
-    const submittedAtMs = performance.now() - openedAtRef.current;
-    setResult(resolveDfbaRound(round, submittedAtMs));
-    setStage('matching');
-    play('select');
-  }, [play, round, stage]);
+  const handleChoose = useCallback(
+    (direction: Direction) => {
+      if (stage !== 'armed' || signalAtRef.current === null) return;
+      const reaction = reactionTimeMs(signalAtRef.current, performance.now());
+      setResult(resolveDfbaRound(round, direction, reaction));
+      setStage('replay');
+      play('select');
+    },
+    [play, round, stage],
+  );
 
-  const isOpen = stage === 'open';
+  const armed = stage === 'armed';
   const showResult = stage === 'resolved' && result !== null;
+  const chosen = result?.chosenDirection ?? null;
+  const otherAuction =
+    chosen === null ? null : auctionForDirection(round, chosen === 'long' ? 'short' : 'long');
 
   return (
     <Screen label={copy.dfbaGame.heading}>
@@ -92,73 +105,115 @@ export function DfbaGameScreen({
         <p className="eyebrow">{copy.dfbaGame.eyebrow}</p>
         <h1 className="section-title">{copy.dfbaGame.heading}</h1>
       </div>
-      <p className="faint">
-        {copy.dfbaGame.roundLabel} {roundNumber} {copy.common.of} {totalRounds}
-      </p>
 
-      <div className="event">
-        <span className="event__headline">{round.event.headline}</span>
-        <span className="event__detail">{round.event.detail}</span>
+      <div className="roundbar">
+        <span className="faint">
+          {copy.dfbaGame.roundLabel} {roundNumber} {copy.common.of} {totalRounds}
+        </span>
+        <ComboMeter streak={streak} />
       </div>
 
-      <div className="panel panel--accent">
-        <p className="panel__title" aria-live="polite">
-          {isOpen || stage === 'opening' ? copy.dfbaGame.windowOpen : copy.dfbaGame.windowClosed}
-        </p>
-        <div style={{ marginTop: 'var(--s3)' }}>
-          <Meter
-            label={copy.dfbaGame.windowOpen}
-            progress={isOpen ? 1 : 0}
-            durationMs={isOpen ? round.displayWindowMs : 0}
-          />
+      <motion.div
+        className={armed || stage !== 'waiting' ? 'event' : 'event event--idle'}
+        animate={reduceMotion || !armed ? { opacity: 1 } : { opacity: [0.4, 1], scale: [0.98, 1] }}
+        transition={{ duration: 0.18 }}
+        aria-live="assertive"
+      >
+        <span className="event__headline">
+          {stage === 'waiting' ? copy.clobGame.waiting : round.signal.headline}
+        </span>
+        <span className="event__detail">
+          {stage === 'waiting' ? copy.dfbaGame.instruction : round.signal.detail}
+        </span>
+      </motion.div>
+
+      {stage === 'replay' || showResult ? (
+        <div className="panel panel--accent">
+          <BatchReplay round={round} playerDirection={chosen} running={stage === 'replay'} />
         </div>
-        <p className="slowmo" style={{ marginTop: 'var(--s3)' }}>
-          <Clock size={12} aria-hidden="true" />
-          {copy.pulse.slowMotion}
-        </p>
-      </div>
-
-      <div className="stat-row">
-        <Stat label={copy.dfbaGame.botSubmitted} value={formatMs(round.botArrivalMs)} />
-        {result?.submittedAtMs != null ? (
-          <Stat
-            label={copy.dfbaGame.youSubmitted}
-            value={formatMs(toBatchTime(result.submittedAtMs, round))}
-            tone="accent"
-          />
-        ) : null}
-      </div>
-
-      <p className="faint">{copy.dfbaGame.instruction}</p>
+      ) : null}
 
       {showResult && result ? (
         <div
-          className={`outcome ${result.outcome === 'filled' ? 'outcome--won' : 'outcome--lost'}`}
+          className={`outcome ${result.wasCorrect ? 'outcome--won' : 'outcome--lost'}`}
           role="status"
         >
           <span
             className={`outcome__title ${
-              result.outcome === 'filled' ? 'outcome__title--won' : 'outcome__title--lost'
+              result.wasCorrect ? 'outcome__title--won' : 'outcome__title--lost'
             }`}
           >
             {copy.dfbaGame.outcomes[result.outcome]}
           </span>
-          <span className="panel__body">{copy.dfbaGame.outcomeDetail[result.outcome]}</span>
-          {result.outcome === 'filled' ? (
-            <div className="stat-row" style={{ marginTop: 'var(--s2)' }}>
-              <Stat
-                label={copy.dfbaGame.clearingPriceLabel}
-                value={formatPrice(result.clearingPrice)}
-                tone="accent"
-              />
-              <Stat
-                label={copy.dfbaGame.improvementLabel}
-                value={`${result.priceImprovementTicks} ${copy.common.ticksSuffix}`}
-                tone="success"
-              />
-            </div>
-          ) : null}
-          <span className="faint">{copy.dfbaGame.insideBatch}</span>
+
+          {result.chosenDirection === null || result.clearingPrice === null ? (
+            <span className="panel__body">{copy.dfbaGame.noAnswerLine}</span>
+          ) : (
+            <>
+              <span className="panel__body">
+                {result.wasCorrect ? (
+                  <strong className="ok">
+                    <Check size={14} aria-hidden="true" /> {copy.clobGame.analysisCorrect}
+                  </strong>
+                ) : (
+                  <strong className="bad">
+                    <X size={14} aria-hidden="true" /> {copy.clobGame.analysisWrong}
+                  </strong>
+                )}
+              </span>
+
+              <span className="panel__body">
+                {result.chosenDirection === 'long'
+                  ? copy.dfbaGame.routedLong
+                  : copy.dfbaGame.routedShort}
+              </span>
+
+              <div className="stat-grid" style={{ marginTop: 'var(--s2)' }}>
+                <Stat
+                  label={`${copy.dfbaGame.thisAuctionLabel} · ${
+                    result.auctionSide === 'ask'
+                      ? copy.dfbaReveal.askAuctionLabel
+                      : copy.dfbaReveal.bidAuctionLabel
+                  }`}
+                  value={formatUsd(result.clearingPrice)}
+                  tone="accent"
+                />
+                {otherAuction ? (
+                  <Stat
+                    label={`${copy.dfbaGame.otherAuctionLabel} · ${
+                      otherAuction.side === 'ask'
+                        ? copy.dfbaReveal.askAuctionLabel
+                        : copy.dfbaReveal.bidAuctionLabel
+                    }`}
+                    value={formatUsd(otherAuction.clearingPrice)}
+                  />
+                ) : null}
+                <Stat
+                  label={copy.dfbaGame.botArrived}
+                  value={formatMs(result.botArrivalMs)}
+                  tone="speed"
+                />
+                <Stat
+                  label={copy.dfbaGame.youArrived}
+                  value={formatMs(result.playerArrivalMs)}
+                  tone="accent"
+                />
+              </div>
+
+              <span className="panel__body">
+                {copy.dfbaGame.noPriorityLine.replace(
+                  '{botMs}',
+                  formatMs(result.playerArrivalMs - result.botArrivalMs),
+                )}
+              </span>
+              {result.samePriceAsBot ? (
+                <span className="panel__body">{copy.dfbaGame.samePriceLine}</span>
+              ) : null}
+              <span className="tiny">{copy.dfbaGame.otherAuctionNote}</span>
+              <span className="tiny">{copy.dfbaGame.liquidityCaveat}</span>
+              <span className="tiny">{copy.meta.illustrativeTag}</span>
+            </>
+          )}
         </div>
       ) : null}
 
@@ -167,17 +222,17 @@ export function DfbaGameScreen({
           <Button block icon={<ArrowRight size={18} />} onClick={() => onComplete(result)}>
             {isLastRound ? copy.dfbaGame.finishLabel : copy.dfbaGame.nextLabel}
           </Button>
+        ) : stage === 'replay' ? (
+          <p className="dirprompt" aria-live="polite">
+            <Layers size={14} aria-hidden="true" /> {copy.dfbaGame.windowClosed}
+          </p>
         ) : (
-          <Button
-            block
-            jumbo
-            disabled={!isOpen}
-            icon={<Layers size={22} />}
-            aria-label={copy.dfbaGame.actionHint}
-            onClick={handleSubmit}
-          >
-            {copy.dfbaGame.actionLabel}
-          </Button>
+          <>
+            <p className="dirprompt">
+              {armed ? copy.direction.prompt : copy.dfbaGame.instruction}
+            </p>
+            <DirectionButtons disabled={!armed} chosen={null} onChoose={handleChoose} />
+          </>
         )}
       </div>
     </Screen>

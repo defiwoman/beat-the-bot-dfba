@@ -12,8 +12,9 @@ export function buildShareText(score: ScoreBreakdown): string {
   return [
     copy.share.title,
     `${copy.results.scoreLabel}: ${score.totalPoints}/100 — ${score.grade}`,
-    `${copy.share.racesLabel}: ${score.clobRoundsWon}/${score.clobRoundsPlayed}`,
-    `${copy.share.batchesLabel}: ${score.dfbaRoundsFilled}/${score.dfbaRoundsPlayed}`,
+    `${copy.share.racesLabel}: ${score.clobCorrect}/${score.clobRoundsPlayed}`,
+    `${copy.share.batchesLabel}: ${score.dfbaCorrect}/${score.dfbaRoundsPlayed}`,
+    `${copy.share.streakLabel}: ${score.bestStreak}`,
     `${copy.share.makerLabel}: ${formatTicks(score.makerNetTicks)}`,
     copy.footer.legal,
   ].join('\n');

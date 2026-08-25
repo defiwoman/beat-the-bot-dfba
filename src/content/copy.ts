@@ -21,8 +21,12 @@ export const copy = {
     shortDisclaimer: 'Illustrative numbers only. Not live data.',
     noConnection:
       'No wallet, no funds, no order routing, no backend. Nothing here touches a real market.',
-    instrument: 'SLX-PERP',
-    instrumentNote: 'A made-up perp used only for this lesson.',
+    instrument: 'BTC-PERP',
+    instrumentNote: 'An illustrative BTC market used only for this lesson.',
+    /** Stamped next to every price, slippage and latency figure in the game. */
+    illustrativeTag: 'illustrative game data',
+    illustrativeNote:
+      'All prices, slippage and latency figures here are illustrative game data. They are not real BTC prices and not measured market statistics.',
   },
 
   brands: {
@@ -101,8 +105,9 @@ export const copy = {
     copyLabel: 'Copy result',
     copiedLabel: 'Copied',
     copyHint: 'Copy result — copy a text summary to your clipboard',
-    racesLabel: 'Races won on the continuous book',
-    batchesLabel: 'Batches joined',
+    racesLabel: 'Correct reads on the continuous book',
+    batchesLabel: 'Correct reads inside the batch',
+    streakLabel: 'Best streak',
     makerLabel: 'Net ticks as a market maker',
   },
 
@@ -114,10 +119,10 @@ export const copy = {
     eyebrow: 'Educational game',
     heading: 'Beat the Bot',
     subheading: 'The 40ms Market',
-    lede: 'A trading bot is about to race you for the same price. You are going to lose. That is the lesson.',
+    lede: 'A trading bot is about to race you for the same price. You are going to lose that race. That is the lesson.',
     bullets: [
-      'Act 1 — race a bot on a continuous order book.',
-      'Act 2 — trade the same news inside a 40ms batch.',
+      'Level A — read the signal, race a bot on a continuous book.',
+      'Level B — same signals, matched inside a 40ms batch.',
       'Act 3 — take the other seat and quote the market yourself.',
     ],
     duration: 'Takes about 90 seconds.',
@@ -146,50 +151,75 @@ export const copy = {
     continueLabel: 'Got it',
   },
 
+  /** Shared vocabulary for the two direction buttons. */
+  direction: {
+    long: 'LONG',
+    short: 'SHORT',
+    longHint: 'LONG — buy, betting the price goes up',
+    shortHint: 'SHORT — sell, betting the price goes down',
+    prompt: 'Read the signal. Long or short?',
+  },
+
+  /** Streak and combo feedback, shared by both levels. */
+  combo: {
+    streakLabel: 'Streak',
+    comboLabel: 'Combo',
+    meterLabel: 'Correct-direction combo meter',
+    multiplierSuffix: '×',
+    correct: 'Correct read',
+    wrong: 'Wrong read',
+    reactionLabel: 'Your reaction',
+    botReactionLabel: 'Bot reaction',
+  },
+
   clobGame: {
-    eyebrow: 'Act 1 — continuous matching',
-    heading: 'Hit the stale ask',
-    instruction: 'Wait for the news, then tap as fast as you can.',
-    waiting: 'Watching the book…',
-    waitingHint: 'Watching the book — wait for the news before you take the ask',
-    armed: 'News in. Take it.',
-    actionLabel: 'HIT THE ASK',
-    actionHint: 'HIT THE ASK — send an order to take the resting ask',
+    eyebrow: 'Level A — fastest wins',
+    heading: 'Beat the bot',
+    instruction: 'Watch the price. When the signal lands, pick your direction.',
+    waiting: 'Watching the tape…',
+    waitingHint: 'Watching the tape — wait for the signal before you choose',
+    armed: 'Signal in. Choose.',
     earlyLabel: 'Too early',
-    earlyBody: 'Nothing has moved yet. Wait for the headline.',
+    earlyBody: 'Nothing has moved yet. Wait for the signal.',
     roundLabel: 'Round',
-    botLabel: 'Bot latency',
-    youLabel: 'You',
-    restingAsk: 'Resting ask',
-    fairValue: 'Fair value',
+    priceLabel: 'BTC price',
+    targetLabel: 'Attractive quote',
+    yourFillLabel: 'Your fill',
+    slippageLabel: 'Slippage',
     outcomes: {
-      won: 'You reached it first',
-      lostToBot: 'The bot reached it first',
-      missed: 'The quote was gone',
+      correctButOutpaced: 'Correct read. Bot got there first.',
+      wrongDirection: 'Wrong read — and the bot was first anyway.',
+      noAnswer: 'No answer. The quote was gone.',
     },
-    outcomeDetail: {
-      won: 'Your order arrived before the bot, so arrival-time priority worked in your favour.',
-      lostToBot:
-        'The bot arrived first, so arrival-time priority gave it the stale quote. Nothing unfair happened — that is what continuous matching does.',
-      missed: 'The round closed before your order arrived, so the stale quote was taken by someone else.',
-    },
+    /** Requirement: when the read is right, say so explicitly before explaining the loss. */
+    analysisCorrect: 'Your analysis was correct.',
+    analysisWrong: 'The signal pointed the other way.',
+    queueLine:
+      'The bot reached the attractive quote first because a continuous book matches on arrival-time priority.',
+    fillLine: 'You were filled at a slightly worse price. Illustrative game data.',
+    noAnswerLine: 'The round closed before you answered, so there was nothing to route.',
     nextLabel: 'Next round',
     finishLabel: 'See what happened',
   },
 
   clobReveal: {
-    eyebrow: 'Act 1 — what just happened',
-    heading: 'Speed decided it, not you',
-    lede: 'A typical human reaction time is around 200 to 350 milliseconds. That is normal. The bot did not need to be smarter than you, only earlier.',
+    eyebrow: 'Level A — what just happened',
+    /** The exact reveal line the level builds to. */
+    heading: 'You read the market correctly. You lost the queue.',
+    lede: 'A typical human reaction is around 200 to 350 milliseconds. That is normal. The bot did not need a better read — only an earlier arrival.',
+    /** Three short lines, no more. */
     points: [
-      'A continuous order book matches order by order, the moment each one arrives.',
-      'Among eligible orders, arrival-time priority decides who is matched first.',
-      'So a small latency advantage can determine who reaches a stale or attractive quote.',
+      'Continuous matching processes orders as they arrive.',
+      'Tiny latency advantages can decide who reaches a quote first.',
+      'Speed infrastructure can matter more than market judgment.',
     ],
     neutrality:
       'This is a property of the market design, not misconduct by anyone. Racing is the rational response to a venue that rewards arriving first.',
-    scoreLabel: 'Rounds you won',
-    gapLabel: 'Your gap to the bot',
+    readsLabel: 'Correct reads',
+    reactionLabel: 'Your average reaction',
+    botReactionLabel: 'Bot average reaction',
+    unfairNote:
+      'You were not meant to win that race. The bot answers in single-digit milliseconds, so no human hand can arrive first. That is the point being demonstrated, not a trick.',
     continueLabel: 'Now try a batch',
   },
 
@@ -214,37 +244,81 @@ export const copy = {
   },
 
   dfbaGame: {
-    eyebrow: 'Act 2 — batch matching',
-    heading: 'Get into the batch',
-    instruction: 'Submit any time while the window is open. Being early inside it does not help you.',
+    eyebrow: 'Level B — prism mode',
+    heading: 'Same signal, inside a batch',
+    instruction: 'Read the signal and choose. Arriving early inside the batch does not help you.',
     slowedNote:
       'The modelled batch is 40ms. The window on screen is slowed down so you can actually see it.',
+    replayHeading: 'Batch replay',
     windowOpen: 'Batch window open',
-    windowClosed: 'Batch closed — matching',
-    actionLabel: 'SUBMIT TO BATCH',
-    actionHint: 'SUBMIT TO BATCH — send your order into the open batch window',
-    botSubmitted: 'Bot submitted at',
-    youSubmitted: 'You submitted at',
-    insideBatch: 'Both orders are in the same batch.',
+    windowClosed: 'Batch closed — auctions running',
+    botArrived: 'Bot arrived',
+    youArrived: 'You arrived',
+    sameBatchLabel: 'Same 40ms batch',
     roundLabel: 'Round',
+    routedHeading: 'Where your order went',
+    routedLong: 'Taker buy → ask auction, against maker sells.',
+    routedShort: 'Taker sell → bid auction, against maker buys.',
     outcomes: {
-      filled: 'Filled at the ask auction clearing price',
-      missedBatch: 'Missed this window',
+      filledSameprice: 'Correct read. Same clearing price as the bot.',
+      wrongDirectionFilled: 'Wrong read — but arrival time still gave the bot no edge.',
+      noAnswer: 'No answer. Your order never joined the batch.',
     },
-    outcomeDetail: {
-      filled:
-        'The bot arrived earlier than you and it made no difference. Inside a batch, arrival time does not set matching priority.',
-      missedBatch:
-        'Your order arrived after the window closed, so it waits for the next batch. That is a short delay, not a lost order.',
-    },
-    clearingPriceLabel: 'Ask auction clearing price',
-    improvementLabel: 'Versus the pre-batch quote',
+    /** Requirement 8: name the arrival gap and say it created no priority. */
+    noPriorityLine:
+      'The bot arrived {botMs} before you inside the same batch. That difference created no priority.',
+    samePriceLine:
+      'With enough resting liquidity in that auction, you and the bot both received its uniform clearing price.',
+    /** Requirement 10: never imply a guaranteed fill. */
+    liquidityCaveat:
+      'Filling depends on there being enough resting liquidity at or better than the clearing price. It is not guaranteed.',
+    /** Requirement 9: never imply one universal price across both auctions. */
+    otherAuctionNote:
+      'The other auction cleared at its own separate price in the same batch.',
+    noAnswerLine: 'Nothing was submitted, so there was nothing to route into an auction.',
+    clearingPriceLabel: 'Clearing price',
+    thisAuctionLabel: 'Your auction',
+    otherAuctionLabel: 'Other auction',
     nextLabel: 'Next round',
-    finishLabel: 'See the auction',
+    finishLabel: 'See both auctions',
+  },
+
+  /** The comparison reveal shown after both levels. */
+  comparison: {
+    eyebrow: 'Level A vs Level B',
+    heading: 'Same reads. Different rules.',
+    clobColumn: 'Continuous book',
+    dfbaColumn: 'Batch auction',
+    rows: [
+      {
+        label: 'Matching',
+        clob: 'On arrival, order by order',
+        dfba: 'Together, at the end of a 40ms batch',
+      },
+      {
+        label: 'Who gets the quote',
+        clob: 'Whoever arrives first',
+        dfba: 'Decided by the auction, not arrival time',
+      },
+      {
+        label: 'Your arrival gap',
+        clob: 'Decided the outcome',
+        dfba: 'Created no priority inside the batch',
+      },
+      {
+        label: 'Price',
+        clob: 'Each match at its own resting price',
+        dfba: 'One uniform clearing price per auction',
+      },
+    ],
+    verdict:
+      'Your market read did not change between the levels. The matching rule did, and that is what changed who reached the quote.',
+    stillTrue:
+      'Price priority and size still matter in a batch, and filling still depends on liquidity. What batching removes is arrival-time priority within the batch.',
   },
 
   dfbaReveal: {
-    eyebrow: 'Act 2 — inside the batch',
+    eyebrow: 'Level B — inside the batch',
     heading: 'Two auctions, two clearing prices',
     lede: 'When the window closed, the venue ran a bid auction and an ask auction. Each auction has its own uniform clearing price, so every order matched inside it receives the same price.',
     bidAuctionLabel: 'Bid auction',
@@ -320,10 +394,12 @@ export const copy = {
     outOf: 'out of 100',
     gradeLabel: 'Rank',
     notSkill:
-      'This score measures how the game went, not trading skill. Losing every race in act one means you understood act one perfectly.',
+      'This score rewards reading the signal, not clicking fast. Level A was never winnable on speed, so losing every race there costs you nothing.',
     breakdownHeading: 'Breakdown',
-    clobLine: 'Races won on the continuous book',
-    dfbaLine: 'Batches you made it into',
+    clobLine: 'Correct reads on the continuous book',
+    dfbaLine: 'Correct reads inside the batch',
+    streakLine: 'Best correct-direction streak',
+    reactionLine: 'Your average reaction',
     makerLine: 'Net ticks as a market maker',
     takeawaysHeading: 'Three things to take away',
     takeaways: [

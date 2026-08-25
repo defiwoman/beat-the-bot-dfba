@@ -21,6 +21,10 @@ The player should leave with a working mental model of two ways a market can mat
 
 The game teaches this by making the player *lose* a speed race, then *not need to win* one.
 
+**Level A + Level B gameplay stays under 45 seconds.** Measured end to end in a browser at
+390×844, the two levels take roughly 17s of pure interaction, leaving generous headroom for
+reading. The two tutorials and the market maker act sit outside that budget.
+
 ## 2. Target experience
 
 - **Platform:** mobile-first responsive web, portrait-friendly, one thumb.
@@ -52,104 +56,106 @@ intro
 | --- | --- | --- |
 | `intro` | Read title, press **Start Game** | ~8s |
 | `clobTutorial` | Three short lines, press **Got it** | ~8s |
-| `clobGame` | 3 speed rounds | ~12s |
-| `clobReveal` | Scoreboard + the lesson | ~8s |
+| `clobGame` | 3 signal rounds (Level A) | ~10s |
+| `clobReveal` | The reveal line + three lessons | ~8s |
 | `dfbaTutorial` | Three short lines, press **Got it** | ~8s |
-| `dfbaGame` | 3 batch rounds | ~12s |
-| `dfbaReveal` | Two auctions, two clearing prices | ~8s |
+| `dfbaGame` | 3 batch rounds (Level B) | ~14s |
+| `dfbaReveal` | Two auctions + the comparison | ~8s |
 | `marketMakerTutorial` | Role switch explained | ~6s |
 | `marketMakerGame` | 2 spread decisions | ~10s |
 | `results` | Score, three takeaways, replay | open |
 
-## 4. The fictional instrument
+## 4. The illustrative instrument
 
-All rounds trade a made-up perp, **SLX‑PERP**, priced around 100.00 with a tick of 0.01.
-"Ticks" are used as the unit of edge so no currency is ever implied.
+All rounds trade **BTC‑PERP** at an illustrative price around **$100,000**. Every price, slippage
+figure and latency in the game is **illustrative game data** — invented for the lesson, never a real
+BTC price and never a measured market statistic. The phrase "illustrative game data" is stamped
+next to the numbers on screen, not buried in a footnote.
 
-## 5. Act I — the CLOB game
+## 5. LEVEL A — CLOB, fastest wins
+
+Three short randomised rounds. The player is a taker reading a signal and picking a side.
 
 ### 5.1 `clobTutorial`
 
-Three lines of copy explain, in order:
-
-1. A CLOB matches **continuously** — every order is checked against the book the moment it lands.
-2. When two orders want the same quote, the book uses **arrival-time priority**: first in, first matched.
-3. So when news moves the fair price, a resting quote becomes **stale**, and whoever reaches it first takes it.
+Three lines: a CLOB matches continuously; among eligible orders it uses arrival-time priority;
+so when news moves the fair price, reaching the stale quote first is simply a race.
 
 ### 5.2 `clobGame` — 3 rounds
 
 Each round runs the same loop:
 
-1. A resting **ask** is displayed on the book at a price near fair value.
-2. After a randomised delay (700–1500ms) a **market event** fires — a headline that lifts fair value
-   above the resting ask, so the ask is now stale and attractive.
-3. The player taps **HIT THE ASK**. The app measures reaction time from the event timestamp.
-4. A bot with a fixed latency races the player.
+1. Show an illustrative **BTC price around $100,000**, labelled *illustrative game data*.
+2. Wait a randomised **600–1500ms**, so the player cannot pre-fire.
+3. Fire a clear **market signal** (funding flip, large print, oracle step, liquidation cascade).
+4. The player picks **LONG** or **SHORT**.
+5. Measure reaction with `performance.now()` — the signal timestamp against the answer timestamp.
+6. The fictional low-latency bot answers in an illustrative **8–25ms**.
+7. If the read was right, say so explicitly: **"Your analysis was correct."**
+8. Then show that the bot reached the attractive quote first, **because of arrival-time priority**.
+9. The player is filled at a slightly **worse illustrative price**, and the slippage is shown.
 
-The bot's latency shrinks each round, which is the whole point of the act:
+Outcomes: `correctButOutpaced`, `wrongDirection`, `noAnswer` (round closed at 2600ms).
 
-| Round | Event | Bot latency | Typical result |
-| --- | --- | --- | --- |
-| 1 | Funding-rate headline | 400ms | A quick player can win |
-| 2 | Large print on another venue | 180ms | Very hard |
-| 3 | Oracle update | 12ms | Not winnable by a human |
+> **The race is not winnable, on purpose.** At 8–25ms the bot is beyond any human hand. The
+> player is never told to click faster, the score never rewards speed, and `clobReveal` says
+> outright that losing was the designed outcome rather than a trick. Reading the signal is the
+> only thing being asked of them, and the only thing scored.
 
-Outcomes per round: `won` (player reacted faster), `lostToBot` (bot reacted faster),
-`missed` (player never tapped before the round timed out at 2500ms).
-
-Winning a round awards that round's `edgeTicks`. Losing awards nothing.
-
-> The game is honest that a human reaction time of roughly 200–350ms is normal and healthy. Losing
-> round 3 is the designed outcome, not a player failure — the copy says so explicitly.
+Answering before the signal fires shows a "too early" note and costs nothing.
 
 ### 5.3 `clobReveal`
 
-Shows the three round outcomes side by side with the reaction gap in milliseconds, then states the
-lesson: under continuous matching with arrival-time priority, **small latency advantages can decide
-who reaches a stale or attractive quote**. It notes that this is a property of continuous matching,
-not misconduct by anyone.
+Opens on the line the level builds to:
 
-## 6. Act II — the DFBA game
+> **"You read the market correctly. You lost the queue."**
+
+Then exactly three short lines, and nothing more:
+
+- Continuous matching processes orders as they arrive.
+- Tiny latency advantages can decide who reaches a quote first.
+- Speed infrastructure can matter more than market judgment.
+
+Plus the per-round table, the player's average reaction against the bot's, and the note explaining
+that the unfairness was the demonstration.
+
+## 6. LEVEL B — DFBA, prism mode
+
+Three fresh randomised rounds using the same kinds of signal, so the comparison is like-for-like.
 
 ### 6.1 `dfbaTutorial`
 
-Three lines:
-
-1. A DFBA does not match on arrival. It **collects orders into a short batch** — 40ms in this game.
-2. Maker flow and taker flow are **separated**, so resting liquidity is not racing incoming demand.
-3. At the end of the batch the venue runs **two auctions** — one for bids, one for asks — and each
-   has its **own uniform clearing price**.
+Three lines — orders collect into a short 40ms batch; maker and taker flows are separated; the
+batch runs a bid auction and an ask auction, each with **its own** uniform clearing price — over a
+live `BatchPulse` carrying the slow-motion label.
 
 ### 6.2 `dfbaGame` — 3 rounds
 
-Same three market events as Act I, so the comparison is like-for-like.
+1. The signal fires and the player submits a **LONG** or **SHORT** decision.
+2. The player order and the bot order land inside the same **~40ms batch**.
+3. The batch is **replayed in clearly labelled slow motion** — a 0–40ms timeline with markers for
+   the bot, the makers and the player, swept by a playhead over ~1400ms.
+4. A **taker buy routes to the ask auction**, against maker sells.
+5. A **taker sell routes to the bid auction**, against maker buys.
+6. The **clearing price of the relevant auction** is shown — alongside the other auction's own,
+   different price, so the two-price rule is never blurred.
+7. With sufficient illustrative liquidity, the player and the bot **receive the same clearing
+   price inside that auction**.
+8. The screen names the arrival gap and says it **created no priority** inside the batch.
+9. It states that the other auction cleared at **its own separate price** — never one universal
+   price across both.
+10. It states that filling **depends on resting liquidity and is not guaranteed** — the game never
+    promises a fill.
 
-1. The batch window opens and a visible timer runs down.
-2. The bot submits early — its arrival timestamp is displayed, and it is **always earlier** than the
-   player's.
-3. The player taps **SUBMIT TO BATCH** at any moment while the window is open.
-4. When the window closes, both auctions clear. The player's order is matched at the **ask auction's
-   uniform clearing price**, the same price every other filled taker in that auction receives.
+Outcomes: `filledSameprice`, `wrongDirectionFilled`, `noAnswer`.
 
-Outcomes per round: `filled` (submitted inside the window) or `missedBatch` (window closed first —
-the order simply waits for the next batch, which is not a penalty, just a delay).
+### 6.3 `dfbaReveal` — the comparison
 
-**Display timing note.** A real 40ms window is far too short to examine by eye. The on-screen window
-is stretched to roughly 1200–1600ms so the mechanism is visible, and every expanded batch carries
-the label **"40ms shown in slow motion"**. The *modelled* batch is 40ms; the *displayed* batch is
-slowed. A browser animation is never presented as a network benchmark — see
-[ACCURACY_RULES.md §3a](./ACCURACY_RULES.md).
+The bid auction and the ask auction side by side with their two different clearing prices, the
+"batching removes arrival-time priority within the batch" note, then the **comparison reveal** — a
+four-row table putting the two levels against each other on matching, who gets the quote, the
+arrival gap and price — and finally what still matters (price priority, size, liquidity).
 
-### 6.3 `dfbaReveal`
-
-The centrepiece screen. It shows, for one round:
-
-- The **bid auction** and the **ask auction** as two separate panels with two **different** clearing
-  prices, so the player cannot come away thinking a batch has a single price.
-- The batch's order list with arrival timestamps, shuffled, showing that arrival order inside the
-  batch did not change who matched.
-- Explicit copy that **price priority and size still matter** — a limit price through the clearing
-  price still participates, one behind it still does not, and size still affects how much fills.
 
 ## 7. Act III — the market maker game
 
@@ -195,16 +201,27 @@ adverse selection from informed flow do not go away.
 Defined once, purely, in `src/lib/scoring.ts`.
 
 ```
-clobPoints   = clobRoundsWon        × 10        (0–30)
-dfbaPoints   = dfbaRoundsFilled     × 10        (0–30)
-makerPoints  = clamp(20 + netTicks, 0, 40)      (0–40)
-totalPoints  = clobPoints + dfbaPoints + makerPoints
+directionPoints = (clobCorrect + dfbaCorrect) × 8        (0–48)
+comboBonus      = min(bestStreak × 2, 12)                (0–12)
+makerPoints     = clamp(20 + netTicks, 0, 40)            (0–40)
+totalPoints     = directionPoints + comboBonus + makerPoints
 ```
 
 Grades: `≥85 Batch Boss`, `≥65 Auction Apprentice`, `≥40 Latency Learner`, else `Speed Bump`.
 
-The score is deliberately *not* a measure of trading skill, and the results screen says so. A player
-who loses every CLOB round has understood the lesson perfectly.
+**Scoring rewards reading the market, never clicking fast.** Level A is unwinnable on speed by
+design, so tying points to race wins would punish the player for the exact thing being taught. A
+player who loses all three races but reads all three signals correctly scores full marks for
+Level A. The results screen says this outright.
+
+`bestStreak` is recomputed from the recorded results by `longestStreak()` rather than trusted from
+live state, so the result card always agrees with what actually happened.
+
+### Streak and combo
+
+A correct read extends the streak; a wrong read or no answer resets it. The streak carries across
+both levels and is untouched by the market maker act. The combo multiplier runs 1× → 3× at a
+five-round streak, shown in a `ComboMeter` above every round.
 
 ## 10. Project structure
 

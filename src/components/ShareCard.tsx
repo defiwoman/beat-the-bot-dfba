@@ -52,14 +52,18 @@ export function ShareCard({ score }: { score: ScoreBreakdown }) {
         <p className="sharecard__row">
           <span>{copy.share.racesLabel}</span>
           <span>
-            {score.clobRoundsWon} / {score.clobRoundsPlayed}
+            {score.clobCorrect} / {score.clobRoundsPlayed}
           </span>
         </p>
         <p className="sharecard__row">
           <span>{copy.share.batchesLabel}</span>
           <span>
-            {score.dfbaRoundsFilled} / {score.dfbaRoundsPlayed}
+            {score.dfbaCorrect} / {score.dfbaRoundsPlayed}
           </span>
+        </p>
+        <p className="sharecard__row">
+          <span>{copy.share.streakLabel}</span>
+          <span>{score.bestStreak}</span>
         </p>
         <p className="sharecard__row">
           <span>{copy.share.makerLabel}</span>

@@ -635,6 +635,325 @@ button {
   text-transform: uppercase;
 }
 
+/* ══════════════════════════════════════════════════ LONG / SHORT direction pad */
+
+.dirpad {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s3);
+}
+
+.dirbtn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 4.75rem;
+  padding: var(--s3);
+  border-radius: var(--r-lg);
+  border: 1px solid transparent;
+  font-family: var(--font-mono);
+  font-weight: 800;
+  font-size: var(--step-1);
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 110ms ease, filter 160ms ease, opacity 160ms ease;
+}
+
+.dirbtn:active:not(:disabled) {
+  transform: translateY(1px) scale(0.985);
+}
+
+.dirbtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.dirbtn--long {
+  background: linear-gradient(180deg, #6ff5c0, #1fae7a);
+  color: #04241a;
+  box-shadow: 0 0 22px rgb(79 227 166 / 28%), inset 0 1px 0 rgb(255 255 255 / 45%);
+}
+
+.dirbtn--short {
+  background: linear-gradient(180deg, #ff9aa8, #e5384f);
+  color: #2b0710;
+  box-shadow: 0 0 22px rgb(255 107 131 / 28%), inset 0 1px 0 rgb(255 255 255 / 40%);
+}
+
+.dirbtn:hover:not(:disabled) {
+  filter: brightness(1.07);
+}
+
+.dirprompt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: var(--step--1);
+  font-weight: 700;
+  color: var(--ink-2);
+  text-align: center;
+}
+
+/* ══════════════════════════════════════════════════════ round bar + combo */
+
+.roundbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  flex-wrap: wrap;
+}
+
+.combo {
+  display: grid;
+  gap: 4px;
+  min-width: 9rem;
+  flex: 1;
+  max-width: 14rem;
+}
+
+.combo__head {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  font-size: var(--step--2);
+}
+
+.combo__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 800;
+  color: var(--ink-3);
+}
+
+.combo__streak {
+  font-family: var(--font-mono);
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.combo__mult {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-weight: 800;
+  color: var(--heat-core);
+}
+
+.combo__track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--panel-3);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.combo__fill {
+  display: block;
+  height: 100%;
+  width: 100%;
+  transform-origin: left center;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--heat-deep), var(--heat-core));
+}
+
+/* ══════════════════════════════════════════════════════════════ price box */
+
+.pricebox {
+  display: grid;
+  gap: 2px;
+  justify-items: center;
+  padding: var(--s4);
+  border-radius: var(--r);
+  border: 1px solid var(--line);
+  background: var(--void-2);
+}
+
+.pricebox__value {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--step-3);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+
+/* ══════════════════════════════════════════════════════════ batch replay */
+
+.replay {
+  display: grid;
+  gap: var(--s3);
+  justify-items: center;
+}
+
+.replay__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  width: 100%;
+  gap: var(--s3);
+}
+
+.replay__title {
+  font-size: var(--step--2);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 800;
+  color: var(--ink-3);
+}
+
+.replay__range {
+  font-family: var(--font-mono);
+  font-size: var(--step--2);
+  color: var(--ink-4);
+}
+
+.replay__track {
+  position: relative;
+  width: 100%;
+  height: 92px;
+  border-radius: var(--r-sm);
+  border: 1px dashed var(--line-strong);
+  background: linear-gradient(90deg, var(--accent-soft), transparent 70%);
+}
+
+.replay__sweep {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--accent-core);
+  box-shadow: 0 0 12px var(--accent-core);
+}
+
+.replay__marker {
+  position: absolute;
+  top: 8px;
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  transform: translateX(-50%);
+}
+
+.replay__marker--maker {
+  top: 52px;
+}
+
+.replay__dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 2px solid var(--void);
+}
+
+.replay__marker--bot .replay__dot {
+  background: var(--heat);
+  box-shadow: 0 0 10px var(--heat);
+}
+
+.replay__marker--player .replay__dot {
+  background: var(--prism-cyan);
+  box-shadow: 0 0 10px var(--prism-cyan);
+}
+
+.replay__marker--maker .replay__dot {
+  background: var(--ink-4);
+}
+
+.replay__label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  white-space: nowrap;
+  color: var(--ink-2);
+}
+
+.replay__marker--bot .replay__label {
+  color: var(--heat-core);
+}
+
+.replay__marker--player .replay__label {
+  color: var(--prism-cyan);
+}
+
+/* ═══════════════════════════════════════════════════════ comparison table */
+
+.compare {
+  display: grid;
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  overflow: hidden;
+}
+
+.compare__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1px;
+  background: var(--line);
+}
+
+.compare__row > * {
+  background: var(--panel);
+  padding: var(--s2) var(--s3);
+  font-size: var(--step--2);
+  color: var(--ink-2);
+}
+
+.compare__row--head > * {
+  background: var(--panel-2);
+}
+
+.compare__head {
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.compare__head--clob {
+  color: var(--heat-core);
+}
+
+.compare__head--dfba {
+  color: var(--prism-cyan);
+}
+
+.compare__label {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.compare__cell--clob {
+  border-left: 2px solid rgb(255 138 61 / 40%);
+}
+
+.compare__cell--dfba {
+  border-left: 2px solid rgb(94 231 255 / 40%);
+}
+
+/* ═════════════════════════════════════════════════════════ inline emphasis */
+
+.ok {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--good);
+}
+
+.bad {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--bad);
+}
+
 /* ═══════════════════════════════════════════════════════════════ teach list */
 
 .teach {

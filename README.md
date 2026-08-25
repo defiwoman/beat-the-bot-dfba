@@ -2,9 +2,16 @@
 
 A 90-second, mobile-first educational browser game about how a market decides **who trades first**.
 
-You race a trading bot on a continuous order book, lose (that's the point), then trade the same news
-inside a 40ms batch auction and find out why the race stopped mattering. Finally you swap seats and
-quote the market yourself.
+**Level A** — an illustrative BTC signal lands and you pick LONG or SHORT. Your read is right, and a
+bot answering in 8–25ms still reaches the quote first, so you're filled a little worse. You cannot
+win that race, and the game tells you why rather than leaving you annoyed.
+
+**Level B** — the same kind of signal, matched inside a ~40ms batch replayed in slow motion. Your
+order and the bot's land in the same batch, the bot arrives first, and it changes nothing.
+
+**Act 3** — you swap seats and quote the market yourself.
+
+Correct reads build a streak and a combo multiplier. Speed is never scored.
 
 > A community-built educational game associated with the **Superluminal x Fogo DFBA campaign**.
 >

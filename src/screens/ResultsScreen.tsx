@@ -4,6 +4,7 @@ import { Button } from '@/components/Button';
 import { Screen } from '@/components/Screen';
 import { ShareCard } from '@/components/ShareCard';
 import { copy } from '@/content/copy';
+import { formatMs, formatTicks } from '@/lib/format';
 import type { ScoreBreakdown } from '@/types/game';
 
 export function ResultsScreen({
@@ -23,6 +24,41 @@ export function ResultsScreen({
       <ShareCard score={score} />
 
       <p className="faint">{copy.results.notSkill}</p>
+
+      <h2 className="section-title">{copy.results.breakdownHeading}</h2>
+      <ul className="round-list">
+        <li className="round-row">
+          <span className="round-row__index">A</span>
+          <span>{copy.results.clobLine}</span>
+          <span className="round-row__value">
+            {score.clobCorrect} / {score.clobRoundsPlayed}
+          </span>
+        </li>
+        <li className="round-row">
+          <span className="round-row__index">B</span>
+          <span>{copy.results.dfbaLine}</span>
+          <span className="round-row__value">
+            {score.dfbaCorrect} / {score.dfbaRoundsPlayed}
+          </span>
+        </li>
+        <li className="round-row">
+          <span className="round-row__index">★</span>
+          <span>{copy.results.streakLine}</span>
+          <span className="round-row__value">{score.bestStreak}</span>
+        </li>
+        <li className="round-row">
+          <span className="round-row__index">⏱</span>
+          <span>{copy.results.reactionLine}</span>
+          <span className="round-row__value">
+            {score.averageReactionMs === null ? '—' : formatMs(score.averageReactionMs)}
+          </span>
+        </li>
+        <li className="round-row">
+          <span className="round-row__index">$</span>
+          <span>{copy.results.makerLine}</span>
+          <span className="round-row__value">{formatTicks(score.makerNetTicks)}</span>
+        </li>
+      </ul>
 
       <h2 className="section-title">{copy.results.takeawaysHeading}</h2>
       <div className="teach">
