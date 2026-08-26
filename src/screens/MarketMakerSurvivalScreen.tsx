@@ -3,12 +3,15 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { AlertTriangle, ArrowRight, Info, ShieldCheck, Sparkles, Zap } from 'lucide-react';
 import { Button } from '@/components/Button';
 import { CausalChain } from '@/components/CausalChain';
+import { Celebration } from '@/components/Celebration';
+import { KeyHint } from '@/components/KeyHint';
 import { MetricBars } from '@/components/MetricBars';
 import { Screen } from '@/components/Screen';
 import { copy } from '@/content/copy';
 import { SPREAD_CHOICES, VOLATILITY_EVENTS } from '@/data/marketMaker';
 import { vibrate } from '@/lib/haptics';
 import { STARTING_METRICS, marketQuality, resolveMakerEvent } from '@/lib/marketMaker';
+import { keysFor, useKeyboard } from '@/lib/useKeyboard';
 import { useSound } from '@/state/useSound';
 import type {
   MakerEventResult,
@@ -131,6 +134,16 @@ function ModePlay({
     [event, index, mode, muted, onEvent, onFinished, outcome, play, run.metrics],
   );
 
+  useKeyboard(
+    Object.assign(
+      {},
+      ...SPREAD_CHOICES.map((spread, index) =>
+        keysFor([String(index + 1)], () => handleChoose(spread)),
+      ),
+    ),
+    outcome === null,
+  );
+
   if (!event) return null;
 
   return (
@@ -216,6 +229,7 @@ function ModePlay({
             </button>
           ))}
         </div>
+        <KeyHint hints={[{ keys: copy.keys.spreadKeys, label: copy.makerSurvival.spreadPrompt }]} />
         <IllustrativeBadge />
       </div>
     </>
@@ -312,6 +326,7 @@ export function MarketMakerSurvivalScreen({
 
       {stage === 'prismVerdict' ? (
         <>
+          <Celebration />
           <div>
             <p className="eyebrow">{copy.makerSurvival.prismVerdict.eyebrow}</p>
             <h1 className="title">{copy.makerSurvival.prismVerdict.headline}</h1>

@@ -4,17 +4,25 @@ import { ArrowRight, Bot, Check, X } from 'lucide-react';
 import { Button } from '@/components/Button';
 import { ComboMeter } from '@/components/ComboMeter';
 import { DirectionButtons } from '@/components/DirectionButtons';
+import { EdgeMeter } from '@/components/EdgeMeter';
+import { KeyHint } from '@/components/KeyHint';
+import { PauseOverlay } from '@/components/PauseOverlay';
 import { Screen } from '@/components/Screen';
 import { Stat } from '@/components/Stat';
 import { copy } from '@/content/copy';
-import { formatMs, formatUsd, formatUsdDelta } from '@/lib/format';
+import { clamp, formatMs, formatUsd, formatUsdDelta } from '@/lib/format';
 import { vibrate } from '@/lib/haptics';
 import { reactionTimeMs } from '@/lib/reaction';
 import { resolveClobRound } from '@/lib/simulation';
+import { DIRECTION_KEYS, keysFor, useKeyboard } from '@/lib/useKeyboard';
+import { usePageVisibility } from '@/lib/usePageVisibility';
 import { useSound } from '@/state/useSound';
 import type { ClobRound, ClobRoundResult, Direction } from '@/types/game';
 
 type Stage = 'waiting' | 'armed' | 'resolved';
+
+/** A typical human reaction, used only to scale the BOT EDGE meter before the player answers. */
+const HUMAN_REFERENCE_MS = 250;
 
 export function ClobGameScreen({
   round,
@@ -23,6 +31,7 @@ export function ClobGameScreen({
   isLastRound,
   streak,
   onComplete,
+  onRedraw,
 }: {
   round: ClobRound;
   roundNumber: number;
@@ -30,6 +39,8 @@ export function ClobGameScreen({
   isLastRound: boolean;
   streak: number;
   onComplete: (result: ClobRoundResult) => void;
+  /** Called when the player resumes after the tab lost focus, to redraw this round. */
+  onRedraw: () => void;
 }) {
   const reduceMotion = useReducedMotion();
   const { play, muted } = useSound();
@@ -37,6 +48,13 @@ export function ClobGameScreen({
   const [showEarly, setShowEarly] = useState(false);
   const [result, setResult] = useState<ClobRoundResult | null>(null);
   const signalAtRef = useRef<number | null>(null);
+  const visible = usePageVisibility();
+  const [paused, setPaused] = useState(false);
+
+  // A timed round must never run out while the player is looking at something else.
+  useEffect(() => {
+    if (!visible && stage !== 'resolved') setPaused(true);
+  }, [visible, stage]);
 
   // `play` is intentionally excluded: its identity changes with the mute setting, and
   // re-running this effect would restart the round mid-play.
@@ -45,6 +63,8 @@ export function ClobGameScreen({
     setShowEarly(false);
     setResult(null);
     signalAtRef.current = null;
+
+    if (paused) return;
 
     const armTimer = window.setTimeout(() => {
       signalAtRef.current = performance.now();
@@ -55,10 +75,10 @@ export function ClobGameScreen({
 
     return () => window.clearTimeout(armTimer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [round.id]);
+  }, [round.id, paused]);
 
   useEffect(() => {
-    if (stage !== 'armed') return;
+    if (stage !== 'armed' || paused) return;
     const timeoutTimer = window.setTimeout(() => {
       setResult(resolveClobRound(round, null, null));
       setStage('resolved');
@@ -66,10 +86,11 @@ export function ClobGameScreen({
     }, round.timeoutMs);
     return () => window.clearTimeout(timeoutTimer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage, round]);
+  }, [stage, round, paused]);
 
   const handleChoose = useCallback(
     (direction: Direction) => {
+      if (paused) return;
       if (stage === 'waiting') {
         setShowEarly(true);
         return;
@@ -83,11 +104,32 @@ export function ClobGameScreen({
       play(outcome.wasCorrect ? 'win' : 'lose');
       vibrate(outcome.wasCorrect ? 'correct' : 'wrong', !muted);
     },
-    [muted, play, round, stage],
+    [muted, paused, play, round, stage],
+  );
+
+  useKeyboard(
+    {
+      ...keysFor(DIRECTION_KEYS.long, () => handleChoose('long')),
+      ...keysFor(DIRECTION_KEYS.short, () => handleChoose('short')),
+    },
+    stage !== 'resolved' && !paused,
+  );
+
+  useKeyboard(
+    { ' ': () => result && onComplete(result), enter: () => result && onComplete(result) },
+    stage === 'resolved',
   );
 
   const armed = stage === 'armed';
   const revealed = armed || stage === 'resolved';
+
+  /**
+   * How far ahead the bot is, as a fraction of a typical human reaction. Before the player
+   * answers this is the bot against the 250ms reference; afterwards it is the real gap.
+   * Illustrative either way.
+   */
+  const reference = result?.reactionMs ?? HUMAN_REFERENCE_MS;
+  const botEdge = clamp((reference - round.botReactionMs) / reference, 0, 1);
   const shownPrice = revealed
     ? round.basePrice +
       (round.signal.direction === 'long' ? round.signalMoveUsd : -round.signalMoveUsd)
@@ -106,6 +148,14 @@ export function ClobGameScreen({
         </span>
         <ComboMeter streak={streak} />
       </div>
+
+      <EdgeMeter
+        kind="bot"
+        value={botEdge}
+        readout={`${formatMs(round.botReactionMs)} ${copy.edge.vs} ${
+          result?.reactionMs == null ? copy.edge.you : formatMs(result.reactionMs)
+        }`}
+      />
 
       <div className="pricebox">
         <span className="ticker__name">{copy.meta.instrument}</span>
@@ -214,9 +264,24 @@ export function ClobGameScreen({
               )}
             </p>
             <DirectionButtons disabled={false} chosen={null} onChoose={handleChoose} />
+            <KeyHint
+              hints={[
+                { keys: copy.keys.longKeys, label: copy.direction.long },
+                { keys: copy.keys.shortKeys, label: copy.direction.short },
+              ]}
+            />
           </>
         )}
       </div>
+
+      {paused ? (
+        <PauseOverlay
+          onResume={() => {
+            setPaused(false);
+            onRedraw();
+          }}
+        />
+      ) : null}
     </Screen>
   );
 }

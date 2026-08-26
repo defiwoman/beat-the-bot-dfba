@@ -150,6 +150,10 @@ export interface DfbaRound {
   askAuction: AuctionResult;
   /** Maker orders sharing the batch, used for the slow-motion replay. */
   makerOrders: BatchOrder[];
+  /** Illustrative dollars the batch clearing price saved against the continuous fill. */
+  priceEdgeUsd: number;
+  /** The scale the PRICE EDGE meter fills against. Illustrative. */
+  maxPriceEdgeUsd: number;
   timeoutMs: number;
 }
 
@@ -310,6 +314,13 @@ export interface GameState {
   bestStreak: number;
   /** Incremented on every restart, so a replay draws fresh randomised rounds. */
   playthrough: number;
+  /**
+   * Incremented when a round has to be redrawn — currently only after the tab regains focus
+   * mid-round. Fresh signals mean a tab switch can never be used to scout a direction.
+   */
+  attempt: number;
+  /** True once the opening sequence has played, so a replay goes straight back to the game. */
+  seenOpening: boolean;
 }
 
 export type GameAction =
@@ -319,4 +330,9 @@ export type GameAction =
   | { type: 'RECORD_DFBA_ROUND'; result: DfbaRoundResult }
   | { type: 'RECORD_MAKER_EVENT'; result: MakerEventResult }
   | { type: 'NEXT_ROUND' }
+  /** Redraw the current round's signal — used when focus returns mid-round. */
+  | { type: 'REDRAW_ROUND' }
+  | { type: 'OPENING_DONE' }
+  /** Replay from the first playable round, skipping the opening and the tutorials. */
+  | { type: 'PLAY_AGAIN' }
   | { type: 'RESTART' };

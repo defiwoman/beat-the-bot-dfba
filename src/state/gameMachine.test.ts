@@ -211,3 +211,68 @@ describe('RESTART', () => {
     expect(fresh.playthrough).toBe(1);
   });
 });
+
+describe('opening, redraw and the quick replay loop', () => {
+  it('starts with the opening unseen', () => {
+    expect(initialGameState.seenOpening).toBe(false);
+    expect(initialGameState.attempt).toBe(0);
+  });
+
+  it('marks the opening as seen', () => {
+    const state = gameReducer(initialGameState, { type: 'OPENING_DONE' });
+    expect(state.seenOpening).toBe(true);
+    expect(state.phase).toBe('intro');
+  });
+
+  it('bumps the attempt counter when a round is redrawn, so the signal is fresh', () => {
+    const playing: GameState = { ...initialGameState, phase: 'clobGame' };
+    const redrawn = gameReducer(playing, { type: 'REDRAW_ROUND' });
+
+    expect(redrawn.attempt).toBe(1);
+    expect(redrawn.phase).toBe('clobGame');
+    expect(redrawn.roundIndex).toBe(playing.roundIndex);
+  });
+
+  it('ignores a redraw outside a playable round', () => {
+    const reading: GameState = { ...initialGameState, phase: 'clobReveal' };
+    expect(gameReducer(reading, { type: 'REDRAW_ROUND' })).toBe(reading);
+  });
+
+  it('drops Try Again straight into the first playable round', () => {
+    const finished: GameState = {
+      ...initialGameState,
+      phase: 'results',
+      seenOpening: true,
+      playthrough: 0,
+      clobResults: [clob(true)],
+      streak: 3,
+      bestStreak: 3,
+    };
+    const again = gameReducer(finished, { type: 'PLAY_AGAIN' });
+
+    // Skips the opening and all three tutorials — the player has seen them.
+    expect(again.phase).toBe('clobGame');
+    expect(again.seenOpening).toBe(true);
+    expect(again.playthrough).toBe(1);
+
+    // and starts genuinely clean
+    expect(again.clobResults).toEqual([]);
+    expect(again.streak).toBe(0);
+    expect(again.bestStreak).toBe(0);
+    expect(again.roundIndex).toBe(0);
+  });
+
+  it('sends a full restart back to the opening-free intro, keeping the opening seen', () => {
+    const seen: GameState = { ...initialGameState, seenOpening: true, phase: 'dfbaGame' };
+    const restarted = gameReducer(seen, { type: 'RESTART' });
+
+    expect(restarted.phase).toBe('intro');
+    expect(restarted.seenOpening).toBe(true);
+  });
+
+  it('draws a new playthrough number on every replay, so rounds are regenerated', () => {
+    let state = gameReducer(initialGameState, { type: 'PLAY_AGAIN' });
+    state = gameReducer(state, { type: 'PLAY_AGAIN' });
+    expect(state.playthrough).toBe(2);
+  });
+});

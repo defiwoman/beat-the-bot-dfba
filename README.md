@@ -20,6 +20,17 @@ on screen — not Superluminal performance data.
 
 Correct reads build a streak and a combo multiplier. Speed is never scored.
 
+It opens on a three-second title beat — a Fogo flame streak refracted by a Superluminal prism
+into a batch — then runs on **BOT EDGE** and **PRICE EDGE** meters, a combo, and synthesised
+sound you can mute. Playable entirely from the keyboard (`↑`/`↓` or `L`/`S`, `1`–`3`, `Space`,
+`M`) or entirely by thumb. Switching tabs mid-round pauses the game and redraws the round with a
+fresh signal, so a round can never run out while you are looking away — and you cannot peek at a
+direction and come back to it. **Try Again** skips the opening and the tutorials and drops you
+into a live round in about half a second.
+
+No loot boxes, no streak threats, no daily-return pressure, no wallet prompts, and no countdowns
+anywhere.
+
 **The reveal** — the final screen reports your fastest reaction, your correct calls, the queue
 losses, the batches where arriving first stopped mattering, the market you left behind, and a
 **DFBA Knowledge Score**. It keeps a local high score in your browser, lands the conclusion the

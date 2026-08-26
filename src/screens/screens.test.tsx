@@ -93,6 +93,7 @@ describe('ClobGameScreen', () => {
         isLastRound={false}
         streak={0}
         onComplete={vi.fn()}
+        onRedraw={vi.fn()}
       />,
     );
 
@@ -113,6 +114,7 @@ describe('ClobGameScreen', () => {
         isLastRound={false}
         streak={0}
         onComplete={vi.fn()}
+        onRedraw={vi.fn()}
       />,
     );
     expect(screen.getAllByText(copy.meta.illustrativeTag).length).toBeGreaterThan(0);
@@ -129,6 +131,7 @@ describe('ClobGameScreen', () => {
         isLastRound={false}
         streak={0}
         onComplete={onComplete}
+        onRedraw={vi.fn()}
       />,
     );
 
@@ -149,6 +152,7 @@ describe('ClobGameScreen', () => {
         isLastRound={false}
         streak={0}
         onComplete={vi.fn()}
+        onRedraw={vi.fn()}
       />,
     );
 
@@ -173,6 +177,7 @@ describe('ClobGameScreen', () => {
         isLastRound={false}
         streak={0}
         onComplete={vi.fn()}
+        onRedraw={vi.fn()}
       />,
     );
 
@@ -218,6 +223,7 @@ describe('DfbaGameScreen', () => {
         isLastRound={false}
         streak={0}
         onComplete={vi.fn()}
+        onRedraw={vi.fn()}
       />,
     );
     expect(screen.getByRole('button', { name: copy.direction.longHint })).toBeDisabled();
@@ -234,6 +240,7 @@ describe('DfbaGameScreen', () => {
         isLastRound={false}
         streak={0}
         onComplete={vi.fn()}
+        onRedraw={vi.fn()}
       />,
     );
 

@@ -17,6 +17,9 @@ import type {
 } from '@/types/game';
 
 export const BATCH_WINDOW_MS = 40;
+
+/** Ceiling the PRICE EDGE meter fills against. Illustrative game data. */
+export const MAX_PRICE_EDGE_USD = 40;
 export const ROUNDS_PER_LEVEL = 3;
 
 /** Illustrative BTC reference used by the whole game. Not a real price. */
@@ -179,6 +182,13 @@ export function buildDfbaRounds(rng: Rng = Math.random): DfbaRound[] {
     const botArrivalMs = intBetween(rng, 1, 6);
     const playerArrivalMs = intBetween(rng, 18, BATCH_WINDOW_MS - 3);
 
+    /**
+     * What the batch clearing price saved against the worse continuous fill, in illustrative
+     * dollars. Scaled against a fixed ceiling so the PRICE EDGE meter reads consistently
+     * across rounds rather than re-normalising every time.
+     */
+    const priceEdgeUsd = intBetween(rng, 8, MAX_PRICE_EDGE_USD);
+
     const makerOrders = MAKER_LABELS.slice(0, 2).map((label, makerIndex) => ({
       id: `${index}-maker-${makerIndex}`,
       label,
@@ -214,6 +224,8 @@ export function buildDfbaRounds(rng: Rng = Math.random): DfbaRound[] {
         restingLiquidityUnits: intBetween(rng, 16, 26) * 100,
       },
       makerOrders,
+      priceEdgeUsd,
+      maxPriceEdgeUsd: MAX_PRICE_EDGE_USD,
       timeoutMs: ROUND_TIMEOUT_MS,
     };
   });

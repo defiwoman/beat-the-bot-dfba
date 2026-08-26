@@ -5,13 +5,18 @@ import { BatchReplay } from '@/components/BatchReplay';
 import { Button } from '@/components/Button';
 import { ComboMeter } from '@/components/ComboMeter';
 import { DirectionButtons } from '@/components/DirectionButtons';
+import { EdgeMeter } from '@/components/EdgeMeter';
+import { KeyHint } from '@/components/KeyHint';
+import { PauseOverlay } from '@/components/PauseOverlay';
 import { Screen } from '@/components/Screen';
 import { Stat } from '@/components/Stat';
 import { copy } from '@/content/copy';
-import { formatMs, formatUsd } from '@/lib/format';
+import { clamp, formatMs, formatUsd, formatUsdDelta } from '@/lib/format';
 import { vibrate } from '@/lib/haptics';
 import { reactionTimeMs } from '@/lib/reaction';
 import { auctionForDirection, resolveDfbaRound } from '@/lib/simulation';
+import { DIRECTION_KEYS, keysFor, useKeyboard } from '@/lib/useKeyboard';
+import { usePageVisibility } from '@/lib/usePageVisibility';
 import { useSound } from '@/state/useSound';
 import type { DfbaRound, DfbaRoundResult, Direction } from '@/types/game';
 
@@ -26,6 +31,7 @@ export function DfbaGameScreen({
   isLastRound,
   streak,
   onComplete,
+  onRedraw,
 }: {
   round: DfbaRound;
   roundNumber: number;
@@ -33,17 +39,27 @@ export function DfbaGameScreen({
   isLastRound: boolean;
   streak: number;
   onComplete: (result: DfbaRoundResult) => void;
+  /** Called when the player resumes after the tab lost focus, to redraw this round. */
+  onRedraw: () => void;
 }) {
   const reduceMotion = useReducedMotion();
   const { play, muted } = useSound();
   const [stage, setStage] = useState<Stage>('waiting');
   const [result, setResult] = useState<DfbaRoundResult | null>(null);
   const signalAtRef = useRef<number | null>(null);
+  const visible = usePageVisibility();
+  const [paused, setPaused] = useState(false);
+
+  useEffect(() => {
+    if (!visible && stage !== 'resolved') setPaused(true);
+  }, [visible, stage]);
 
   useEffect(() => {
     setStage('waiting');
     setResult(null);
     signalAtRef.current = null;
+
+    if (paused) return;
 
     const armTimer = window.setTimeout(() => {
       signalAtRef.current = performance.now();
@@ -54,10 +70,10 @@ export function DfbaGameScreen({
 
     return () => window.clearTimeout(armTimer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [round.id]);
+  }, [round.id, paused]);
 
   useEffect(() => {
-    if (stage !== 'armed') return;
+    if (stage !== 'armed' || paused) return;
     const timeoutTimer = window.setTimeout(() => {
       setResult(resolveDfbaRound(round, null, null));
       setStage('resolved');
@@ -65,7 +81,7 @@ export function DfbaGameScreen({
     }, round.timeoutMs);
     return () => window.clearTimeout(timeoutTimer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage, round]);
+  }, [stage, round, paused]);
 
   // The slow-motion replay runs, then the auctions resolve.
   useEffect(() => {
@@ -84,20 +100,41 @@ export function DfbaGameScreen({
 
   const handleChoose = useCallback(
     (direction: Direction) => {
-      if (stage !== 'armed' || signalAtRef.current === null) return;
+      if (paused || stage !== 'armed' || signalAtRef.current === null) return;
       const reaction = reactionTimeMs(signalAtRef.current, performance.now());
       setResult(resolveDfbaRound(round, direction, reaction));
       setStage('replay');
       play('select');
     },
-    [play, round, stage],
+    [paused, play, round, stage],
   );
 
   const armed = stage === 'armed';
   const showResult = stage === 'resolved' && result !== null;
+
+  useKeyboard(
+    {
+      ...keysFor(DIRECTION_KEYS.long, () => handleChoose('long')),
+      ...keysFor(DIRECTION_KEYS.short, () => handleChoose('short')),
+    },
+    stage === 'armed' && !paused,
+  );
+
+  useKeyboard(
+    { ' ': () => result && onComplete(result), enter: () => result && onComplete(result) },
+    stage === 'resolved',
+  );
   const chosen = result?.chosenDirection ?? null;
   const otherAuction =
     chosen === null ? null : auctionForDirection(round, chosen === 'long' ? 'short' : 'long');
+
+  /**
+   * What the batch clearing price saved against the worse continuous fill. Before the player
+   * answers it previews the round's own improvement; afterwards it is what they actually got.
+   * Illustrative game data either way.
+   */
+  const priceEdgeUsd = showResult && result?.clearingPrice !== null ? round.priceEdgeUsd : 0;
+  const priceEdge = clamp(priceEdgeUsd / round.maxPriceEdgeUsd, 0, 1);
 
   return (
     <Screen label={copy.dfbaGame.heading}>
@@ -112,6 +149,12 @@ export function DfbaGameScreen({
         </span>
         <ComboMeter streak={streak} />
       </div>
+
+      <EdgeMeter
+        kind="price"
+        value={priceEdge}
+        readout={priceEdgeUsd > 0 ? formatUsdDelta(priceEdgeUsd) : copy.edge.pending}
+      />
 
       <motion.div
         className={armed || stage !== 'waiting' ? 'event' : 'event event--idle'}
@@ -232,9 +275,24 @@ export function DfbaGameScreen({
               {armed ? copy.direction.prompt : copy.dfbaGame.instruction}
             </p>
             <DirectionButtons disabled={!armed} chosen={null} onChoose={handleChoose} />
+            <KeyHint
+              hints={[
+                { keys: copy.keys.longKeys, label: copy.direction.long },
+                { keys: copy.keys.shortKeys, label: copy.direction.short },
+              ]}
+            />
           </>
         )}
       </div>
+
+      {paused ? (
+        <PauseOverlay
+          onResume={() => {
+            setPaused(false);
+            onRedraw();
+          }}
+        />
+      ) : null}
     </Screen>
   );
 }

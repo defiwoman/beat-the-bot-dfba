@@ -17,6 +17,8 @@ export const initialGameState: GameState = {
   streak: 0,
   bestStreak: 0,
   playthrough: 0,
+  attempt: 0,
+  seenOpening: false,
 };
 
 /** A correct read extends the streak; anything else breaks it. */
@@ -77,8 +79,31 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     case 'RECORD_MAKER_EVENT':
       return { ...state, makerResults: [...state.makerResults, action.result] };
 
+    case 'REDRAW_ROUND':
+      if (!isRoundPhase(state.phase)) return state;
+      return { ...state, attempt: state.attempt + 1 };
+
+    case 'OPENING_DONE':
+      return { ...state, seenOpening: true };
+
+    /**
+     * Try Again from the results screen. The player has already seen the opening and all three
+     * tutorials, so the replay drops them straight back into the first playable round.
+     */
+    case 'PLAY_AGAIN':
+      return {
+        ...initialGameState,
+        phase: 'clobGame',
+        playthrough: state.playthrough + 1,
+        seenOpening: true,
+      };
+
     case 'RESTART':
-      return { ...initialGameState, playthrough: state.playthrough + 1 };
+      return {
+        ...initialGameState,
+        playthrough: state.playthrough + 1,
+        seenOpening: state.seenOpening,
+      };
 
     default:
       return state;

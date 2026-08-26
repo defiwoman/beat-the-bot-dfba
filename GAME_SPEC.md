@@ -66,6 +66,76 @@ intro
 | `marketMakerGame` | Level C: 6 spread decisions across two modes | <30s |
 | `results` | Score, three takeaways, replay | open |
 
+## 3a. Feel — opening, meters, controls, pacing
+
+### The opening (about 3 seconds)
+
+The whole argument stated as one image before a word of explanation: a **Fogo flame streak**
+tears across the screen — continuous, arrival-ordered — strikes a **Superluminal prism**, and
+refracts into eight discrete bars landing together. SPEED → BATCH.
+
+It is **skippable at any moment** (tap, click, any key), it shows **no countdown and no timer**,
+and it plays **once**: Try Again goes straight back to the game. Under `prefers-reduced-motion`
+it resolves immediately to the settled frame and holds briefly.
+
+### In-round meters
+
+| Meter | Level | Fills toward | Says |
+| --- | --- | --- | --- |
+| **BOT EDGE** | A | the bot | the head start you cannot beat |
+| **PRICE EDGE** | B | you | what the batch clearing price saved |
+
+Both are ARIA `progressbar`s, so the value reaches assistive technology rather than living only
+in a fill width, and both are labelled illustrative game data.
+
+### Controls
+
+| Input | Does |
+| --- | --- |
+| `↑` / `←` / `L` | LONG |
+| `↓` / `→` / `S` | SHORT |
+| `1` `2` `3` | the three spreads in Level C |
+| `Space` / `Enter` | continue from a resolved round |
+| `M` | mute, from anywhere |
+| any key / tap | skip the opening |
+
+Every shortcut mirrors a control that is already on screen and already reachable by Tab — never
+the only way to do something. Shortcuts are ignored while a modifier is held or while focus is in
+a field, so browser and assistive-technology keys keep working. Hints are hidden on
+touch-primary devices and hidden from assistive technology, since they would only repeat what the
+buttons already announce.
+
+### Pause on losing the tab
+
+A timed round must never run out while the player is looking at something else. When
+`document.hidden` goes true mid-round the game freezes and shows a pause panel.
+
+**Resuming redraws the round with a fresh signal.** That is the point: without it, a player could
+see a direction, switch tabs, and come back knowing the answer. Window *blur* is deliberately not
+treated as leaving — clicking the address bar or a devtools panel leaves the game fully visible.
+
+### Celebration
+
+One short burst when the batched run finishes: a labelled banner and a ring of sparks, once, with
+no score inflation and no reward the player did not earn. Static under reduced motion.
+
+### What this game deliberately does not do
+
+No loot boxes, no streak-loss threats, no daily-return pressure, no artificial rewards, no wallet
+prompts, and **no countdowns anywhere** — the opening and the pause panel both report no clock.
+The only timers are the ones the lesson needs: the signal delay and the round timeout.
+
+### Pacing
+
+**Interaction floor: about 55 seconds**, measured end to end in a browser playing every level
+from the keyboard at a brisk pace. That is the fastest a first run can go while still reading
+enough to answer.
+
+A first-time player who actually reads the three tutorials and the two reveals lands in the
+**75–90 second** window; a player who skims them finishes nearer the floor. **Try Again skips the
+opening and all three tutorials**, dropping straight into a live round in about half a second,
+so a replay is meaningfully faster than a first run.
+
 ## 4. The illustrative instrument
 
 All rounds trade **BTC‑PERP** at an illustrative price around **$100,000**. Every price, slippage

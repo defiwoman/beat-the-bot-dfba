@@ -20,7 +20,7 @@ export const copy = {
       'Every number in this game is illustrative and made up for teaching. This is not live Superluminal data, not measured market statistics, and not financial advice.',
     shortDisclaimer: 'Illustrative numbers only. Not live data.',
     noConnection:
-      'No wallet, no funds, no order routing, no backend. Nothing here touches a real market.',
+      'No wallet, no funds, no order routing, no backend.',
     instrument: 'BTC-PERP',
     instrumentNote: 'An illustrative BTC market used only for this lesson.',
     /** Stamped next to every price, slippage and latency figure in the game. */
@@ -63,6 +63,51 @@ export const copy = {
     closeHint: 'Close — return to the game',
   },
 
+  /** The two in-round meters that name what each venue rewards. */
+  edge: {
+    bot: {
+      label: 'BOT EDGE',
+      caption: 'The head start the bot has on this quote. Illustrative game data.',
+    },
+    price: {
+      label: 'PRICE EDGE',
+      caption: 'What the batch clearing price saved you. Illustrative game data.',
+    },
+    vs: 'vs',
+    you: 'you',
+    pending: '—',
+  },
+
+  pause: {
+    heading: 'Paused',
+    body: 'The tab lost focus, so the round stopped. It restarts with a fresh signal.',
+    resumeLabel: 'Resume',
+    resumeHint: 'Resume — restart this round with a fresh signal',
+  },
+
+  /** Desktop keyboard shortcuts. Every one of these mirrors an on-screen control. */
+  keys: {
+    hintLabel: 'Keyboard',
+    longKeys: '↑ or L',
+    shortKeys: '↓ or S',
+    continueKeys: 'Space',
+    spreadKeys: '1 / 2 / 3',
+    muteKey: 'M',
+  },
+
+  opening: {
+    label: 'Opening sequence',
+    speed: 'SPEED',
+    batch: 'BATCH',
+    tagline: 'One market rewards arriving first. The other does not.',
+    skipLabel: 'Skip',
+    skipHint: 'Skip — go straight to the game',
+  },
+
+  celebrate: {
+    prismComplete: 'Prism run complete',
+  },
+
   stages: {
     label: 'Game stages',
     names: {
@@ -77,7 +122,7 @@ export const copy = {
 
   about: {
     heading: 'About this game',
-    lede: 'Beat the Bot is a short, community-built lesson about how a market decides who trades first. It is not a simulator, a benchmark, or a trading product.',
+    lede: 'A short, community-built lesson about how a market decides who trades first. Not a simulator, a benchmark, or a trading product.',
     teachesHeading: 'What it teaches',
     teaches: [
       'A CLOB matches continuously and uses arrival-time priority, so a small latency advantage can determine who reaches a stale or attractive quote.',
@@ -140,13 +185,13 @@ export const copy = {
     eyebrow: 'Educational game',
     heading: 'Beat the Bot',
     subheading: 'The 40ms Market',
-    lede: 'A trading bot is about to race you for the same price. You are going to lose that race. That is the lesson.',
+    lede: 'A bot is about to race you for the same price. You will lose. That is the lesson.',
     bullets: [
       'Level A — read the signal, race a bot on a continuous book.',
       'Level B — same signals, matched inside a 40ms batch.',
       'Level C — take the other seat and keep a market alive.',
     ],
-    duration: 'Takes about 90 seconds.',
+    duration: 'About 90 seconds.',
     startLabel: 'Start Game',
     /** Accessible names must contain the visible label (WCAG 2.5.3 Label in Name). */
     startHint: 'Start Game — begin at Level A',
@@ -158,15 +203,15 @@ export const copy = {
     lines: [
       {
         title: 'It matches continuously',
-        body: 'A central limit order book checks every incoming order against the book the instant it arrives. There is no waiting room.',
+        body: 'Every order is checked the instant it arrives. There is no waiting room.',
       },
       {
         title: 'First to arrive, first matched',
-        body: 'When two orders want the same quote, the book uses arrival-time priority. Whichever one reaches the engine first gets it.',
+        body: 'Two orders want the same quote? Whichever reaches the engine first gets it.',
       },
       {
         title: 'News makes quotes stale',
-        body: 'When information moves the fair price, a resting quote can become stale and attractive. Then it is simply a race to reach it.',
+        body: 'News moves the price, a resting quote goes stale, and reaching it is a race.',
       },
     ],
     continueLabel: 'Got it',
@@ -250,15 +295,15 @@ export const copy = {
     lines: [
       {
         title: 'Orders collect into a short batch',
-        body: 'A DFBA does not match on arrival. It gathers orders for a short window — 40 milliseconds in this game — and then matches them together.',
+        body: 'No matching on arrival. Orders gather for 40 milliseconds, then match together.',
       },
       {
         title: 'Maker and taker flows are separated',
-        body: 'The batch separates resting maker liquidity from incoming taker demand, so quoting is not stuck in the same queue as the race to take.',
+        body: 'Resting maker liquidity and incoming taker demand are handled as separate flows.',
       },
       {
         title: 'Two auctions, two prices',
-        body: 'At the end of the window the venue runs a bid auction and an ask auction. Each one has its own uniform clearing price, and the two need not be equal.',
+        body: 'A bid auction and an ask auction, each with its own uniform clearing price.',
       },
     ],
     continueLabel: 'Got it',
@@ -267,7 +312,7 @@ export const copy = {
   dfbaGame: {
     eyebrow: 'Level B — prism mode',
     heading: 'Same signal, inside a batch',
-    instruction: 'Read the signal and choose. Arriving early inside the batch does not help you.',
+    instruction: 'Read the signal and choose. Arriving early inside the batch does not help.',
     slowedNote:
       'The modelled batch is 40ms. The window on screen is slowed down so you can actually see it.',
     replayHeading: 'Batch replay',
@@ -289,14 +334,14 @@ export const copy = {
     noPriorityLine:
       'The bot arrived {botMs} before you inside the same batch. That difference created no priority.',
     samePriceLine:
-      'With enough resting liquidity in that auction, you and the bot both received its uniform clearing price.',
+      'You and the bot both received that auction’s uniform clearing price.',
     /** Requirement 10: never imply a guaranteed fill. */
     liquidityCaveat:
-      'Filling depends on there being enough resting liquidity at or better than the clearing price. It is not guaranteed.',
+      'Filling depends on resting liquidity at or better than the clearing price. Not guaranteed.',
     /** Requirement 9: never imply one universal price across both auctions. */
     otherAuctionNote:
       'The other auction cleared at its own separate price in the same batch.',
-    noAnswerLine: 'Nothing was submitted, so there was nothing to route into an auction.',
+    noAnswerLine: 'Nothing submitted, so nothing routed into an auction.',
     clearingPriceLabel: 'Clearing price',
     thisAuctionLabel: 'Your auction',
     otherAuctionLabel: 'Other auction',
@@ -341,22 +386,22 @@ export const copy = {
   dfbaReveal: {
     eyebrow: 'Level B — inside the batch',
     heading: 'Two auctions, two clearing prices',
-    lede: 'When the window closed, the venue ran a bid auction and an ask auction. Each auction has its own uniform clearing price, so every order matched inside it receives the same price.',
+    lede: 'The window closed and the venue ran two auctions. Each has its own uniform clearing price.',
     bidAuctionLabel: 'Bid auction',
     askAuctionLabel: 'Ask auction',
     clearingPriceLabel: 'Uniform clearing price',
     matchedLabel: 'Matched',
     ordersLabel: 'Orders in auction',
     separateNote:
-      'These are two separate clearing prices. A batch does not collapse to a single price for both sides.',
+      'Two separate clearing prices. A batch does not collapse to one price for both sides.',
     arrivalHeading: 'Arrival order inside the batch',
     arrivalNote:
-      'Batching removes arrival-time priority within the batch. Landing first inside the same window does not put an order ahead of another order in that window.',
+      'Batching removes arrival-time priority within the batch. Landing first puts no order ahead of another in the same window.',
     stillMattersHeading: 'What still matters',
     stillMatters: [
-      'Price priority still matters. A better limit price still ranks ahead of a worse one.',
-      'Size still matters. How much you ask for still affects how much of it fills.',
-      'Missing a window still matters. An order that arrives late simply joins the next batch.',
+      'Price priority still matters — a better limit price ranks ahead of a worse one.',
+      'Size still matters, and affects how much of an order fills.',
+      'Missing a window is a delay, not a loss. A late order joins the next batch.',
     ],
     unitsLabel: 'units',
     arrivedAt: 'arrived at',
@@ -370,15 +415,15 @@ export const copy = {
     lines: [
       {
         title: 'You are the market maker now',
-        body: 'You quote a spread and keep three things alive: Capital Health, Trader Satisfaction, and Market Depth. Volatility is about to hit your quote three times.',
+        body: 'Keep three things alive: Capital Health, Trader Satisfaction, Market Depth.',
       },
       {
         title: 'Your spread is the only dial',
-        body: 'Quote tight and traders get a better price, but more of any sudden move is left uncovered. Quote wide and you are protected, while traders pay in price and in size.',
+        body: 'Tight gives traders a better price and leaves more of a move uncovered. Wide protects you and costs them price and size.',
       },
       {
         title: 'There is no perfect setting here',
-        body: 'In continuous matching, every spread costs you something. The level is asking which cost you are willing to take, not which answer is right.',
+        body: 'Every spread costs you something. Pick which cost you can live with.',
       },
     ],
     continueLabel: 'Start quoting',
@@ -417,7 +462,7 @@ export const copy = {
     clob: {
       heading: 'Survive the speed race',
       prompt:
-        'Continuous matching, arrival-time priority. A faster participant can reach your quote the instant the price moves.',
+        'Continuous matching. A faster participant reaches your quote the instant price moves.',
       toxicWarning: 'Toxic flow — your stale quote was picked off',
       toxicDetail:
         'The price moved further than your spread covered, and a faster participant reached the quote before you could pull it.',
@@ -428,7 +473,7 @@ export const copy = {
     prism: {
       heading: 'Quote inside the batch',
       prompt:
-        'Orders now collect into short batches and maker flow is separated from taker flow. Speed-based pick-off risk is reduced in this model — it is not removed.',
+        'Orders now batch, and maker flow is separate from taker flow. Pick-off risk is reduced here, not removed.',
       toxicWarning: 'Reduced pick-off — some exposure remains',
       toxicDetail:
         'Part of the move was still uncovered. Batching is designed to reduce what a faster participant can take, not to set that risk to zero.',
@@ -504,7 +549,7 @@ export const copy = {
       satisfaction: 'Final trader satisfaction',
       knowledge: 'DFBA Knowledge Score',
       knowledgeHint:
-        'How much of the batch mechanism this run actually demonstrated: reading the signal inside the batch, rounds where arriving first stopped mattering, and the market you left behind while quoting.',
+        'How much of the batch mechanism this run demonstrated: reads inside the batch, rounds where arriving first stopped mattering, and the market you left behind.',
       queueLossHint:
         'Losing the queue in Level A is the designed outcome, not a mistake. It is counted here because it is the thing being demonstrated.',
       none: '—',

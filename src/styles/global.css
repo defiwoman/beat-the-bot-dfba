@@ -2282,3 +2282,317 @@ button {
   font-size: var(--step--2);
   color: var(--ink-3);
 }
+
+/* ═══════════════════════════════════════ polish: opening, meters, pause ══ */
+
+.opening {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: var(--s5);
+  padding: var(--s5);
+  background: var(--void);
+  cursor: pointer;
+  overflow: hidden;
+  border: none;
+  text-align: center;
+}
+
+.opening__stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  max-width: 26rem;
+  height: 9rem;
+}
+
+.opening__streak {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 6px;
+  border-radius: 999px;
+  transform-origin: left center;
+  background: linear-gradient(90deg, transparent, var(--heat-deep), var(--heat-core), #fff);
+  box-shadow: 0 0 28px rgb(255 138 61 / 70%);
+}
+
+.opening__prism {
+  position: absolute;
+  width: 62px;
+  height: 62px;
+  border-radius: 10px;
+  background: conic-gradient(
+    from 210deg,
+    var(--prism-deep),
+    var(--prism-cyan),
+    var(--prism-violet),
+    var(--prism-deep)
+  );
+  box-shadow: 0 0 34px rgb(94 231 255 / 55%);
+  clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
+}
+
+.opening__batch {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  height: 100%;
+}
+
+.opening__bar {
+  display: block;
+  width: 7px;
+  height: 62%;
+  border-radius: 4px;
+  background: linear-gradient(180deg, var(--prism-cyan), var(--prism-deep));
+  box-shadow: 0 0 14px rgb(94 231 255 / 45%);
+  transform-origin: center;
+}
+
+.opening__words {
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+}
+
+.opening__label {
+  font-family: var(--font-mono);
+  font-size: var(--step-2);
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
+
+.opening__label--speed {
+  color: var(--heat-core);
+}
+
+.opening__label--batch {
+  color: var(--prism-cyan);
+}
+
+.opening__arrow {
+  color: var(--ink-4);
+  font-size: var(--step-1);
+}
+
+.opening__foot {
+  display: grid;
+  justify-items: center;
+  gap: var(--s3);
+}
+
+.opening__tagline {
+  color: var(--ink-2);
+  font-size: var(--step--1);
+  max-width: 22rem;
+}
+
+.opening__skip {
+  position: absolute;
+  bottom: max(var(--s5), env(safe-area-inset-bottom));
+  font-size: var(--step--2);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+  font-weight: 700;
+}
+
+/* ─────────────────────────────────────────────────── BOT / PRICE EDGE ──── */
+
+.edge {
+  display: grid;
+  gap: 5px;
+  padding: var(--s3);
+  border-radius: var(--r);
+  border: 1px solid var(--line);
+  background: var(--void-2);
+}
+
+.edge__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+}
+
+.edge__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--step--2);
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.edge--bot .edge__label {
+  color: var(--heat-core);
+}
+
+.edge--price .edge__label {
+  color: var(--prism-cyan);
+}
+
+.edge__readout {
+  font-size: var(--step--1);
+  font-weight: 800;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.edge__track {
+  height: 7px;
+  border-radius: 999px;
+  background: var(--panel-3);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.edge__fill {
+  display: block;
+  height: 100%;
+  width: 100%;
+  border-radius: 999px;
+  transform-origin: left center;
+}
+
+.edge--bot .edge__fill {
+  background: linear-gradient(90deg, var(--heat-ember), var(--heat-core));
+}
+
+.edge--price .edge__fill {
+  background: linear-gradient(90deg, var(--prism-deep), var(--prism-cyan));
+}
+
+.edge__caption {
+  font-size: var(--step--2);
+  color: var(--ink-4);
+}
+
+/* ────────────────────────────────────────────────────────────── pause ──── */
+
+.pause {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  display: grid;
+  place-items: center;
+  padding: var(--s5);
+  background: rgb(4 7 12 / 88%);
+  backdrop-filter: blur(4px);
+}
+
+.pause__panel {
+  display: grid;
+  justify-items: center;
+  gap: var(--s3);
+  text-align: center;
+  max-width: 22rem;
+  padding: var(--s5);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line-strong);
+  background: linear-gradient(165deg, var(--panel-2), var(--void-2));
+}
+
+.pause__panel svg {
+  color: var(--accent-core);
+}
+
+.pause__title {
+  font-size: var(--step-2);
+  font-weight: 800;
+}
+
+.pause__body {
+  font-size: var(--step--1);
+  color: var(--ink-2);
+}
+
+/* ──────────────────────────────────────────────────────── key hints ───── */
+
+.keyhint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s3);
+  flex-wrap: wrap;
+  font-size: var(--step--2);
+  color: var(--ink-4);
+}
+
+/* Touch-primary devices have no keyboard to hint at. */
+@media (hover: none) and (pointer: coarse) {
+  .keyhint {
+    display: none;
+  }
+}
+
+.keyhint__lead {
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.keyhint__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.keyhint kbd {
+  font-family: var(--font-mono);
+  font-size: var(--step--2);
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--line-strong);
+  background: var(--panel);
+  color: var(--ink-2);
+}
+
+/* ────────────────────────────────────────────────────── celebration ───── */
+
+.celebrate {
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: var(--s3);
+}
+
+.celebrate__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--accent-edge);
+  background: var(--accent-soft);
+  color: var(--accent-core);
+  font-size: var(--step--2);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.celebrate__sparks {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.celebrate__spark {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-core);
+  box-shadow: 0 0 10px var(--accent-core);
+}

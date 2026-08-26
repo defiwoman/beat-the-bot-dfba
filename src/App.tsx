@@ -5,10 +5,12 @@ import { AmbientBackdrop } from '@/components/AmbientBackdrop';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { GameFooter } from '@/components/GameFooter';
 import { GameHeader } from '@/components/GameHeader';
+import { OpeningSequence } from '@/components/OpeningSequence';
 import { copy } from '@/content/copy';
 import { buildClobRounds, buildDfbaRounds } from '@/data/rounds';
 import { computeScore } from '@/lib/scoring';
 import { themeForPhase } from '@/lib/stages';
+import { useKeyboard } from '@/lib/useKeyboard';
 import { ClobGameScreen } from '@/screens/ClobGameScreen';
 import { ClobRevealScreen } from '@/screens/ClobRevealScreen';
 import { DfbaGameScreen } from '@/screens/DfbaGameScreen';
@@ -47,10 +49,13 @@ function GameRouter({ rounds }: { rounds: GeneratedRounds }) {
     dispatch({ type: 'ADVANCE_PHASE' });
   }, [dispatch, play]);
 
-  const restart = useCallback(() => {
+  // Try Again skips the opening and the tutorials — the player has seen them.
+  const playAgain = useCallback(() => {
     play('advance');
-    dispatch({ type: 'RESTART' });
+    dispatch({ type: 'PLAY_AGAIN' });
   }, [dispatch, play]);
+
+  const redraw = useCallback(() => dispatch({ type: 'REDRAW_ROUND' }), [dispatch]);
 
   const score = useMemo(
     () => computeScore(state.clobResults, state.dfbaResults, state.makerResults),
@@ -115,6 +120,7 @@ function GameRouter({ rounds }: { rounds: GeneratedRounds }) {
           isLastRound={isLast}
           streak={state.streak}
           onComplete={(result) => handleClobRound(result, isLast)}
+          onRedraw={redraw}
         />
       );
     }
@@ -147,6 +153,7 @@ function GameRouter({ rounds }: { rounds: GeneratedRounds }) {
           isLastRound={isLast}
           streak={state.streak}
           onComplete={(result) => handleDfbaRound(result, isLast)}
+          onRedraw={redraw}
         />
       );
     }
@@ -176,12 +183,13 @@ function GameRouter({ rounds }: { rounds: GeneratedRounds }) {
       return <MarketMakerSurvivalScreen onEvent={handleMakerEvent} onFinish={advance} />;
 
     case 'results':
-      return <ResultsScreen score={score} onReplay={restart} />;
+      return <ResultsScreen score={score} onReplay={playAgain} />;
   }
 }
 
 function GameShell() {
   const { state, dispatch } = useGame();
+  const { toggleMuted } = useSound();
   const [aboutOpen, setAboutOpen] = useState(false);
   const theme = themeForPhase(state.phase);
 
@@ -189,11 +197,25 @@ function GameShell() {
   // on replay. Generated here rather than in GameRouter, which remounts on every phase change.
   const rounds = useMemo<GeneratedRounds>(
     () => ({ clob: buildClobRounds(), dfba: buildDfbaRounds() }),
+    // `attempt` bumps when focus returns mid-round, so the resumed round gets a fresh signal
+    // and a tab switch can never be used to scout a direction.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [state.playthrough],
+    [state.playthrough, state.attempt],
   );
 
   const closeAbout = useCallback(() => setAboutOpen(false), []);
+
+  // Mute is reachable from anywhere on a keyboard, matching the always-visible header control.
+  useKeyboard({ m: toggleMuted });
+
+  if (!state.seenOpening) {
+    return (
+      <div data-act={theme}>
+        <AmbientBackdrop theme={theme} />
+        <OpeningSequence onDone={() => dispatch({ type: 'OPENING_DONE' })} />
+      </div>
+    );
+  }
 
   return (
     <div data-act={theme}>
@@ -209,7 +231,7 @@ function GameShell() {
           >
             <AnimatePresence mode="wait" initial={false}>
               <GameRouter
-                key={`${state.phase}-${state.roundIndex}-${state.playthrough}`}
+                key={`${state.phase}-${state.roundIndex}-${state.playthrough}-${state.attempt}`}
                 rounds={rounds}
               />
             </AnimatePresence>
