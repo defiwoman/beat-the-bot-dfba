@@ -120,6 +120,23 @@ describe('ClobGameScreen', () => {
     expect(screen.getAllByText(copy.meta.illustrativeTag).length).toBeGreaterThan(0);
   });
 
+  it('disables the direction buttons during the preparation phase', () => {
+    render(
+      <ClobGameScreen
+        round={clobRounds[0]}
+        roundNumber={1}
+        totalRounds={3}
+        isLastRound={false}
+        streak={0}
+        onComplete={vi.fn()}
+        onRedraw={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: copy.direction.longHint })).toBeDisabled();
+    expect(screen.getByRole('button', { name: copy.direction.shortHint })).toBeDisabled();
+  });
+
   it('warns instead of scoring when the player answers before the signal', async () => {
     const user = userEvent.setup();
     const onComplete = vi.fn();
@@ -135,7 +152,8 @@ describe('ClobGameScreen', () => {
       />,
     );
 
-    await user.click(screen.getByRole('button', { name: copy.direction.longHint }));
+    // The buttons are disabled, so an early attempt can only arrive from the keyboard.
+    await user.keyboard('{ArrowUp}');
 
     expect(screen.getByText(copy.clobGame.earlyBody)).toBeInTheDocument();
     expect(onComplete).not.toHaveBeenCalled();
@@ -302,7 +320,7 @@ describe('DfbaRevealScreen', () => {
   });
 });
 
-/* ═══════════════════════════════════ LEVEL C — market maker survival ══════ */
+/* ═══════════════════════════════════ LEVEL 3 — market maker survival ══════ */
 
 describe('MarketMakerSurvivalScreen', () => {
   /**

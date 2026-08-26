@@ -218,36 +218,78 @@ button {
 
 /* ═══════════════════════════════════════════════════════════════════ header */
 
+/**
+ * Two rows, always.
+ *
+ * The lockup grew, and on a phone it no longer shares a row with the two icon controls without
+ * squeezing the wordmark into something unreadable. So on small screens the lockup takes the
+ * first row at full prominence and the controls drop down beside the stage rail, which has
+ * space to spare. From tablet width the lockup and the controls share row one again and the
+ * rail spans underneath. Either way the header is two rows and never three.
+ */
 .gameheader {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: var(--s3);
-  flex-wrap: wrap;
+  column-gap: var(--s3);
+  row-gap: var(--s2);
+}
+
+.gameheader > .brandbar {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  justify-self: start;
 }
 
 .gameheader__controls {
   display: flex;
   align-items: center;
   gap: var(--s2);
-  margin-left: auto;
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.gameheader > .stages {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+@media (min-width: 48rem) {
+  .gameheader > .brandbar {
+    grid-column: 1;
+  }
+
+  .gameheader__controls {
+    grid-row: 1;
+  }
+
+  .gameheader > .stages {
+    grid-column: 1 / -1;
+  }
 }
 
 /* ─────────────────────────────────────────────────────────────── brand bar */
 
+/**
+ * The header lockup runs about 40px tall on a phone and about 50px from tablet width up,
+ * which is the prominence the co-branding is meant to have without crowding gameplay on a
+ * short screen. Clear space around each mark comes from the container padding and the gap,
+ * never from anything applied to the artwork.
+ */
 .brandbar {
   display: inline-flex;
   align-items: center;
-  gap: var(--s2);
-  padding: 5px var(--s3) 5px 5px;
-  border: 1px solid var(--line);
+  gap: var(--s3);
+  padding: 4px var(--s4) 4px 4px;
+  border: 1px solid var(--line-strong);
   border-radius: 999px;
-  background: linear-gradient(90deg, rgb(255 138 61 / 10%), rgb(77 156 255 / 10%));
+  background: linear-gradient(90deg, rgb(255 138 61 / 14%), rgb(77 156 255 / 14%));
 }
 
 .brandbar__marks {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: var(--s2);
 }
 
 /**
@@ -256,11 +298,19 @@ button {
  * never applied to the artwork itself.
  */
 .brandbar__logo {
-  width: 26px;
-  height: 26px;
   border-radius: 50%;
   object-fit: contain;
   background: var(--void);
+}
+
+.brandbar__logo--sm {
+  width: 26px;
+  height: 26px;
+}
+
+.brandbar__logo--md {
+  width: 32px;
+  height: 32px;
 }
 
 .brandbar__logo--lg {
@@ -268,23 +318,59 @@ button {
   height: 40px;
 }
 
+.brandbar__logo--hero {
+  width: 56px;
+  height: 56px;
+}
+
+@media (min-width: 30rem) {
+  .brandbar__logo--md {
+    width: 40px;
+    height: 40px;
+  }
+
+  .brandbar__logo--hero {
+    width: 72px;
+    height: 72px;
+  }
+}
+
 .brandbar__x {
-  font-size: var(--step--2);
+  font-size: var(--step--1);
   color: var(--ink-3);
   font-weight: 700;
+}
+
+.brandbar__names {
+  display: grid;
+  gap: 1px;
 }
 
 .brandbar__name {
   font-size: var(--step--2);
   font-weight: 800;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--ink-2);
+  color: var(--ink);
   white-space: nowrap;
 }
 
+/** The secondary line under the header wordmark. */
+.brandbar__tagline {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+/**
+ * On the narrowest phones the wordmark folds away and the two marks carry the lockup on
+ * their own, so the header never pushes the first line of gameplay below the fold.
+ */
 @media (max-width: 22.5rem) {
-  .brandbar__name {
+  .brandbar__names {
     display: none;
   }
 }
@@ -295,6 +381,97 @@ button {
   justify-content: center;
   gap: var(--s3);
   flex-wrap: wrap;
+}
+
+/* ──────────────────────────────────────────────── opening screen hero lockup */
+
+/**
+ * The co-branding sits above the game's own title on the opening screen. It is type and
+ * containers around the untouched marks — nothing here redraws or imitates an official
+ * lockup, and the kicker underneath says the game is community-built.
+ */
+.brandhero {
+  display: grid;
+  justify-items: center;
+  gap: var(--s2);
+  text-align: center;
+  padding: var(--s4) var(--s3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-lg);
+  background:
+    radial-gradient(120% 140% at 0% 0%, rgb(255 138 61 / 14%), transparent 60%),
+    radial-gradient(120% 140% at 100% 100%, rgb(94 231 255 / 16%), transparent 60%),
+    var(--panel);
+}
+
+.brandhero .brandbar__x {
+  font-size: var(--step-1);
+}
+
+.brandhero__name {
+  font-family: var(--font-display);
+  font-size: var(--step-1);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+  line-height: 1.1;
+}
+
+.brandhero__kicker {
+  font-size: var(--step--2);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  max-width: 22rem;
+}
+
+/* ─────────────────────────────────────────────── LEVEL 2 — prism mode banner */
+
+.prismbanner {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s2) var(--s3);
+  border: 1px solid var(--prism-cyan);
+  border-radius: var(--r);
+  background: linear-gradient(100deg, rgb(77 156 255 / 20%), rgb(94 231 255 / 8%) 60%, rgb(255 138 61 / 10%));
+  box-shadow: var(--glow-prism);
+}
+
+.prismbanner__mark {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: contain;
+  background: var(--void);
+  flex: none;
+}
+
+.prismbanner__mark--fogo {
+  width: 26px;
+  height: 26px;
+  margin-left: auto;
+}
+
+.prismbanner__text {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.prismbanner__title {
+  font-family: var(--font-display);
+  font-size: var(--step--1);
+  letter-spacing: 0.1em;
+  color: var(--prism-glow);
+  line-height: 1.2;
+}
+
+.prismbanner__sub {
+  font-size: var(--step--2);
+  font-weight: 700;
+  color: var(--ink-2);
 }
 
 /* ────────────────────────────────────────────────────────── icon controls */
@@ -453,6 +630,12 @@ button {
 .lede {
   color: var(--ink-2);
   font-size: var(--step-1);
+}
+
+/** A quieter lede, for context lines that sit under a title rather than replacing it. */
+.lede--sub {
+  font-size: var(--step-0);
+  color: var(--ink-3);
 }
 
 .muted {
@@ -689,9 +872,86 @@ button {
   transform: translateY(1px) scale(0.985);
 }
 
+/**
+ * PHASE A — PREPARE. The buttons are present but not yet live, and they have to look it:
+ * flattened to greyscale-by-composition (the container's own colours, not a filter on any
+ * artwork), no glow, no hover lift. A control that looks pressable but refuses the press is
+ * the thing that makes an interface feel broken.
+ */
 .dirbtn:disabled {
-  opacity: 0.4;
+  opacity: 0.45;
   cursor: not-allowed;
+  background: linear-gradient(180deg, var(--panel-3), var(--panel-2));
+  color: var(--ink-4);
+  border-color: var(--line);
+  box-shadow: none;
+}
+
+/** The line under the muted buttons that says why they are muted. */
+.dirlock {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: var(--step--2);
+  color: var(--ink-3);
+}
+
+/* ═════════════════════════════════════════════════════ PHASE B — round clock */
+
+/**
+ * The decision countdown. Bar and printed number update ten times a second so it reads as a
+ * live clock; the screen-reader announcement beside them changes only on whole seconds.
+ */
+.roundclock {
+  display: grid;
+  gap: 6px;
+}
+
+.roundclock__readout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: var(--step-0);
+  font-weight: 800;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.roundclock__track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--panel-3);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.roundclock__fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent-deep), var(--accent-core));
+  /* Width is set inline every tick, so no transition — a lag here would misreport the clock. */
+}
+
+.roundclock--low .roundclock__readout {
+  color: var(--warn);
+}
+
+.roundclock--low .roundclock__fill {
+  background: linear-gradient(90deg, var(--heat-deep), var(--heat-core));
+}
+
+/**
+ * Inside the sticky action bar the clock sits over whatever is scrolling underneath, and the
+ * bar's fade is still partly transparent that high up. Its own ground keeps the countdown
+ * readable instead of letting the round's content show through the digits.
+ */
+.screen__actions .roundclock {
+  padding: var(--s2) var(--s3);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--void);
 }
 
 .dirbtn--long {
@@ -796,6 +1056,23 @@ button {
   border-radius: var(--r);
   border: 1px solid var(--line);
   background: var(--void-2);
+}
+
+/**
+ * Once the signal lands the price stops moving and says so. Emphasising the move the player
+ * is reading — rather than letting it tick past — is what makes the window usable.
+ */
+.pricebox--held {
+  border-color: var(--accent-edge);
+  box-shadow: inset 0 0 0 1px var(--accent-soft);
+}
+
+.pricebox__held {
+  font-size: var(--step--2);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-core);
 }
 
 .pricebox__value {
@@ -1112,6 +1389,36 @@ button {
   font-weight: 600;
 }
 
+/**
+ * PHASE B — SIGNAL REVEAL. The signal name is the thing being read, so it is set large with
+ * its one clause of explanation directly underneath rather than sharing a line with it.
+ */
+/**
+ * The banner follows the act's accent rather than staying warm everywhere: Level 1 reads hot
+ * and urgent, Level 2 cools into prism blue as the matching rule changes.
+ */
+.event--armed {
+  border-color: var(--accent-edge);
+  background: linear-gradient(120deg, var(--accent-soft), transparent 72%);
+}
+
+.event--armed .event__headline {
+  font-size: var(--step-2);
+  line-height: 1.15;
+  color: var(--accent-glow);
+}
+
+.event--armed .event__detail {
+  font-size: var(--step-0);
+  color: var(--ink);
+}
+
+/** A shorter note for one-line asides, so it does not read as a warning block. */
+.note--brief {
+  padding: var(--s2) var(--s3);
+  font-size: var(--step--2);
+}
+
 /* ═══════════════════════════════════════════════════════════════════ meter */
 
 .meter {
@@ -1355,19 +1662,62 @@ button {
 }
 
 .sharecard__head {
+  display: grid;
+  gap: var(--s3);
+}
+
+.sharecard__brand {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: var(--s3);
   flex-wrap: wrap;
 }
 
+.sharecard__lockup {
+  font-family: var(--font-display);
+  font-size: var(--step-0);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.sharecard__titles {
+  display: grid;
+  gap: 2px;
+}
+
 .sharecard__title {
-  font-size: var(--step--2);
-  letter-spacing: 0.16em;
+  font-size: var(--step--1);
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   font-weight: 800;
+  color: var(--ink-2);
+}
+
+.sharecard__subtitle {
+  font-size: var(--step--2);
   color: var(--ink-3);
+}
+
+/** Community-built · Illustrative data · Not financial advice — they travel with the image. */
+.sharecard__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.sharecard__tags li {
+  font-size: var(--step--2);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 2px var(--s2);
 }
 
 .sharecard__score {
@@ -1499,6 +1849,17 @@ button {
   padding-left: var(--s3);
 }
 
+/**
+ * The opening screen's single disclaimer line. The full paragraph is not dropped — it stays in
+ * the About panel, the footer and the results screen.
+ */
+.disclaimer--compact {
+  border-left: none;
+  padding-left: 0;
+  text-align: center;
+  font-size: var(--step--2);
+}
+
 .divider {
   height: 1px;
   background: var(--line);
@@ -1521,6 +1882,15 @@ button {
   max-width: 34rem;
 }
 
+/**
+ * The long disclaimer, kept permanently reachable now that the opening screen carries only the
+ * compact line. Narrow measure so it reads as fine print rather than a paragraph of body copy.
+ */
+.footer__legal--full {
+  max-width: 44rem;
+  text-wrap: pretty;
+}
+
 /* ════════════════════════════════════════════════════════ reduced motion */
 
 @media (prefers-reduced-motion: reduce) {
@@ -1534,7 +1904,7 @@ button {
   }
 }
 
-/* ═══════════════════════════════════════════ LEVEL C — market maker survival */
+/* ═══════════════════════════════════════════ LEVEL 3 — market maker survival */
 
 .metrics {
   display: grid;

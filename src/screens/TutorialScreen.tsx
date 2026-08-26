@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { BatchPulse } from '@/components/BatchPulse';
 import { Button } from '@/components/Button';
@@ -12,6 +13,9 @@ export function TutorialScreen({
   heading,
   lines,
   continueLabel,
+  banner,
+  contextLine,
+  footnotes,
   showPulse = false,
   onContinue,
 }: {
@@ -19,14 +23,23 @@ export function TutorialScreen({
   heading: string;
   lines: readonly TeachLine[];
   continueLabel: string;
+  /** A branded lockup rendered above the title. Level 2 uses it for Prism mode. */
+  banner?: ReactNode;
+  /** One short line of context under the title. */
+  contextLine?: string;
+  /** Extra notes below the teaching list, before the continue button. */
+  footnotes?: readonly string[];
   /** The DFBA tutorial introduces the 40ms motif, expanded and labelled as slowed down. */
   showPulse?: boolean;
   onContinue: () => void;
 }) {
   return (
     <Screen label={heading}>
+      {banner}
+
       <p className="eyebrow">{eyebrow}</p>
       <h1 className="title">{heading}</h1>
+      {contextLine ? <p className="lede lede--sub">{contextLine}</p> : null}
 
       {showPulse ? (
         <div className="panel panel--accent">
@@ -35,6 +48,12 @@ export function TutorialScreen({
       ) : null}
 
       <TeachList lines={lines} />
+
+      {footnotes?.map((line) => (
+        <p key={line} className="note note--brief">
+          {line}
+        </p>
+      ))}
 
       {showPulse ? (
         <>

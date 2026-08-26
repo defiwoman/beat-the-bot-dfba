@@ -121,7 +121,7 @@ describe('computeScore', () => {
     expect(allCorrect.comboBonus).toBe(12);
   });
 
-  it('scores Level C on the health of the market the player left behind', () => {
+  it('scores Level 3 on the health of the market the player left behind', () => {
     const dead = { capitalHealth: 0, traderSatisfaction: 0, marketDepth: 0 };
     const perfect = { capitalHealth: 100, traderSatisfaction: 100, marketDepth: 100 };
     const middling = { capitalHealth: 60, traderSatisfaction: 45, marketDepth: 45 };
@@ -232,7 +232,7 @@ describe('DFBA Knowledge Score', () => {
   });
 
   it('does not credit batch rounds the player never played', () => {
-    // A great Level C alone caps out at the maker component.
+    // A great Level 3 alone caps out at the maker component.
     expect(knowledgeScoreFor([], [perfectMaker])).toBe(KNOWLEDGE_MAKER_WEIGHT);
   });
 

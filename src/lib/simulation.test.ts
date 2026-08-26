@@ -11,9 +11,11 @@ import {
   BOT_REACTION_MS,
   buildClobRounds,
   buildDfbaRounds,
+  DECISION_WINDOW_MS,
+  decisionWindowMsForRound,
   drawSignals,
+  PREPARE_DELAY_MS,
   ROUNDS_PER_LEVEL,
-  SIGNAL_DELAY_MS,
 } from '@/data/rounds';
 import { auctionSideForDirection } from '@/types/game';
 
@@ -32,11 +34,41 @@ describe('round generation', () => {
 
   it('keeps every randomised value inside its documented range', () => {
     for (const round of clobRounds) {
-      expect(round.signalDelayMs).toBeGreaterThanOrEqual(SIGNAL_DELAY_MS.min);
-      expect(round.signalDelayMs).toBeLessThanOrEqual(SIGNAL_DELAY_MS.max);
+      expect(round.prepareDelayMs).toBeGreaterThanOrEqual(PREPARE_DELAY_MS.min);
+      expect(round.prepareDelayMs).toBeLessThanOrEqual(PREPARE_DELAY_MS.max);
       expect(round.botReactionMs).toBeGreaterThanOrEqual(BOT_REACTION_MS.min);
       expect(round.botReactionMs).toBeLessThanOrEqual(BOT_REACTION_MS.max);
     }
+  });
+
+  it('prepares for 1200–1800ms in both levels, so neither can be pre-fired', () => {
+    expect(PREPARE_DELAY_MS).toEqual({ min: 1200, max: 1800 });
+    for (const round of [...clobRounds, ...dfbaRounds]) {
+      expect(round.prepareDelayMs).toBeGreaterThanOrEqual(1200);
+      expect(round.prepareDelayMs).toBeLessThanOrEqual(1800);
+    }
+  });
+
+  it('gives round one 4000ms, round two 3500ms and round three 3000ms to answer', () => {
+    expect(DECISION_WINDOW_MS).toEqual([4000, 3500, 3000]);
+    expect(clobRounds.map((round) => round.decisionWindowMs)).toEqual([4000, 3500, 3000]);
+  });
+
+  /**
+   * The levels must differ only in market structure. Handing the batch level more thinking
+   * time would make it feel easier for a reason that has nothing to do with matching rules.
+   */
+  it('gives Level 1 and Level 2 identical human-facing decision windows', () => {
+    expect(dfbaRounds.map((round) => round.decisionWindowMs)).toEqual(
+      clobRounds.map((round) => round.decisionWindowMs),
+    );
+  });
+
+  it('clamps the decision window lookup outside the configured rounds', () => {
+    expect(decisionWindowMsForRound(-3)).toBe(4000);
+    expect(decisionWindowMsForRound(0)).toBe(4000);
+    expect(decisionWindowMsForRound(2)).toBe(3000);
+    expect(decisionWindowMsForRound(99)).toBe(3000);
   });
 
   it('shows an illustrative BTC price near 100,000', () => {
@@ -62,7 +94,7 @@ describe('round generation', () => {
   });
 });
 
-/* ============================================================== LEVEL A ==== */
+/* ============================================================== LEVEL 1 ==== */
 
 describe('CLOB result calculation', () => {
   const round = clobRounds[0];
@@ -122,7 +154,7 @@ describe('CLOB result calculation', () => {
   });
 });
 
-/* ============================================================== LEVEL B ==== */
+/* ============================================================== LEVEL 2 ==== */
 
 describe('DFBA batch membership', () => {
   it('counts two arrivals inside the window as the same batch', () => {

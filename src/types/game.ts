@@ -57,7 +57,7 @@ export function auctionSideForDirection(direction: Direction): Side {
   return direction === 'long' ? 'ask' : 'bid';
 }
 
-/* ------------------------------------------------- LEVEL A — CLOB rounds */
+/* ------------------------------------------------- LEVEL 1 — CLOB rounds */
 
 export interface ClobRound {
   id: string;
@@ -67,14 +67,21 @@ export interface ClobRound {
   basePrice: number;
   /** How far the illustrative price moves once the signal is priced in, in dollars. */
   signalMoveUsd: number;
-  /** Milliseconds to wait before the signal appears. Randomised 600–1500. */
-  signalDelayMs: number;
+  /**
+   * PHASE A. Milliseconds of "Watching the tape…" before the signal appears, randomised
+   * 1200–1800 so the player cannot pre-fire. LONG and SHORT are disabled throughout.
+   */
+  prepareDelayMs: number;
+  /**
+   * PHASE B. How long the player has to answer once the signal is on screen: 4000ms in round
+   * one, 3500ms in round two, 3000ms in round three. Level 2 uses the same three windows, so
+   * the only difference between the levels is the matching rule.
+   */
+  decisionWindowMs: number;
   /** The fictional low-latency bot's illustrative reaction, 8–25ms. */
   botReactionMs: number;
   /** Illustrative price the player pays away from the attractive quote, in dollars. */
   slippageUsd: number;
-  /** How long the player has to answer before the round closes. */
-  timeoutMs: number;
 }
 
 export type ClobOutcome =
@@ -105,7 +112,7 @@ export interface ClobRoundResult {
   slippageUsd: number;
 }
 
-/* ------------------------------------------------- LEVEL B — DFBA rounds */
+/* ------------------------------------------------- LEVEL 2 — DFBA rounds */
 
 export interface AuctionResult {
   side: Side;
@@ -154,7 +161,10 @@ export interface DfbaRound {
   priceEdgeUsd: number;
   /** The scale the PRICE EDGE meter fills against. Illustrative. */
   maxPriceEdgeUsd: number;
-  timeoutMs: number;
+  /** PHASE A, identical to Level 1: 1200–1800ms of preparation with the controls disabled. */
+  prepareDelayMs: number;
+  /** PHASE B, identical to Level 1: 4000 / 3500 / 3000ms by round. */
+  decisionWindowMs: number;
 }
 
 export type DfbaOutcome =
@@ -181,7 +191,7 @@ export interface DfbaRoundResult {
   outcome: DfbaOutcome;
 }
 
-/* --------------------------------- LEVEL C — market maker survival */
+/* --------------------------------- LEVEL 3 — market maker survival */
 
 /**
  * Which matching design the maker is quoting into.
@@ -258,12 +268,12 @@ export interface ScoreBreakdown {
   /** Rounds played across both levels. */
   decisionsPlayed: number;
   /**
-   * Level A rounds where the bot reached the quote first — the queue losses. On the shipped
-   * bot latencies this is every round the player answered, which is the point of Level A.
+   * Level 1 rounds where the bot reached the quote first — the queue losses. On the shipped
+   * bot latencies this is every round the player answered, which is the point of Level 1.
    */
   clobQueueLosses: number;
   /**
-   * Level B rounds where the player and the bot landed in the same batch and received the same
+   * Level 2 rounds where the player and the bot landed in the same batch and received the same
    * clearing price: arrival-time privilege neutralised inside the batch.
    */
   dfbaNeutralized: number;

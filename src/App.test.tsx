@@ -71,12 +71,46 @@ describe('opening sequence', () => {
 });
 
 describe('landing screen', () => {
-  it('shows the title, the subtitle and the illustrative-numbers disclaimer', async () => {
+  it('shows the title, the subtitle and one compact disclaimer line', async () => {
     await renderGame();
 
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(copy.intro.heading);
     expect(screen.getByText(copy.intro.subheading)).toBeInTheDocument();
-    expect(screen.getByText(copy.meta.disclaimer)).toBeInTheDocument();
+
+    const intro = screen.getByRole('region', { name: copy.intro.heading });
+    expect(within(intro).getByText(copy.meta.compactDisclaimer)).toBeInTheDocument();
+    // The long paragraph moved off this screen, so the title and the branding can lead.
+    expect(within(intro).queryByText(copy.meta.disclaimer)).toBeNull();
+  });
+
+  it('keeps the full disclaimer reachable from the footer and the About panel', async () => {
+    const { user } = await renderGame();
+
+    const footer = screen.getByRole('contentinfo');
+    expect(within(footer).getByText(copy.meta.disclaimer)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: copy.controls.aboutHint }));
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText(copy.meta.disclaimer)).toBeInTheDocument();
+  });
+
+  it('leads with the Superluminal x Fogo lockup before the game title', async () => {
+    await renderGame();
+
+    expect(screen.getAllByText(copy.brands.lockup).length).toBeGreaterThan(0);
+    expect(screen.getByText(copy.brands.heroKicker)).toBeInTheDocument();
+    expect(screen.getByText(copy.brands.tagline)).toBeInTheDocument();
+  });
+
+  it('names the three levels numerically', async () => {
+    await renderGame();
+
+    for (const bullet of copy.intro.bullets) {
+      expect(screen.getByText(bullet)).toBeInTheDocument();
+    }
+    expect(copy.intro.bullets[0]).toContain('Level 1');
+    expect(copy.intro.bullets[1]).toContain('Level 2');
+    expect(copy.intro.bullets[2]).toContain('Level 3');
   });
 
   it('exposes Start Game as a button whose accessible name includes its visible label', async () => {
@@ -173,17 +207,18 @@ describe('phase machine through the UI', () => {
 
     await user.click(screen.getByRole('button', { name: copy.intro.startHint }));
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(copy.clobTutorial.heading);
+    expect(screen.getByText(copy.clobTutorial.eyebrow)).toHaveTextContent('Level 1 of 3');
     expect(screen.getByText(copy.clobTutorial.lines[0].title)).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: copy.clobTutorial.continueLabel }));
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(copy.clobGame.heading);
-    // Level A is played with the two direction buttons, present from the start so their
-    // position never shifts when the signal fires.
+    // Level 1 is played with the two direction buttons, present from the start so their
+    // position never shifts when the signal fires — disabled until the signal lands.
     expect(screen.getByRole('button', { name: copy.direction.longHint })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: copy.direction.shortHint })).toBeInTheDocument();
   });
 
-  it('shows the combo meter during Level A', async () => {
+  it('shows the combo meter during Level 1', async () => {
     const { user } = await renderGame();
 
     await user.click(screen.getByRole('button', { name: copy.intro.startHint }));
@@ -195,7 +230,7 @@ describe('phase machine through the UI', () => {
 });
 
 describe('desktop keyboard controls', () => {
-  it('plays a Level A round with the arrow keys', async () => {
+  it('plays a Level 1 round with the arrow keys', async () => {
     const { user } = await renderGame();
 
     await user.click(screen.getByRole('button', { name: copy.intro.startHint }));
@@ -204,7 +239,7 @@ describe('desktop keyboard controls', () => {
     // Wait for the signal, then answer without touching a button.
     await screen.findByText(copy.combo.streakLabel);
     await waitFor(
-      () => expect(screen.queryByText(copy.clobGame.waiting)).toBeNull(),
+      () => expect(screen.queryAllByText(copy.clobGame.waiting)).toHaveLength(0),
       { timeout: 3000 },
     );
     await user.keyboard('{ArrowUp}');
@@ -270,7 +305,7 @@ describe('pause when the tab loses focus', () => {
 });
 
 describe('in-round meters', () => {
-  it('shows BOT EDGE during Level A', async () => {
+  it('shows BOT EDGE during Level 1', async () => {
     const { user } = await renderGame();
 
     await user.click(screen.getByRole('button', { name: copy.intro.startHint }));

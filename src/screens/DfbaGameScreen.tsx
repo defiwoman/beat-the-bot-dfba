@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { ArrowRight, Check, Layers, X } from 'lucide-react';
+import { ArrowRight, Check, Layers, Lock, TimerOff, X } from 'lucide-react';
 import { BatchReplay } from '@/components/BatchReplay';
 import { Button } from '@/components/Button';
 import { ComboMeter } from '@/components/ComboMeter';
@@ -8,6 +8,8 @@ import { DirectionButtons } from '@/components/DirectionButtons';
 import { EdgeMeter } from '@/components/EdgeMeter';
 import { KeyHint } from '@/components/KeyHint';
 import { PauseOverlay } from '@/components/PauseOverlay';
+import { PrismBanner } from '@/components/PrismBanner';
+import { RoundClock } from '@/components/RoundClock';
 import { Screen } from '@/components/Screen';
 import { Stat } from '@/components/Stat';
 import { copy } from '@/content/copy';
@@ -20,9 +22,16 @@ import { usePageVisibility } from '@/lib/usePageVisibility';
 import { useSound } from '@/state/useSound';
 import type { DfbaRound, DfbaRoundResult, Direction } from '@/types/game';
 
-type Stage = 'waiting' | 'armed' | 'replay' | 'resolved';
-
-const SIGNAL_DELAY_MS = 550;
+/**
+ * LEVEL 2 — DUAL FLOW BATCH AUCTION.
+ *
+ * The round runs the same four phases as Level 1, off the same numbers: a 1200–1800ms prepare
+ * phase with the controls disabled, then this round's decision window (4000 / 3500 / 3000ms).
+ * Holding the human-facing pacing equal is deliberate — if the batch level were simply given
+ * more time it would feel easier for a reason that has nothing to do with market structure.
+ * What changes between the levels is only how the venue matches.
+ */
+type Stage = 'preparing' | 'armed' | 'replay' | 'resolved';
 
 export function DfbaGameScreen({
   round,
@@ -44,9 +53,11 @@ export function DfbaGameScreen({
 }) {
   const reduceMotion = useReducedMotion();
   const { play, muted } = useSound();
-  const [stage, setStage] = useState<Stage>('waiting');
+  const [stage, setStage] = useState<Stage>('preparing');
+  const [showEarly, setShowEarly] = useState(false);
   const [result, setResult] = useState<DfbaRoundResult | null>(null);
   const signalAtRef = useRef<number | null>(null);
+  const [signalAtMs, setSignalAtMs] = useState<number | null>(null);
   const visible = usePageVisibility();
   const [paused, setPaused] = useState(false);
 
@@ -55,18 +66,22 @@ export function DfbaGameScreen({
   }, [visible, stage]);
 
   useEffect(() => {
-    setStage('waiting');
+    setStage('preparing');
+    setShowEarly(false);
     setResult(null);
     signalAtRef.current = null;
+    setSignalAtMs(null);
 
     if (paused) return;
 
     const armTimer = window.setTimeout(() => {
-      signalAtRef.current = performance.now();
+      const firedAt = performance.now();
+      signalAtRef.current = firedAt;
+      setSignalAtMs(firedAt);
       setStage('armed');
       play('arm');
       vibrate('tap', !muted);
-    }, SIGNAL_DELAY_MS);
+    }, round.prepareDelayMs);
 
     return () => window.clearTimeout(armTimer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -78,7 +93,7 @@ export function DfbaGameScreen({
       setResult(resolveDfbaRound(round, null, null));
       setStage('resolved');
       play('lose');
-    }, round.timeoutMs);
+    }, round.decisionWindowMs);
     return () => window.clearTimeout(timeoutTimer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage, round, paused]);
@@ -100,7 +115,13 @@ export function DfbaGameScreen({
 
   const handleChoose = useCallback(
     (direction: Direction) => {
-      if (paused || stage !== 'armed' || signalAtRef.current === null) return;
+      if (paused) return;
+      if (stage === 'preparing') {
+        // Never scored, exactly as in Level 1: an answer before the signal is only feedback.
+        setShowEarly(true);
+        return;
+      }
+      if (stage !== 'armed' || signalAtRef.current === null) return;
       const reaction = reactionTimeMs(signalAtRef.current, performance.now());
       setResult(resolveDfbaRound(round, direction, reaction));
       setStage('replay');
@@ -109,15 +130,17 @@ export function DfbaGameScreen({
     [paused, play, round, stage],
   );
 
+  const preparing = stage === 'preparing';
   const armed = stage === 'armed';
   const showResult = stage === 'resolved' && result !== null;
+  const timedOut = showResult && result?.chosenDirection === null;
 
   useKeyboard(
     {
       ...keysFor(DIRECTION_KEYS.long, () => handleChoose('long')),
       ...keysFor(DIRECTION_KEYS.short, () => handleChoose('short')),
     },
-    stage === 'armed' && !paused,
+    (stage === 'armed' || stage === 'preparing') && !paused,
   );
 
   useKeyboard(
@@ -138,6 +161,8 @@ export function DfbaGameScreen({
 
   return (
     <Screen label={copy.dfbaGame.heading}>
+      <PrismBanner />
+
       <div>
         <p className="eyebrow">{copy.dfbaGame.eyebrow}</p>
         <h1 className="section-title">{copy.dfbaGame.heading}</h1>
@@ -150,25 +175,31 @@ export function DfbaGameScreen({
         <ComboMeter streak={streak} />
       </div>
 
+      <motion.div
+        className={preparing ? 'event event--idle' : 'event event--armed'}
+        animate={reduceMotion || !armed ? { opacity: 1 } : { opacity: [0.4, 1], scale: [0.98, 1] }}
+        transition={{ duration: 0.18 }}
+        aria-live="assertive"
+      >
+        <span className="event__headline">
+          {preparing ? copy.clobGame.waiting : round.signal.headline}
+        </span>
+        <span className="event__detail">
+          {preparing ? copy.dfbaGame.instruction : round.signal.detail}
+        </span>
+      </motion.div>
+
       <EdgeMeter
         kind="price"
         value={priceEdge}
         readout={priceEdgeUsd > 0 ? formatUsdDelta(priceEdgeUsd) : copy.edge.pending}
       />
 
-      <motion.div
-        className={armed || stage !== 'waiting' ? 'event' : 'event event--idle'}
-        animate={reduceMotion || !armed ? { opacity: 1 } : { opacity: [0.4, 1], scale: [0.98, 1] }}
-        transition={{ duration: 0.18 }}
-        aria-live="assertive"
-      >
-        <span className="event__headline">
-          {stage === 'waiting' ? copy.clobGame.waiting : round.signal.headline}
-        </span>
-        <span className="event__detail">
-          {stage === 'waiting' ? copy.dfbaGame.instruction : round.signal.detail}
-        </span>
-      </motion.div>
+      {showEarly && preparing ? (
+        <p className="note" role="status">
+          <strong>{copy.clobGame.earlyLabel}.</strong> {copy.clobGame.earlyBody}
+        </p>
+      ) : null}
 
       {stage === 'replay' || showResult ? (
         <div className="panel panel--accent">
@@ -186,7 +217,13 @@ export function DfbaGameScreen({
               result.wasCorrect ? 'outcome__title--won' : 'outcome__title--lost'
             }`}
           >
-            {copy.dfbaGame.outcomes[result.outcome]}
+            {timedOut ? (
+              <>
+                <TimerOff size={16} aria-hidden="true" /> {copy.dfbaGame.outcomes.noAnswer}
+              </>
+            ) : (
+              copy.dfbaGame.outcomes[result.outcome]
+            )}
           </span>
 
           {result.chosenDirection === null || result.clearingPrice === null ? (
@@ -271,16 +308,29 @@ export function DfbaGameScreen({
           </p>
         ) : (
           <>
+            {armed ? (
+              <RoundClock
+                startedAtMs={signalAtMs}
+                durationMs={round.decisionWindowMs}
+                running={armed && !paused}
+              />
+            ) : null}
             <p className="dirprompt">
               {armed ? copy.direction.prompt : copy.dfbaGame.instruction}
             </p>
             <DirectionButtons disabled={!armed} chosen={null} onChoose={handleChoose} />
-            <KeyHint
-              hints={[
-                { keys: copy.keys.longKeys, label: copy.direction.long },
-                { keys: copy.keys.shortKeys, label: copy.direction.short },
-              ]}
-            />
+            {preparing ? (
+              <p className="dirlock">
+                <Lock size={12} aria-hidden="true" /> {copy.clobGame.waitingNote}
+              </p>
+            ) : (
+              <KeyHint
+                hints={[
+                  { keys: copy.keys.longKeys, label: copy.direction.long },
+                  { keys: copy.keys.shortKeys, label: copy.direction.short },
+                ]}
+              />
+            )}
           </>
         )}
       </div>

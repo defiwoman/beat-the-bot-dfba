@@ -13,9 +13,15 @@ import type { ScoreBreakdown } from '@/types/game';
  * The shareable result card.
  *
  * This is the artefact that leaves the game, so it has to stand on its own: both official
- * marks, the game's name, the score, the fastest reaction, the two lines that say what
- * happened, the URL to play it, and the disclaimer. Someone who sees only this image should be
- * able to tell what it is and that the numbers are illustrative.
+ * marks, the Superluminal × Fogo wordmark, the game's name, what the game is about, the score,
+ * the fastest reaction, the two lines that say what happened, the URL to play it, and the
+ * provenance chips. Someone who sees only this image should be able to tell what it is, whose
+ * campaign it belongs to, that it was built by the community, and that the numbers are
+ * illustrative rather than measured.
+ *
+ * `logoSources` is how the genuine local artwork survives the PNG export: the download inlines
+ * the same repository files as data URIs and hands them in here, so the rasterised card carries
+ * the real marks rather than two empty boxes.
  *
  * It takes a ref because the PNG export rasterises this exact node.
  */
@@ -30,8 +36,14 @@ export const ShareCard = forwardRef<
   return (
     <section className="sharecard" aria-label={copy.share.heading} ref={ref}>
       <div className="sharecard__head">
-        <span className="sharecard__title">{copy.share.title}</span>
-        <BrandMarks sources={logoSources} />
+        <span className="sharecard__brand">
+          <BrandMarks size="md" sources={logoSources} />
+          <span className="sharecard__lockup">{copy.brands.lockup}</span>
+        </span>
+        <span className="sharecard__titles">
+          <span className="sharecard__title">{copy.share.title}</span>
+          <span className="sharecard__subtitle">{copy.share.subtitle}</span>
+        </span>
       </div>
 
       <p className="sharecard__boast">{copy.share.boast}</p>
@@ -77,6 +89,12 @@ export const ShareCard = forwardRef<
         <BigMs size="sm" caption={copy.pulse.caption} />
         {url ? <span className="sharecard__url mono">{url}</span> : null}
       </div>
+
+      <ul className="sharecard__tags">
+        <li>{copy.brands.communityTag}</li>
+        <li>{copy.brands.illustrativeTag}</li>
+        <li>{copy.brands.adviceTag}</li>
+      </ul>
 
       <p className="tiny">{copy.footer.scenarioNote}</p>
     </section>

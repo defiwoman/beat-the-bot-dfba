@@ -6,7 +6,7 @@ import { comboMultiplier, comboProgress, MAX_COMBO_STREAK } from '@/lib/reaction
 /**
  * Correct-direction streak and combo meter.
  *
- * Rewards reading the signal, never clicking speed — Level A is unwinnable on speed by design,
+ * Rewards reading the signal, never clicking speed — Level 1 is unwinnable on speed by design,
  * so tying the combo to race wins would punish the player for the lesson.
  */
 export function ComboMeter({ streak }: { streak: number }) {

@@ -21,7 +21,7 @@ import type {
 } from '@/types/game';
 
 /**
- * LEVEL C — MARKET MAKER SURVIVAL.
+ * LEVEL 3 — MARKET MAKER SURVIVAL.
  *
  * Two halves inside one phase. Part 1 quotes into continuous matching, where every spread
  * choice costs something. Part 2 switches to batched mode via ACTIVATE PRISM and replays the
@@ -151,6 +151,8 @@ function ModePlay({
       <div>
         <p className="eyebrow">{copy.makerSurvival.eyebrow}</p>
         <h1 className="section-title">{strings.heading}</h1>
+        {/* Context, not a claim that this is a live Superluminal market-making interface. */}
+        <p className="faint">{copy.makerSurvival.contextLine}</p>
       </div>
 
       <div className="modebar">

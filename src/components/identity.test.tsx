@@ -4,7 +4,8 @@ import { render, screen } from '@testing-library/react';
 import { AmbientBackdrop } from './AmbientBackdrop';
 import { BatchPulse } from './BatchPulse';
 import { BigMs } from './BigMs';
-import { BrandBar, BrandLockup } from './BrandBar';
+import { BrandBar, BrandHero, BrandLockup } from './BrandBar';
+import { PrismBanner } from './PrismBanner';
 import { FOGO_LOGO_SRC, SUPERLUMINAL_LOGO_SRC } from '@/lib/logos';
 import { ShareCard } from './ShareCard';
 import { StageProgress } from './StageProgress';
@@ -30,6 +31,60 @@ describe('brand assets', () => {
     render(<BrandLockup />);
     expect(screen.getByAltText(copy.brands.fogoAlt)).toBeInTheDocument();
     expect(screen.getByAltText(copy.brands.superluminalAlt)).toBeInTheDocument();
+  });
+
+  it('gives the header lockup a secondary line naming what the game is', () => {
+    render(<BrandBar />);
+    expect(screen.getByText(copy.brands.tagline)).toBeInTheDocument();
+  });
+
+  /**
+   * Roughly 44–52px on desktop and 38–44px on mobile. The marks are sized by their width and
+   * height attributes and the CSS sizes that go with them; the container's padding supplies the
+   * clear space, so no measurement here reaches the artwork itself.
+   */
+  it('sizes the header marks for a prominent lockup', () => {
+    render(<BrandBar />);
+    for (const alt of [copy.brands.fogoAlt, copy.brands.superluminalAlt]) {
+      const mark = screen.getByAltText(alt);
+      expect(mark).toHaveAttribute('width', '32');
+      expect(mark).toHaveClass('brandbar__logo--md');
+    }
+  });
+
+  it('leads the opening screen with a hero lockup and a community-built kicker', () => {
+    render(<BrandHero />);
+
+    expect(screen.getByAltText(copy.brands.fogoAlt)).toBeInTheDocument();
+    expect(screen.getByAltText(copy.brands.superluminalAlt)).toBeInTheDocument();
+    expect(screen.getByText(copy.brands.lockup)).toBeInTheDocument();
+    expect(screen.getByText(copy.brands.heroKicker)).toBeInTheDocument();
+  });
+});
+
+describe('PrismBanner', () => {
+  it('names Prism mode and the mechanism behind it', () => {
+    render(<PrismBanner />);
+    expect(screen.getByText(copy.dfbaGame.prismBanner)).toBeInTheDocument();
+    expect(screen.getByText(copy.dfbaGame.prismBannerSub)).toBeInTheDocument();
+  });
+
+  it('uses the genuine local marks, untouched', () => {
+    render(<PrismBanner />);
+
+    expect(screen.getByAltText(copy.brands.superluminalAlt)).toHaveAttribute(
+      'src',
+      SUPERLUMINAL_LOGO_SRC,
+    );
+    expect(screen.getByAltText(copy.brands.fogoAlt)).toHaveAttribute('src', FOGO_LOGO_SRC);
+
+    for (const alt of [copy.brands.fogoAlt, copy.brands.superluminalAlt]) {
+      const mark = screen.getByAltText(alt);
+      expect(mark.style.filter).toBe('');
+      expect(mark.style.transform).toBe('');
+      expect(mark).toHaveAttribute('width');
+      expect(mark).toHaveAttribute('height');
+    }
   });
 
   it('never applies a CSS filter, mask or transform to the artwork', () => {
@@ -133,6 +188,11 @@ describe('ShareCard', () => {
 
     // title, both marks, score, fastest reaction, both lines, and the scenario note
     expect(screen.getByText(copy.share.title)).toBeInTheDocument();
+    expect(screen.getByText(copy.share.subtitle)).toBeInTheDocument();
+    expect(screen.getByText(copy.brands.lockup)).toBeInTheDocument();
+    expect(screen.getByText(copy.brands.communityTag)).toBeInTheDocument();
+    expect(screen.getByText(copy.brands.illustrativeTag)).toBeInTheDocument();
+    expect(screen.getByText(copy.brands.adviceTag)).toBeInTheDocument();
     expect(screen.getByAltText(copy.brands.fogoAlt)).toBeInTheDocument();
     expect(screen.getByAltText(copy.brands.superluminalAlt)).toBeInTheDocument();
     expect(screen.getByText(String(score.totalPoints))).toBeInTheDocument();
@@ -152,6 +212,34 @@ describe('ShareCard', () => {
       'src',
       sources.superluminal,
     );
+  });
+
+  /**
+   * The downloaded PNG is rasterised from this node, so whatever the card is rendering at that
+   * moment is what ends up in the image. Both paths lead back to the two files in this
+   * repository: the on-screen card uses them directly, and the export inlines the same bytes.
+   */
+  it('carries the genuine local brand assets into the image, whichever delivery is used', async () => {
+    const { rerender } = render(<ShareCard score={score} />);
+
+    expect(screen.getByAltText(copy.brands.superluminalAlt)).toHaveAttribute(
+      'src',
+      SUPERLUMINAL_LOGO_SRC,
+    );
+    expect(screen.getByAltText(copy.brands.fogoAlt)).toHaveAttribute('src', FOGO_LOGO_SRC);
+
+    // The PNG export hands in data URIs of those same two files, never a remote URL.
+    const inlined = await Promise.resolve({
+      superluminal: 'data:image/png;base64,SUPER',
+      fogo: 'data:image/jpeg;base64,FOGO',
+    });
+    rerender(<ShareCard score={score} logoSources={inlined} />);
+
+    for (const alt of [copy.brands.fogoAlt, copy.brands.superluminalAlt]) {
+      const src = screen.getByAltText(alt).getAttribute('src') ?? '';
+      expect(src.startsWith('data:image/')).toBe(true);
+      expect(src).not.toMatch(/^https?:/);
+    }
   });
 
   it('defaults to the real supplied files', () => {

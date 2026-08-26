@@ -13,7 +13,7 @@ import type {
 /**
  * Scoring rewards *reading the market*, not clicking fast.
  *
- * That is deliberate: Level A is unwinnable on speed by design, so tying points to race wins
+ * That is deliberate: Level 1 is unwinnable on speed by design, so tying points to race wins
  * would punish the player for the exact thing the game is teaching them about.
  */
 export const POINTS_PER_CORRECT_DIRECTION = 8;
@@ -58,7 +58,7 @@ export function longestStreak(
 }
 
 /**
- * Where the three survival metrics stood at the end of one half of Level C.
+ * Where the three survival metrics stood at the end of one half of Level 3.
  *
  * Read back from the recorded events rather than trusted from live state, so the result card
  * always agrees with what the player actually did. Before a mode has been played, its metrics
@@ -81,7 +81,7 @@ export const KNOWLEDGE_MAKER_WEIGHT = 30;
 /**
  * How much of the DFBA mechanism this playthrough actually demonstrated, 0–100.
  *
- * Deliberately separate from the game score. The game score includes Level A, which is
+ * Deliberately separate from the game score. The game score includes Level 1, which is
  * unwinnable on speed; this number only asks how much of the *batch* the player exercised:
  *
  *   40  reading the signal correctly inside the batch
@@ -89,7 +89,7 @@ export const KNOWLEDGE_MAKER_WEIGHT = 30;
  *       same clearing price
  *   30  the market they left behind while quoting into batched mode
  *
- * A player who never reached Level B scores zero on the first two components rather than being
+ * A player who never reached Level 2 scores zero on the first two components rather than being
  * credited for rounds they did not play.
  */
 export function knowledgeScoreFor(
@@ -112,14 +112,14 @@ export function knowledgeScoreFor(
 }
 
 /**
- * Level B rounds where arrival-time privilege was neutralised: the player and the bot landed
+ * Level 2 rounds where arrival-time privilege was neutralised: the player and the bot landed
  * in the same batch and came out with the same clearing price.
  */
 export function countNeutralized(dfbaResults: readonly DfbaRoundResult[]): number {
   return dfbaResults.filter((result) => result.sameBatch && result.samePriceAsBot).length;
 }
 
-/** Level A rounds where the bot reached the quote first. */
+/** Level 1 rounds where the bot reached the quote first. */
 export function countQueueLosses(clobResults: readonly ClobRoundResult[]): number {
   return clobResults.filter((result) => result.botFirst).length;
 }
@@ -140,7 +140,7 @@ export function computeScore(
   const directionPoints = (clobCorrect + dfbaCorrect) * POINTS_PER_CORRECT_DIRECTION;
   const comboBonus = Math.min(bestStreak * COMBO_BONUS_PER_STREAK, MAX_COMBO_BONUS);
 
-  // Level C is scored on the health of the market the player left behind, not on the maker's
+  // Level 3 is scored on the health of the market the player left behind, not on the maker's
   // takings alone — quoting wide to protect yourself while the book empties is not a good score.
   const makerClobMetrics = metricsForMode(makerResults, 'clob');
   const makerMetrics = metricsForMode(makerResults, 'prism');

@@ -22,8 +22,17 @@ venue, and it is not financial advice.
 - Latency advantages of a few milliseconds **can be decisive** in that race.
 - This is a property of the **market design**, not an accusation against any participant.
 
-### About a discrete frequent batch auction (DFBA)
+### About a Dual Flow Batch Auction (DFBA)
 
+- **DFBA stands for Dual Flow Batch Auction.** The two flows are **maker flow and taker flow**.
+  The D is *Dual*, never *Discrete*: an earlier build expanded it as "the discrete frequent batch
+  auction", which is not what Superluminal's mechanism is called.
+- Discrete, frequent batching may be described as **how the design collects orders** — that is
+  accurate — but it must never be given as the expansion of the acronym.
+- Superluminal's **Prism** mechanism is consistently described as a **Dual Flow Batch Auction**.
+- Generic references to **frequent batch auctions** in the academic literature are a different
+  thing and are left as they are — in particular the title and description of Budish, Cramton &
+  Shim (2015) in `copy.learnMore` must not be rewritten.
 - A DFBA **collects orders into a short batch** instead of matching each one on arrival.
 - The batch modelled in this game is **40ms**. This is the value the game uses for teaching; the
   on-screen window is slowed down so it is visible.
@@ -79,7 +88,7 @@ game is therefore **expanded in time**, and that expansion must always be declar
 > **40ms shown in slow motion**
 
 must be visible alongside it. It is stored once, as `copy.pulse.slowMotion`, and a test asserts its
-exact wording. It currently appears on the DFBA tutorial, on the Level B batch replay, on the DFBA
+exact wording. It currently appears on the DFBA tutorial, on the Level 2 batch replay, on the DFBA
 reveal, and in the About panel.
 
 **Never** present a browser animation as an authoritative network benchmark. The rendered timing is
@@ -121,15 +130,15 @@ The game trades **BTC-PERP at an illustrative price around $100,000**. That numb
 to a real BTC price to be mistaken for one, so the labelling rule is strict:
 
 - Every price, slippage figure and latency in the game is **illustrative game data**, stored as
-  `copy.meta.illustrativeTag` and stamped **on screen beside the numbers** — on the Level A price
-  box, on both round results, and on the Level A reveal.
+  `copy.meta.illustrativeTag` and stamped **on screen beside the numbers** — on the Level 1 price
+  box, on both round results, and on the Level 1 reveal.
 - The bot's 8–25ms reaction is an **illustrative** figure for a fictional low-latency bot. It is
   not a measurement of any real system, and no venue's latency is ever named or implied.
 - Slippage is illustrative and invented. It is not a spread estimate for any real market.
 
 ## 3c. The unwinnable race — do not frustrate without explaining
 
-Level A cannot be won by clicking faster: at an illustrative 8–25ms the bot is beyond any human
+Level 1 cannot be won by clicking faster: at an illustrative 8–25ms the bot is beyond any human
 hand. That unfairness is the demonstration, and the rules that keep it honest are:
 
 - **Never tell the player to click faster.** The prompt asks them to read the signal, not to hurry.
@@ -141,7 +150,7 @@ hand. That unfairness is the demonstration, and the rules that keep it honest ar
 - **Stay neutral about the bot.** Racing is a rational response to a venue that rewards arriving
   first — never cheating, theft or fraud.
 
-## 3d. Level C — Market Maker Survival
+## 3d. Level 3 — Market Maker Survival
 
 The survival level invents a whole scoreboard, so it carries the heaviest labelling burden in the
 game.

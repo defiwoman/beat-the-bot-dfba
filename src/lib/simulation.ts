@@ -16,7 +16,7 @@ import type {
   Side,
 } from '@/types/game';
 
-/* ============================================================== LEVEL A ==== */
+/* ============================================================== LEVEL 1 ==== */
 
 /**
  * Resolve a CLOB round.
@@ -59,7 +59,7 @@ export function resolveClobRound(
   };
 }
 
-/* ============================================================== LEVEL B ==== */
+/* ============================================================== LEVEL 2 ==== */
 
 /**
  * Whether two orders landed inside the same modelled batch window.

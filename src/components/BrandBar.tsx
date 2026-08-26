@@ -11,17 +11,27 @@ import type { LogoSources } from '@/lib/logos';
  *
  * The real files in this repository are `fogo-logo.jpg` and `superluminal-logo.png`, and they
  * are referenced by their real filenames rather than converted.
+ *
+ * Three sizes, one lockup:
+ *
+ *   sm    the result card and the About panel
+ *   md    the persistent header — roughly 44–52px tall on desktop, 38–44px on mobile
+ *   hero  the opening screen, where the co-branding is the first thing on the page
  */
+
+type MarkSize = 'sm' | 'md' | 'lg' | 'hero';
+
+const MARK_PX: Record<MarkSize, number> = { sm: 26, md: 32, lg: 40, hero: 56 };
 
 export function BrandMarks({
   size = 'sm',
   sources = DEFAULT_LOGO_SOURCES,
 }: {
-  size?: 'sm' | 'lg';
+  size?: MarkSize;
   sources?: LogoSources;
 }) {
-  const className = size === 'lg' ? 'brandbar__logo brandbar__logo--lg' : 'brandbar__logo';
-  const px = size === 'lg' ? 40 : 26;
+  const className = `brandbar__logo brandbar__logo--${size}`;
+  const px = MARK_PX[size];
 
   return (
     <span className="brandbar__marks">
@@ -46,22 +56,48 @@ export function BrandMarks({
   );
 }
 
-/** Compact pill used in the persistent header. */
+/**
+ * The persistent header lockup: both marks, the wordmark, and the secondary line naming what
+ * the game is. Sized so it reads at a glance without crowding gameplay on a small screen.
+ */
 export function BrandBar({ showName = true }: { showName?: boolean }) {
   return (
     <div className="brandbar">
-      <BrandMarks />
-      {showName ? <span className="brandbar__name">{copy.brands.lockup}</span> : null}
+      <BrandMarks size="md" />
+      {showName ? (
+        <span className="brandbar__names">
+          <span className="brandbar__name">{copy.brands.lockup}</span>
+          <span className="brandbar__tagline">{copy.brands.tagline}</span>
+        </span>
+      ) : null}
     </div>
   );
 }
 
-/** Larger centred lockup for the opening screen, the result card and the About panel. */
-export function BrandLockup({ size = 'lg' }: { size?: 'sm' | 'lg' }) {
+/** Larger centred lockup for the result card and the About panel. */
+export function BrandLockup({ size = 'lg' }: { size?: MarkSize }) {
   return (
     <div className="brandlockup">
       <BrandMarks size={size} />
       <span className="brandbar__name">{copy.brands.lockup}</span>
+    </div>
+  );
+}
+
+/**
+ * The opening screen's co-branded hero.
+ *
+ * It sits above the game title on purpose: whoever opens the page should see whose campaign
+ * this belongs to before they see the game's own name. It stays type and containers around the
+ * untouched marks — nothing here redraws, recolours or imitates an official lockup, and the
+ * kicker underneath says plainly that the game is community-built.
+ */
+export function BrandHero() {
+  return (
+    <div className="brandhero">
+      <BrandMarks size="hero" />
+      <span className="brandhero__name">{copy.brands.lockup}</span>
+      <span className="brandhero__kicker">{copy.brands.heroKicker}</span>
     </div>
   );
 }

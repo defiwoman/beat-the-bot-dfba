@@ -11,7 +11,7 @@ A community-built educational browser game associated with the **Superluminal x 
 
 The player should leave with a working mental model of two ways a market can match orders:
 
-| | Continuous Limit Order Book (CLOB) | Discrete Frequent Batch Auction (DFBA) |
+| | Continuous Limit Order Book (CLOB) | Dual Flow Batch Auction (DFBA) |
 | --- | --- | --- |
 | When it matches | Continuously, order by order | At the end of each short batch window |
 | Who gets a contested quote | The order that arrives first | Decided by the auction, not by arrival time inside the batch |
@@ -21,10 +21,13 @@ The player should leave with a working mental model of two ways a market can mat
 
 The game teaches this by making the player *lose* a speed race, then *not need to win* one.
 
-**Level A + Level B gameplay stays under 45 seconds.** Measured end to end in a browser at
-390×844, the two levels take roughly 17s of pure interaction, leaving generous headroom for
-reading. The two tutorials and Level C sit outside that budget; Level C carries its own
-**under-30-second** target, covered in section 7.8.
+**Level 1 + Level 2 gameplay is paced for a beginner, not for a stopwatch.** Each of the six
+playable rounds opens with a 1200–1800ms preparation phase and then holds its signal on screen
+for a fixed decision window — 4000ms, 3500ms and 3000ms by round — so a first-time player has
+time to read the signal before choosing. Six rounds of preparation plus window is roughly 30s of
+worst-case clock, and a player who answers promptly moves faster than that. The two tutorials and
+Level 3 sit outside that budget; Level 3 carries its own **under-30-second** target, covered in
+section 7.8.
 
 ## 2. Target experience
 
@@ -57,13 +60,13 @@ intro
 | --- | --- | --- |
 | `intro` | Read title, press **Start Game** | ~8s |
 | `clobTutorial` | Three short lines, press **Got it** | ~8s |
-| `clobGame` | 3 signal rounds (Level A) | ~10s |
+| `clobGame` | 3 signal rounds (Level 1) | ~15s |
 | `clobReveal` | The reveal line + three lessons | ~8s |
 | `dfbaTutorial` | Three short lines, press **Got it** | ~8s |
-| `dfbaGame` | 3 batch rounds (Level B) | ~14s |
+| `dfbaGame` | 3 batch rounds (Level 2) | ~19s |
 | `dfbaReveal` | Two auctions + the comparison | ~8s |
 | `marketMakerTutorial` | Role switch explained | ~6s |
-| `marketMakerGame` | Level C: 6 spread decisions across two modes | <30s |
+| `marketMakerGame` | Level 3: 6 spread decisions across two modes | <30s |
 | `results` | Score, three takeaways, replay | open |
 
 ## 3a. Feel — opening, meters, controls, pacing
@@ -82,8 +85,8 @@ it resolves immediately to the settled frame and holds briefly.
 
 | Meter | Level | Fills toward | Says |
 | --- | --- | --- | --- |
-| **BOT EDGE** | A | the bot | the head start you cannot beat |
-| **PRICE EDGE** | B | you | what the batch clearing price saved |
+| **BOT EDGE** | 1 | the bot | the head start you cannot beat |
+| **PRICE EDGE** | 2 | you | what the batch clearing price saved |
 
 Both are ARIA `progressbar`s, so the value reaches assistive technology rather than living only
 in a fill width, and both are labelled illustrative game data.
@@ -94,7 +97,7 @@ in a fill width, and both are labelled illustrative game data.
 | --- | --- |
 | `↑` / `←` / `L` | LONG |
 | `↓` / `→` / `S` | SHORT |
-| `1` `2` `3` | the three spreads in Level C |
+| `1` `2` `3` | the three spreads in Level 3 |
 | `Space` / `Enter` | continue from a resolved round |
 | `M` | mute, from anywhere |
 | any key / tap | skip the opening |
@@ -143,7 +146,7 @@ figure and latency in the game is **illustrative game data** — invented for th
 BTC price and never a measured market statistic. The phrase "illustrative game data" is stamped
 next to the numbers on screen, not buried in a footnote.
 
-## 5. LEVEL A — CLOB, fastest wins
+## 5. LEVEL 1 — CLOB, fastest wins
 
 Three short randomised rounds. The player is a taker reading a signal and picking a side.
 
@@ -154,26 +157,52 @@ so when news moves the fair price, reaching the stale quote first is simply a ra
 
 ### 5.2 `clobGame` — 3 rounds
 
-Each round runs the same loop:
+Each round runs the same four phases.
 
-1. Show an illustrative **BTC price around $100,000**, labelled *illustrative game data*.
-2. Wait a randomised **600–1500ms**, so the player cannot pre-fire.
-3. Fire a clear **market signal** (funding flip, large print, oracle step, liquidation cascade).
-4. The player picks **LONG** or **SHORT**.
-5. Measure reaction with `performance.now()` — the signal timestamp against the answer timestamp.
-6. The fictional low-latency bot answers in an illustrative **8–25ms**.
-7. If the read was right, say so explicitly: **"Your analysis was correct."**
-8. Then show that the bot reached the attractive quote first, **because of arrival-time priority**.
-9. The player is filled at a slightly **worse illustrative price**, and the slippage is shown.
+**Phase A — prepare.** Show an illustrative **BTC price around $100,000**, labelled *illustrative
+game data*, under the line *"Watching the tape…"*, for a randomised **1200–1800ms** so the player
+cannot pre-fire. **LONG and SHORT are disabled and visibly muted** for the whole phase, and a
+keyboard press produces a "too early" note rather than a submission.
 
-Outcomes: `correctButOutpaced`, `wrongDirection`, `noAnswer` (round closed at 2600ms).
+**Phase B — signal reveal.** Fire a clear **market signal** (funding flip, large print, oracle
+step, liquidation cascade). The signal name is set large with its one-clause explanation directly
+underneath, the price is held at the quote the bot is racing for and labelled as held, the buttons
+unlock, and a **decision countdown** starts — a horizontal bar plus a numeric readout such as
+*"3.4s remaining"*. The prompt reads *"Read the signal — choose LONG or SHORT"*.
+
+The window is fixed per round, and Level 2 uses the same three values:
+
+| Round | Decision window |
+| --- | --- |
+| 1 | 4000ms |
+| 2 | 3500ms |
+| 3 | 3000ms |
+
+The bar and the printed number update ten times a second; the screen-reader announcement beside
+them changes only on **whole seconds**, because a polite live region firing every 100ms is
+unusable.
+
+**Phase C — bot execution.** The fictional low-latency bot answers in an illustrative **8–25ms**
+and reaches the quote first. Before round 1 the game says so outright: *"You cannot beat a 10ms
+bot by clicking faster. Read the signal and prove your market judgment was right."* The two ideas
+are kept apart on the result — the bot already won the speed race, and the player still had time
+to show they read the market correctly.
+
+**Phase D — result.** Reaction with `performance.now()` (the signal timestamp against the answer
+timestamp), the bot's illustrative latency, who reached the quote, and the fill at a slightly
+**worse illustrative price** with the slippage shown. If the read was right, say so explicitly:
+**"Your analysis was correct."** The result **stays on screen until the player presses "Next
+round"** — nothing auto-advances.
+
+Outcomes: `correctButOutpaced`, `wrongDirection`, `noAnswer`. A `noAnswer` round shows **"Time
+expired"** with a plain explanation that the signal went unanswered and a manual "Next round"
+button; the wording never mocks the player and the screen never disappears on its own.
 
 > **The race is not winnable, on purpose.** At 8–25ms the bot is beyond any human hand. The
 > player is never told to click faster, the score never rewards speed, and `clobReveal` says
 > outright that losing was the designed outcome rather than a trick. Reading the signal is the
-> only thing being asked of them, and the only thing scored.
-
-Answering before the signal fires shows a "too early" note and costs nothing.
+> only thing being asked of them, and the only thing scored — a correct direction scores exactly
+> the same whether the answer arrived in 200ms or 3.9 seconds.
 
 ### 5.3 `clobReveal`
 
@@ -190,17 +219,37 @@ Then exactly three short lines, and nothing more:
 Plus the per-round table, the player's average reaction against the bot's, and the note explaining
 that the unfairness was the demonstration.
 
-## 6. LEVEL B — DFBA, prism mode
+## 6. LEVEL 2 — DFBA, prism mode
 
 Three fresh randomised rounds using the same kinds of signal, so the comparison is like-for-like.
 
 ### 6.1 `dfbaTutorial`
 
-Three lines — orders collect into a short 40ms batch; maker and taker flows are separated; the
-batch runs a bid auction and an ask auction, each with **its own** uniform clearing price — over a
-live `BatchPulse` carrying the slow-motion label.
+Titled **"The Dual Flow Batch Auction"** — DFBA is a *Dual Flow* Batch Auction, and the two flows
+are maker and taker. Discrete batching is how orders are collected; it is not what the D stands
+for, and the tutorial says so.
+
+Under the **SUPERLUMINAL PRISM MODE** banner, three lines — orders collect into a short 40ms
+batch; maker and taker flows are separated; the batch runs a bid auction and an ask auction, each
+with **its own** uniform clearing price — over a live `BatchPulse` carrying the slow-motion label.
 
 ### 6.2 `dfbaGame` — 3 rounds
+
+Level 2 opens each round with **the same phase A and phase B as Level 1**: a randomised
+1200–1800ms preparation phase with the controls disabled, then a fixed decision window of 4000ms,
+3500ms or 3000ms by round, with the same countdown bar and numeric readout.
+
+This is deliberate. If the batch level were simply given more thinking time it would feel easier
+for a reason that has nothing to do with market structure. **Human-facing decision time is held
+equal**, and everything that changes between the two levels is a matching rule:
+
+| | Level 1 | Level 2 |
+| --- | --- | --- |
+| Matching | Continuous | Orders enter the same short batch |
+| Arrival time | Gives the bot the quote | Does not determine matching priority |
+| Price | The player loses the attractive quote | The relevant bid or ask auction produces its own clearing price |
+
+Then:
 
 1. The signal fires and the player submits a **LONG** or **SHORT** decision.
 2. The player order and the bot order land inside the same **~40ms batch**.
@@ -218,7 +267,8 @@ live `BatchPulse` carrying the slow-motion label.
 10. It states that filling **depends on resting liquidity and is not guaranteed** — the game never
     promises a fill.
 
-Outcomes: `filledSameprice`, `wrongDirectionFilled`, `noAnswer`.
+Outcomes: `filledSameprice`, `wrongDirectionFilled`, `noAnswer` — the last shown as **"Time
+expired"** with the same plain wording and manual "Next round" button as Level 1.
 
 ### 6.3 `dfbaReveal` — the comparison
 
@@ -228,7 +278,7 @@ four-row table putting the two levels against each other on matching, who gets t
 arrival gap and price — and finally what still matters (price priority, size, liquidity).
 
 
-## 7. Level C — MARKET MAKER SURVIVAL
+## 7. Level 3 — MARKET MAKER SURVIVAL
 
 The player swaps seats and becomes a fictional market maker. The level runs in two halves inside
 the single `marketMakerGame` phase, so the ten-phase machine stays exactly as specified.
@@ -348,15 +398,15 @@ the player something worth passing on.
 | # | Reported | Source |
 | --- | --- | --- |
 | 1 | Fastest reaction time | the minimum across every answered round, not the mean |
-| 2 | Correct market-direction decisions | Level A + Level B reads |
-| 3 | CLOB queue losses | Level A rounds where the bot reached the quote first |
+| 2 | Correct market-direction decisions | Level 1 + Level 2 reads |
+| 3 | CLOB queue losses | Level 1 rounds where the bot reached the quote first |
 | 4 | Batches where arrival-time privilege was neutralised | same batch **and** same clearing price as the bot |
-| 5 | Final market-maker health | Level C capital health, batched mode |
-| 6 | Final trader satisfaction | Level C trader satisfaction, batched mode |
+| 5 | Final market-maker health | Level 3 capital health, batched mode |
+| 6 | Final trader satisfaction | Level 3 trader satisfaction, batched mode |
 | 7 | **DFBA Knowledge Score** | see below |
 | 8 | Local high score | `localStorage`, see 8.3 |
 
-Row 3 is captioned: losing the queue is the designed outcome of Level A, counted because it is
+Row 3 is captioned: losing the queue is the designed outcome of Level 1, counted because it is
 the thing being demonstrated, not because the player did anything wrong.
 
 ### 8.2 DFBA Knowledge Score
@@ -370,7 +420,7 @@ speed. This number asks only how much of the batch mechanism the run actually ex
 30  the market left behind while quoting into batched mode
 ```
 
-A player who never reached Level B scores zero on the first two components rather than being
+A player who never reached Level 2 scores zero on the first two components rather than being
 credited for rounds they did not play. Neutralisation still counts when the direction read was
 wrong — getting into a batch and out at the same clearing price is the mechanism lesson, and it
 lands either way.
@@ -455,10 +505,10 @@ totalPoints     = directionPoints + comboBonus + makerPoints
 
 Grades: `≥85 Batch Boss`, `≥65 Auction Apprentice`, `≥40 Latency Learner`, else `Speed Bump`.
 
-**Scoring rewards reading the market, never clicking fast.** Level A is unwinnable on speed by
+**Scoring rewards reading the market, never clicking fast.** Level 1 is unwinnable on speed by
 design, so tying points to race wins would punish the player for the exact thing being taught. A
 player who loses all three races but reads all three signals correctly scores full marks for
-Level A. The results screen says this outright.
+Level 1. The results screen says this outright.
 
 `bestStreak` is recomputed from the recorded results by `longestStreak()` rather than trusted from
 live state, so the result card always agrees with what actually happened.
