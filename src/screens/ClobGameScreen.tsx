@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { ArrowRight, Bot, Check, X } from 'lucide-react';
+import { ArrowRight, Bot, Check, Lock, TimerOff, X } from 'lucide-react';
 import { Button } from '@/components/Button';
 import { ComboMeter } from '@/components/ComboMeter';
 import { DirectionButtons } from '@/components/DirectionButtons';
 import { EdgeMeter } from '@/components/EdgeMeter';
 import { KeyHint } from '@/components/KeyHint';
 import { PauseOverlay } from '@/components/PauseOverlay';
+import { RoundClock } from '@/components/RoundClock';
 import { Screen } from '@/components/Screen';
 import { Stat } from '@/components/Stat';
 import { copy } from '@/content/copy';
@@ -19,7 +20,24 @@ import { usePageVisibility } from '@/lib/usePageVisibility';
 import { useSound } from '@/state/useSound';
 import type { ClobRound, ClobRoundResult, Direction } from '@/types/game';
 
-type Stage = 'waiting' | 'armed' | 'resolved';
+/**
+ * LEVEL 1 — BEAT THE BOT: CLOB.
+ *
+ * A round runs in four phases:
+ *
+ *   A  PREPARE   "Watching the tape…" for 1200–1800ms. LONG and SHORT are disabled and muted,
+ *                and a keyboard press says "too early" rather than submitting an answer.
+ *   B  REVEAL    The signal name lands in large type with its explanation underneath, the price
+ *                holds at the quote the bot is racing for, the buttons unlock, and the decision
+ *                clock starts on this round's window (4000 / 3500 / 3000ms).
+ *   C  EXECUTE   The bot answers on its illustrative 8–25ms latency. That race is already over
+ *                before a human hand moves, which is the point — the player is being asked for
+ *                a market read, not a click speed.
+ *   D  RESULT    Direction, reaction, bot latency, who reached the quote, and why a correct
+ *                read still lost the queue. It stays on screen until "Next round" is pressed.
+ */
+
+type Stage = 'preparing' | 'armed' | 'resolved';
 
 /** A typical human reaction, used only to scale the BOT EDGE meter before the player answers. */
 const HUMAN_REFERENCE_MS = 250;
@@ -44,10 +62,11 @@ export function ClobGameScreen({
 }) {
   const reduceMotion = useReducedMotion();
   const { play, muted } = useSound();
-  const [stage, setStage] = useState<Stage>('waiting');
+  const [stage, setStage] = useState<Stage>('preparing');
   const [showEarly, setShowEarly] = useState(false);
   const [result, setResult] = useState<ClobRoundResult | null>(null);
   const signalAtRef = useRef<number | null>(null);
+  const [signalAtMs, setSignalAtMs] = useState<number | null>(null);
   const visible = usePageVisibility();
   const [paused, setPaused] = useState(false);
 
@@ -59,31 +78,35 @@ export function ClobGameScreen({
   // `play` is intentionally excluded: its identity changes with the mute setting, and
   // re-running this effect would restart the round mid-play.
   useEffect(() => {
-    setStage('waiting');
+    setStage('preparing');
     setShowEarly(false);
     setResult(null);
     signalAtRef.current = null;
+    setSignalAtMs(null);
 
     if (paused) return;
 
     const armTimer = window.setTimeout(() => {
-      signalAtRef.current = performance.now();
+      const firedAt = performance.now();
+      signalAtRef.current = firedAt;
+      setSignalAtMs(firedAt);
       setStage('armed');
       play('arm');
       vibrate('tap', !muted);
-    }, round.signalDelayMs);
+    }, round.prepareDelayMs);
 
     return () => window.clearTimeout(armTimer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [round.id, paused]);
 
+  // PHASE B closes on this round's own decision window, never earlier.
   useEffect(() => {
     if (stage !== 'armed' || paused) return;
     const timeoutTimer = window.setTimeout(() => {
       setResult(resolveClobRound(round, null, null));
       setStage('resolved');
       play('lose');
-    }, round.timeoutMs);
+    }, round.decisionWindowMs);
     return () => window.clearTimeout(timeoutTimer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage, round, paused]);
@@ -91,7 +114,8 @@ export function ClobGameScreen({
   const handleChoose = useCallback(
     (direction: Direction) => {
       if (paused) return;
-      if (stage === 'waiting') {
+      if (stage === 'preparing') {
+        // Never scored: an answer before the signal is feedback, not a submission.
         setShowEarly(true);
         return;
       }
@@ -120,8 +144,10 @@ export function ClobGameScreen({
     stage === 'resolved',
   );
 
+  const preparing = stage === 'preparing';
   const armed = stage === 'armed';
   const revealed = armed || stage === 'resolved';
+  const timedOut = stage === 'resolved' && result?.chosenDirection === null;
 
   /**
    * How far ahead the bot is, as a fraction of a typical human reaction. Before the player
@@ -149,30 +175,13 @@ export function ClobGameScreen({
         <ComboMeter streak={streak} />
       </div>
 
-      <EdgeMeter
-        kind="bot"
-        value={botEdge}
-        readout={`${formatMs(round.botReactionMs)} ${copy.edge.vs} ${
-          result?.reactionMs == null ? copy.edge.you : formatMs(result.reactionMs)
-        }`}
-      />
-
-      <div className="pricebox">
-        <span className="ticker__name">{copy.meta.instrument}</span>
-        <motion.p
-          className="pricebox__value"
-          key={String(revealed)}
-          initial={reduceMotion ? false : { scale: 0.96, opacity: 0.6 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: reduceMotion ? 0 : 0.18 }}
-        >
-          {formatUsd(shownPrice)}
-        </motion.p>
-        <span className="tiny">{copy.meta.illustrativeTag}</span>
-      </div>
+      {/* Said once, before the first round: the race is not the thing being scored. */}
+      {roundNumber === 1 && stage !== 'resolved' ? (
+        <p className="note note--brief">{copy.clobGame.speedNote}</p>
+      ) : null}
 
       <motion.div
-        className={revealed ? 'event' : 'event event--idle'}
+        className={revealed ? 'event event--armed' : 'event event--idle'}
         animate={reduceMotion || !armed ? { opacity: 1 } : { opacity: [0.4, 1], scale: [0.98, 1] }}
         transition={{ duration: 0.18 }}
         aria-live="assertive"
@@ -185,7 +194,30 @@ export function ClobGameScreen({
         </span>
       </motion.div>
 
-      {showEarly && stage === 'waiting' ? (
+      <div className={revealed ? 'pricebox pricebox--held' : 'pricebox'}>
+        <span className="ticker__name">{copy.meta.instrument}</span>
+        <motion.p
+          className="pricebox__value"
+          key={String(revealed)}
+          initial={reduceMotion ? false : { scale: 0.96, opacity: 0.6 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: reduceMotion ? 0 : 0.18 }}
+        >
+          {formatUsd(shownPrice)}
+        </motion.p>
+        {revealed ? <span className="pricebox__held">{copy.clobGame.frozenLabel}</span> : null}
+        <span className="tiny">{copy.meta.illustrativeTag}</span>
+      </div>
+
+      <EdgeMeter
+        kind="bot"
+        value={botEdge}
+        readout={`${formatMs(round.botReactionMs)} ${copy.edge.vs} ${
+          result?.reactionMs == null ? copy.edge.you : formatMs(result.reactionMs)
+        }`}
+      />
+
+      {showEarly && preparing ? (
         <p className="note" role="status">
           <strong>{copy.clobGame.earlyLabel}.</strong> {copy.clobGame.earlyBody}
         </p>
@@ -201,7 +233,13 @@ export function ClobGameScreen({
               result.wasCorrect ? 'outcome__title--won' : 'outcome__title--lost'
             }`}
           >
-            {copy.clobGame.outcomes[result.outcome]}
+            {timedOut ? (
+              <>
+                <TimerOff size={16} aria-hidden="true" /> {copy.clobGame.outcomes.noAnswer}
+              </>
+            ) : (
+              copy.clobGame.outcomes[result.outcome]
+            )}
           </span>
 
           {result.chosenDirection === null ? (
@@ -219,6 +257,7 @@ export function ClobGameScreen({
                   </strong>
                 )}
               </span>
+              <span className="panel__body">{copy.clobGame.raceAlreadyLost}</span>
               <span className="panel__body">{copy.clobGame.queueLine}</span>
 
               <div className="stat-grid" style={{ marginTop: 'var(--s2)' }}>
@@ -242,6 +281,7 @@ export function ClobGameScreen({
                 {copy.clobGame.slippageLabel} {formatUsdDelta(result.slippageUsd)} ·{' '}
                 {copy.clobGame.fillLine}
               </span>
+              <span className="tiny">{copy.clobGame.judgmentCounts}</span>
             </>
           )}
         </div>
@@ -254,6 +294,13 @@ export function ClobGameScreen({
           </Button>
         ) : (
           <>
+            {armed ? (
+              <RoundClock
+                startedAtMs={signalAtMs}
+                durationMs={round.decisionWindowMs}
+                running={armed && !paused}
+              />
+            ) : null}
             <p className="dirprompt">
               {armed ? (
                 copy.direction.prompt
@@ -263,13 +310,19 @@ export function ClobGameScreen({
                 </>
               )}
             </p>
-            <DirectionButtons disabled={false} chosen={null} onChoose={handleChoose} />
-            <KeyHint
-              hints={[
-                { keys: copy.keys.longKeys, label: copy.direction.long },
-                { keys: copy.keys.shortKeys, label: copy.direction.short },
-              ]}
-            />
+            <DirectionButtons disabled={preparing} chosen={null} onChoose={handleChoose} />
+            {preparing ? (
+              <p className="dirlock">
+                <Lock size={12} aria-hidden="true" /> {copy.clobGame.waitingNote}
+              </p>
+            ) : (
+              <KeyHint
+                hints={[
+                  { keys: copy.keys.longKeys, label: copy.direction.long },
+                  { keys: copy.keys.shortKeys, label: copy.direction.short },
+                ]}
+              />
+            )}
           </>
         )}
       </div>

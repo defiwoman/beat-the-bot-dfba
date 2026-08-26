@@ -6,8 +6,8 @@ import { clamp } from '@/lib/format';
 /**
  * The two meters that name what each venue is actually rewarding.
  *
- * BOT EDGE (Level A) fills toward the bot as its head start grows — a picture of the thing the
- * player cannot beat. PRICE EDGE (Level B) fills toward the player as the batch clears at a
+ * BOT EDGE (Level 1) fills toward the bot as its head start grows — a picture of the thing the
+ * player cannot beat. PRICE EDGE (Level 2) fills toward the player as the batch clears at a
  * better price than the continuous fill would have.
  *
  * Both are illustrative game values, and both are exposed as real progress bars so the number

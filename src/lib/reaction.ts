@@ -30,7 +30,7 @@ export function isCorrectDirection(
  * Whether the bot's order reached the quote first.
  *
  * With the bot on an illustrative 8–25ms reaction and a human typically over 200ms, this is
- * effectively always true in Level A — deliberately. The comparison is still computed rather
+ * effectively always true in Level 1 — deliberately. The comparison is still computed rather
  * than hard-coded so the rule stays honest and testable.
  */
 export function botReachedFirst(

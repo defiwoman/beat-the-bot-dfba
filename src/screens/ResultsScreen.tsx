@@ -169,18 +169,18 @@ export function ResultsScreen({
         tone: 'good' as const,
       },
       {
-        mark: 'A',
+        mark: '1',
         label: stats.queueLosses,
         value: `${score.clobQueueLosses} / ${score.clobRoundsPlayed}`,
       },
       {
-        mark: 'B',
+        mark: '2',
         label: stats.neutralized,
         value: `${score.dfbaNeutralized} / ${score.dfbaRoundsPlayed}`,
         tone: 'accent' as const,
       },
-      { mark: 'C', label: stats.makerHealth, value: `${makerHealth} / 100` },
-      { mark: 'C', label: stats.satisfaction, value: `${satisfaction} / 100` },
+      { mark: '3', label: stats.makerHealth, value: `${makerHealth} / 100` },
+      { mark: '3', label: stats.satisfaction, value: `${satisfaction} / 100` },
       {
         mark: '★',
         label: copy.results.makerLine,
@@ -259,7 +259,10 @@ export function ResultsScreen({
       <p className="disclaimer">{copy.meta.disclaimer}</p>
 
       <div className="divider" />
-      <BrandLockup size="sm" />
+      <BrandLockup size="lg" />
+      <p className="lede lede--sub" style={{ textAlign: 'center' }}>
+        {copy.meta.educationalLine}
+      </p>
       <p className="tiny" style={{ textAlign: 'center' }}>
         {copy.meta.campaign}
       </p>

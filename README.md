@@ -13,14 +13,15 @@ A 90-second, mobile-first educational browser game about how a market decides **
 > There is no backend, no database, no wallet connection and no account. Nothing you do here
 > touches a real market.
 
-**Level A** — an illustrative BTC signal lands and you pick LONG or SHORT. Your read is right, and a
-bot answering in 8–25ms still reaches the quote first, so you're filled a little worse. You cannot
-win that race, and the game tells you why rather than leaving you annoyed.
+**Level 1 — Beat the Bot: CLOB** — an illustrative BTC signal lands and you pick LONG or SHORT.
+Your read is right, and a bot answering in 8–25ms still reaches the quote first, so you're filled a
+little worse. You cannot win that race, and the game tells you why rather than leaving you annoyed.
 
-**Level B** — the same kind of signal, matched inside a ~40ms batch replayed in slow motion. Your
-order and the bot's land in the same batch, the bot arrives first, and it changes nothing.
+**Level 2 — Dual Flow Batch Auction** — the same kind of signal, matched inside a ~40ms batch
+replayed in slow motion. Your order and the bot's land in the same batch, the bot arrives first,
+and it changes nothing.
 
-**Level C — Market Maker Survival** — you swap seats and quote the market yourself, keeping
+**Level 3 — Market Maker Survival** — you swap seats and quote the market yourself, keeping
 **Capital Health**, **Trader Satisfaction** and **Market Depth** alive across three volatility
 events. In continuous mode no spread is a good spread: quote tight and you are picked off, quote
 wide and the book empties. Then you hit **ACTIVATE PRISM**, replay the same three events in batched
@@ -31,6 +32,28 @@ on screen — not Superluminal performance data.
 
 Correct reads build a streak and a combo multiplier. Speed is never scored.
 
+### Pacing
+
+Each playable round gives you room to actually read the market. It opens with **"Watching the
+tape…"** for a randomised **1200–1800ms**, with LONG and SHORT disabled and visibly muted so a
+press cannot land early. Then the signal appears in large type with its explanation underneath, the
+price holds at the quote the bot is racing for, the buttons unlock, and a countdown bar and a
+numeric readout give you a fixed window:
+
+| Round | Decision window |
+| --- | --- |
+| 1 | 4.0s |
+| 2 | 3.5s |
+| 3 | 3.0s |
+
+**Level 2 uses the same windows.** If the batch level were simply given more thinking time it
+would feel easier for a reason that has nothing to do with market structure — so the human-facing
+pacing is held equal and only the matching rule changes.
+
+The result stays on screen until you press **Next round**; nothing auto-advances. Letting a window
+run out shows **"Time expired"**, explains that the signal went unanswered, and waits for you the
+same way.
+
 It opens on a three-second title beat — a Fogo flame streak refracted by a Superluminal prism
 into a batch — then runs on **BOT EDGE** and **PRICE EDGE** meters, a combo, and synthesised
 sound you can mute. Playable entirely from the keyboard (`↑`/`↓` or `L`/`S`, `1`–`3`, `Space`,
@@ -39,8 +62,9 @@ fresh signal, so a round can never run out while you are looking away — and yo
 direction and come back to it. **Try Again** skips the opening and the tutorials and drops you
 into a live round in about half a second.
 
-No loot boxes, no streak threats, no daily-return pressure, no wallet prompts, and no countdowns
-anywhere.
+No loot boxes, no streak threats, no daily-return pressure and no wallet prompts. The only clock
+is the per-round decision window, which is announced to screen readers on whole seconds rather
+than ten times a second.
 
 **The reveal** — the final screen reports your fastest reaction, your correct calls, the queue
 losses, the batches where arriving first stopped mattering, the market you left behind, and a
@@ -149,15 +173,25 @@ subfolder, say — change `base` to that path and rebuild.
 The look is built from two opposing energies, and the contrast between them is the argument:
 
 - **HEAT** — Fogo-inspired orange, yellow and ember, with speed lines and restrained flame
-  particles. Lights **Level A** and the continuous half of Level C: the race, arrival-time priority.
+  particles. Lights **Level 1** and the continuous half of Level 3: the race, arrival-time priority.
 - **PRISM** — Superluminal-inspired blue, cyan and prism light, with slow vertical rays. Lights
-  **Level B** and the batched half of Level C: ordered light, one clearing price per auction.
+  **Level 2** and the batched half of Level 3: ordered light, one clearing price per auction.
 
 A screen never picks its own accent — the phase maps to an act theme, the shell sets `data-act`,
 and every accent token follows. On top of that sit a near-black trading-terminal ground, HUD panels
 with clipped corners, a repeating **40ms batch pulse**, and the large **40ms** typography that
-recurs as the game's signature. Both logos appear in the persistent header, on the opening screen,
-on the shareable result card and in the About panel.
+recurs as the game's signature.
+
+### Co-branding
+
+Both marks appear in the persistent header — a lockup roughly 44–52px tall on desktop and 38–44px
+on mobile, with the wordmark and the secondary line **DFBA EDUCATIONAL EXPERIENCE** beside it — and
+again as a hero lockup at the top of the opening screen, above the game's own title, under
+*"Community-built DFBA educational experience"*. Level 2 opens on a **SUPERLUMINAL PRISM MODE**
+banner subtitled *Dual Flow Batch Auction on Fogo*, and the result card and results screen both
+carry the two marks, the **SUPERLUMINAL × FOGO** wordmark and the line *"An educational experience
+explaining Superluminal's DFBA on Fogo"*, alongside the Community-built / Illustrative data / Not
+financial advice chips.
 
 > **Slow motion, always labelled.** A real 40ms window is too fast to examine by eye, so every
 > expanded batch carries the label **"40ms shown in slow motion"**. A browser animation is never
@@ -177,12 +211,12 @@ Vitest + React Testing Library.
 ```
 public/brands/       Official logo assets — used exactly as supplied, never edited
 src/
-  components/        BrandBar, GameHeader/Footer, StageProgress, MuteToggle, AmbientBackdrop,
-                     BatchPulse, BatchReplay, BigMs, ComboMeter, MetricBars, CausalChain,
-                     ShareCard, AboutPanel, Button, Meter, ErrorBoundary
+  components/        BrandBar, PrismBanner, GameHeader/Footer, StageProgress, MuteToggle,
+                     AmbientBackdrop, BatchPulse, BatchReplay, BigMs, ComboMeter, RoundClock,
+                     MetricBars, CausalChain, ShareCard, AboutPanel, Button, Meter, ErrorBoundary
   content/copy.ts    Single source of truth for every user-facing string
   content/copy.test.ts   Enforces ACCURACY_RULES.md against that copy
-  data/              Illustrative fixtures: rounds.ts (Levels A/B), marketMaker.ts (Level C)
+  data/              Illustrative fixtures: rounds.ts (Levels 1/2), marketMaker.ts (Level 3)
   lib/               Pure helpers: simulation, marketMaker, scoring, knowledge, highScore,
                      reaction, rng, format, stages, share, logos, embedImage, sound, haptics
   screens/           One component per game phase

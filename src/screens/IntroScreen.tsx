@@ -1,25 +1,34 @@
 import { Play, Timer, Layers, TrendingUp } from 'lucide-react';
 import { BigMs } from '@/components/BigMs';
-import { BrandMarks } from '@/components/BrandBar';
+import { BrandHero } from '@/components/BrandBar';
 import { Button } from '@/components/Button';
 import { Screen } from '@/components/Screen';
 import { copy } from '@/content/copy';
 
 const ACT_ICONS = [Timer, Layers, TrendingUp];
 
+/**
+ * The opening screen, in one deliberate order:
+ *
+ *   1  the Superluminal × Fogo hero lockup
+ *   2  "Community-built DFBA educational experience"
+ *   3  BEAT THE BOT
+ *   4  THE 40MS MARKET
+ *   5  the 40ms visual
+ *   6  the three-level summary
+ *   7  Start Game
+ *
+ * The co-branding comes before the game's own title, and the disclaimer is one compact line.
+ * The full version — fabricated numbers, no live data, not financial advice — is not removed:
+ * it lives in the About panel, the footer and the results screen, so it is always one glance
+ * away from a screen that no longer has to carry it beside the title.
+ */
 export function IntroScreen({ onStart }: { onStart: () => void }) {
   return (
     <Screen label={copy.intro.heading}>
-      {/* Marks only — the header pill directly above already carries the wordmark. */}
-      <div className="brandlockup">
-        <BrandMarks size="lg" />
-      </div>
-      <p className="tiny" style={{ textAlign: 'center' }}>
-        {copy.meta.campaign}
-      </p>
+      <BrandHero />
 
       <div>
-        <p className="eyebrow">{copy.intro.eyebrow}</p>
         <h1 className="title title--display">
           {copy.intro.heading}
           <span className="title__sub">{copy.intro.subheading}</span>
@@ -46,10 +55,10 @@ export function IntroScreen({ onStart }: { onStart: () => void }) {
       </ul>
 
       <p className="faint">{copy.intro.duration}</p>
-      <p className="disclaimer">{copy.meta.disclaimer}</p>
-      <p className="tiny">{copy.meta.noConnection}</p>
 
       <div className="screen__actions">
+        {/* Inside the sticky bar so the line is always readable, never under its own fade. */}
+        <p className="disclaimer disclaimer--compact">{copy.meta.compactDisclaimer}</p>
         <Button
           block
           jumbo

@@ -6,6 +6,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { GameFooter } from '@/components/GameFooter';
 import { GameHeader } from '@/components/GameHeader';
 import { OpeningSequence } from '@/components/OpeningSequence';
+import { PrismBanner } from '@/components/PrismBanner';
 import { copy } from '@/content/copy';
 import { buildClobRounds, buildDfbaRounds } from '@/data/rounds';
 import { computeScore } from '@/lib/scoring';
@@ -135,6 +136,8 @@ function GameRouter({ rounds }: { rounds: GeneratedRounds }) {
           heading={copy.dfbaTutorial.heading}
           lines={copy.dfbaTutorial.lines}
           continueLabel={copy.dfbaTutorial.continueLabel}
+          banner={<PrismBanner />}
+          footnotes={[copy.dfbaTutorial.acronymNote, copy.dfbaGame.sameClockNote]}
           showPulse
           onContinue={advance}
         />
@@ -170,13 +173,14 @@ function GameRouter({ rounds }: { rounds: GeneratedRounds }) {
           heading={copy.marketMakerTutorial.heading}
           lines={copy.marketMakerTutorial.lines}
           continueLabel={copy.marketMakerTutorial.continueLabel}
+          contextLine={copy.makerSurvival.contextLine}
           onContinue={advance}
         />
       );
 
     case 'marketMakerGame':
       /**
-       * Level C runs both of its halves inside this one phase. The continuous run, the
+       * Level 3 runs both of its halves inside this one phase. The continuous run, the
        * ACTIVATE PRISM switch and the batched run are sub-stages of the screen, which keeps
        * the ten-phase machine exactly as specified.
        */

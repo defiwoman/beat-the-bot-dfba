@@ -180,6 +180,144 @@ describe('nuances that must stay visible (ACCURACY_RULES.md section 3)', () => {
 });
 
 /**
+ * DFBA IS A DUAL FLOW BATCH AUCTION.
+ *
+ * The shipped build expanded the acronym as "discrete frequent batch auction", which is not
+ * what Superluminal's mechanism is called. Discrete batching is how orders are collected; the
+ * D is "Dual" and the two flows are maker and taker.
+ *
+ * Generic references to frequent batch auctions in the academic literature are a different
+ * thing and are deliberately left alone — see the Budish, Cramton & Shim entry in `learnMore`.
+ */
+describe('DFBA terminology', () => {
+  it('titles the Level 2 tutorial exactly "The Dual Flow Batch Auction"', () => {
+    expect(copy.dfbaTutorial.heading).toBe('The Dual Flow Batch Auction');
+  });
+
+  it('never expands DFBA as a discrete or frequent batch auction', () => {
+    const offenders = STRINGS.filter(({ text }) =>
+      /\b(discrete|discrete-frequency)\b[^.]*\bbatch auction\b/i.test(text),
+    ).map(({ path }) => path);
+    expect(offenders).toEqual([]);
+    expect(ALL_TEXT).not.toContain('discrete frequent batch auction');
+    expect(ALL_TEXT).not.toContain('discrete-frequency batch auction');
+  });
+
+  it('spells the expansion out where the acronym is first taught', () => {
+    expect(copy.meta.dfbaName).toBe('Dual Flow Batch Auction');
+    expect(copy.meta.dfbaNameWithAcronym).toBe('Dual Flow Batch Auction (DFBA)');
+    expect(copy.dfbaTutorial.acronymNote).toContain('DFBA stands for Dual Flow Batch Auction');
+  });
+
+  it('describes Prism as a Dual Flow Batch Auction running on Fogo', () => {
+    expect(copy.dfbaGame.prismBanner).toBe('SUPERLUMINAL PRISM MODE');
+    expect(copy.dfbaGame.prismBannerSub).toBe('Dual Flow Batch Auction on Fogo');
+    // The brand name is SUPERLUMINAL, never SUPERNUMINAL.
+    expect(ALL_TEXT).not.toContain('supernuminal');
+  });
+
+  it('says discrete batching is how orders are collected, not what the D means', () => {
+    const note = copy.dfbaTutorial.acronymNote.toLowerCase();
+    expect(note).toContain('maker and taker');
+    expect(note).toContain('not what the d stands for');
+  });
+
+  it('leaves the academic frequent-batch-auction literature named as it is', () => {
+    const paper = copy.learnMore.find((link) => link.label.includes('Budish'));
+    expect(paper?.description).toContain('frequent batch auctions');
+  });
+
+  it('keeps the DFBA claims hedged after the rename', () => {
+    expect(ALL_TEXT).toContain('designed to reduce');
+    expect(ALL_TEXT).toContain('removes arrival-time priority within the batch');
+    expect(ALL_TEXT).toContain('can support');
+  });
+});
+
+/**
+ * LEVEL NUMBERING.
+ *
+ * Levels are 1, 2 and 3 everywhere a player can see them. Internal identifiers such as the
+ * `clob` / `dfba` / `marketMaker` phase names are untouched: they are not user-visible.
+ */
+describe('numeric level labels', () => {
+  it('names the three levels numerically, with their mapping', () => {
+    expect(copy.levels.one).toEqual({
+      label: 'Level 1',
+      of: 'Level 1 of 3',
+      name: 'Beat the Bot: CLOB',
+    });
+    expect(copy.levels.two).toEqual({
+      label: 'Level 2',
+      of: 'Level 2 of 3',
+      name: 'Dual Flow Batch Auction',
+    });
+    expect(copy.levels.three).toEqual({
+      label: 'Level 3',
+      of: 'Level 3 of 3',
+      name: 'Market Maker Survival',
+    });
+  });
+
+  it('never shows a lettered level anywhere in the copy', () => {
+    const offenders = STRINGS.filter(({ text }) => /\blevel\s+[abc]\b/i.test(text)).map(
+      ({ path, text }) => `${path}: "${text}"`,
+    );
+    expect(offenders).toEqual([]);
+  });
+
+  it('carries the mapping into the three tutorial eyebrows', () => {
+    expect(copy.clobTutorial.eyebrow).toBe('Level 1 of 3 — Beat the Bot: CLOB');
+    expect(copy.dfbaTutorial.eyebrow).toBe('Level 2 of 3 — Dual Flow Batch Auction');
+    expect(copy.marketMakerTutorial.eyebrow).toBe('Level 3 of 3 — Market Maker Survival');
+  });
+
+  it('uses the exact three opening-screen level lines', () => {
+    expect(copy.intro.bullets).toEqual([
+      'Level 1 — read the signal, race a bot on a continuous book.',
+      'Level 2 — same signals, matched inside a 40ms batch.',
+      'Level 3 — take the other seat and keep a market alive.',
+    ]);
+  });
+
+  it('starts the game at Level 1 in its accessible hint', () => {
+    expect(copy.intro.startHint).toBe('Start Game — begin at Level 1');
+  });
+});
+
+/** The opening screen carries one line; the full version stays reachable elsewhere. */
+describe('opening screen disclaimer', () => {
+  it('offers one compact line for the opening screen', () => {
+    expect(copy.meta.compactDisclaimer).toBe(
+      'Illustrative educational game — no wallet, no funds and no live trading.',
+    );
+  });
+
+  it('keeps the full disclaimer intact for the About panel, footer and results screen', () => {
+    const full = copy.meta.disclaimer.toLowerCase();
+    expect(full).toContain('illustrative');
+    expect(full).toContain('not live superluminal data');
+    expect(full).toContain('not financial advice');
+  });
+});
+
+/** What the result card has to say about itself once it leaves the game as an image. */
+describe('result card provenance', () => {
+  it('names the game and what it explains', () => {
+    expect(copy.share.title).toBe('Beat the Bot: The 40ms Market');
+    expect(copy.share.subtitle).toBe(
+      'An educational experience explaining Superluminal’s DFBA on Fogo',
+    );
+  });
+
+  it('keeps the three provenance chips', () => {
+    expect(copy.brands.communityTag).toBe('Community-built');
+    expect(copy.brands.illustrativeTag).toBe('Illustrative data');
+    expect(copy.brands.adviceTag).toBe('Not financial advice');
+  });
+});
+
+/**
  * The thirteen market-structure claims this game exists to teach.
  *
  * Each one is asserted against the copy that actually ships, so a future edit that quietly drops

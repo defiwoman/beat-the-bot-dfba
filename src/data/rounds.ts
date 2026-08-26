@@ -27,18 +27,43 @@ export const BASE_PRICE = 100_000;
 
 /* --------------------------------------------------------------- ranges */
 
-/** The signal appears somewhere in this window, so the player cannot pre-fire. */
-export const SIGNAL_DELAY_MS = { min: 600, max: 1500 } as const;
+/**
+ * PHASE A — PREPARE.
+ *
+ * "Watching the tape…" runs for a randomised slice of this window before the signal appears,
+ * so the player cannot pre-fire but always gets long enough to settle on the controls. LONG
+ * and SHORT are disabled for the whole phase.
+ */
+export const PREPARE_DELAY_MS = { min: 1200, max: 1800 } as const;
 
 /**
  * The fictional low-latency bot's illustrative reaction. A human cannot reach this, which is
- * the whole point of Level A — the player is not meant to win by clicking faster.
+ * the whole point of Level 1 — the player is not meant to win by clicking faster. The bot has
+ * already won the race before a hand can move; the player's job is to read the signal.
  */
 export const BOT_REACTION_MS = { min: 8, max: 25 } as const;
 
 export const SLIPPAGE_USD = { min: 9, max: 38 } as const;
 export const SIGNAL_MOVE_USD = { min: 70, max: 180 } as const;
-export const ROUND_TIMEOUT_MS = 2600;
+
+/**
+ * PHASE B — SIGNAL REVEAL.
+ *
+ * How long the player has to answer once the signal is on screen, indexed by round. The window
+ * tightens as the level goes on, but never below three seconds — enough to read a headline and
+ * decide, which is the skill this game actually measures.
+ *
+ * Level 1 and Level 2 read from this same table on purpose. Giving the batch level more time
+ * would make it feel easier for the wrong reason; the levels must differ only in how the venue
+ * matches, so the human-facing decision time is held equal.
+ */
+export const DECISION_WINDOW_MS = [4000, 3500, 3000] as const;
+
+/** The decision window for a zero-based round index, clamped to the last configured window. */
+export function decisionWindowMsForRound(index: number): number {
+  const clamped = Math.min(Math.max(index, 0), DECISION_WINDOW_MS.length - 1);
+  return DECISION_WINDOW_MS[clamped];
+}
 
 /* -------------------------------------------------------------- signals */
 
@@ -147,7 +172,7 @@ export function drawSignals(rng: Rng, count: number): MarketSignal[] {
   });
 }
 
-/* ------------------------------------------------------ LEVEL A builders */
+/* ------------------------------------------------------ LEVEL 1 builders */
 
 export function buildClobRounds(rng: Rng = Math.random): ClobRound[] {
   const signals = drawSignals(rng, ROUNDS_PER_LEVEL);
@@ -158,14 +183,14 @@ export function buildClobRounds(rng: Rng = Math.random): ClobRound[] {
     signal,
     basePrice: Math.round(between(rng, BASE_PRICE - 700, BASE_PRICE + 700)),
     signalMoveUsd: intBetween(rng, SIGNAL_MOVE_USD.min, SIGNAL_MOVE_USD.max),
-    signalDelayMs: intBetween(rng, SIGNAL_DELAY_MS.min, SIGNAL_DELAY_MS.max),
+    prepareDelayMs: intBetween(rng, PREPARE_DELAY_MS.min, PREPARE_DELAY_MS.max),
+    decisionWindowMs: decisionWindowMsForRound(index),
     botReactionMs: intBetween(rng, BOT_REACTION_MS.min, BOT_REACTION_MS.max),
     slippageUsd: intBetween(rng, SLIPPAGE_USD.min, SLIPPAGE_USD.max),
-    timeoutMs: ROUND_TIMEOUT_MS,
   }));
 }
 
-/* ------------------------------------------------------ LEVEL B builders */
+/* ------------------------------------------------------ LEVEL 2 builders */
 
 const MAKER_LABELS = ['Maker A', 'Maker B', 'Maker C', 'Maker D'] as const;
 
@@ -226,7 +251,9 @@ export function buildDfbaRounds(rng: Rng = Math.random): DfbaRound[] {
       makerOrders,
       priceEdgeUsd,
       maxPriceEdgeUsd: MAX_PRICE_EDGE_USD,
-      timeoutMs: ROUND_TIMEOUT_MS,
+      // Identical pacing to Level 1: the levels differ in matching rule, never in thinking time.
+      prepareDelayMs: intBetween(rng, PREPARE_DELAY_MS.min, PREPARE_DELAY_MS.max),
+      decisionWindowMs: decisionWindowMsForRound(index),
     };
   });
 }

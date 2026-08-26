@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Beat the Bot: The 40ms Market — an educational browser game about continuous limit order books and discrete frequent batch auctions.",
+  "description": "Beat the Bot: The 40ms Market — an educational browser game about continuous limit order books and the Dual Flow Batch Auction (DFBA).",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

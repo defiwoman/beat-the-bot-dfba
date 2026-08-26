@@ -16,8 +16,19 @@ export const copy = {
     subtitle: 'The 40ms Market',
     tagline: 'A 90-second game about how a market decides who trades first.',
     campaign: 'A community-built educational game for the Superluminal x Fogo DFBA campaign.',
+    /** DFBA is a Dual Flow Batch Auction. "Discrete" is not what the D stands for. */
+    dfbaName: 'Dual Flow Batch Auction',
+    dfbaNameWithAcronym: 'Dual Flow Batch Auction (DFBA)',
+    educationalLine: 'An educational experience explaining Superluminal’s DFBA on Fogo',
     disclaimer:
       'Every number in this game is illustrative and made up for teaching. This is not live Superluminal data, not measured market statistics, and not financial advice.',
+    /**
+     * The one disclaimer line the opening screen carries. The full version above stays on the
+     * About panel, the footer and the results screen, so nothing is removed — only moved off
+     * the screen that has to compete with the title and the branding.
+     */
+    compactDisclaimer:
+      'Illustrative educational game — no wallet, no funds and no live trading.',
     shortDisclaimer: 'Illustrative numbers only. Not live data.',
     noConnection:
       'No wallet, no funds, no order routing, no backend.',
@@ -32,9 +43,27 @@ export const copy = {
   brands: {
     heading: 'Campaign partners',
     lockup: 'Superluminal × Fogo',
+    /** The secondary line under the header lockup. */
+    tagline: 'DFBA educational experience',
+    /** The line directly under the opening screen's hero lockup. */
+    heroKicker: 'Community-built DFBA educational experience',
     fogoAlt: 'Fogo logo',
     superluminalAlt: 'Superluminal logo',
     note: 'Logos are shown as supplied by their owners.',
+    /** Short provenance chips reprinted on the result card. */
+    communityTag: 'Community-built',
+    illustrativeTag: 'Illustrative data',
+    adviceTag: 'Not financial advice',
+  },
+
+  /**
+   * The three levels, named once so every eyebrow, hint and label reads from the same place.
+   * Numeric, never lettered: "LEVEL 1 OF 3", not "LEVEL A OF 3".
+   */
+  levels: {
+    one: { label: 'Level 1', of: 'Level 1 of 3', name: 'Beat the Bot: CLOB' },
+    two: { label: 'Level 2', of: 'Level 2 of 3', name: 'Dual Flow Batch Auction' },
+    three: { label: 'Level 3', of: 'Level 3 of 3', name: 'Market Maker Survival' },
   },
 
   /** The 40ms motif. Used anywhere a batch window is drawn. */
@@ -126,7 +155,7 @@ export const copy = {
     teachesHeading: 'What it teaches',
     teaches: [
       'A CLOB matches continuously and uses arrival-time priority, so a small latency advantage can determine who reaches a stale or attractive quote.',
-      'A DFBA collects orders into a short 40ms batch and separates maker and taker flows.',
+      'A DFBA — a Dual Flow Batch Auction — collects orders into a short 40ms batch and separates maker and taker flows.',
       'Each batch runs a bid auction and an ask auction, and each has its own uniform clearing price.',
       'Arrival time inside the same batch does not determine matching priority, while price priority and size still matter.',
       'Reducing speed-based pick-off risk can support market makers quoting tighter spreads, which can benefit natural-flow traders.',
@@ -146,10 +175,12 @@ export const copy = {
 
   share: {
     heading: 'Your result card',
-    title: 'Beat the Bot — the 40ms market',
+    title: 'Beat the Bot: The 40ms Market',
+    /** What the card says the game is, for anyone who only ever sees the image. */
+    subtitle: 'An educational experience explaining Superluminal’s DFBA on Fogo',
     /** The two lines printed on the card itself, and carried into every share target. */
     boast: 'I tried to Beat the Bot.',
-    lesson: 'CLOB rewarded speed. DFBA changed the rules.',
+    lesson: 'CLOB rewarded speed. The Dual Flow Batch Auction changed the rules.',
 
     scoreLabel: 'Score',
     knowledgeLabel: 'DFBA Knowledge',
@@ -182,23 +213,22 @@ export const copy = {
   },
 
   intro: {
-    eyebrow: 'Educational game',
     heading: 'Beat the Bot',
     subheading: 'The 40ms Market',
     lede: 'A bot is about to race you for the same price. You will lose. That is the lesson.',
     bullets: [
-      'Level A — read the signal, race a bot on a continuous book.',
-      'Level B — same signals, matched inside a 40ms batch.',
-      'Level C — take the other seat and keep a market alive.',
+      'Level 1 — read the signal, race a bot on a continuous book.',
+      'Level 2 — same signals, matched inside a 40ms batch.',
+      'Level 3 — take the other seat and keep a market alive.',
     ],
     duration: 'About 90 seconds.',
     startLabel: 'Start Game',
     /** Accessible names must contain the visible label (WCAG 2.5.3 Label in Name). */
-    startHint: 'Start Game — begin at Level A',
+    startHint: 'Start Game — begin at Level 1',
   },
 
   clobTutorial: {
-    eyebrow: 'Level A of 3',
+    eyebrow: 'Level 1 of 3 — Beat the Bot: CLOB',
     heading: 'The continuous order book',
     lines: [
       {
@@ -223,7 +253,24 @@ export const copy = {
     short: 'SHORT',
     longHint: 'LONG — buy, betting the price goes up',
     shortHint: 'SHORT — sell, betting the price goes down',
-    prompt: 'Read the signal. Long or short?',
+    prompt: 'Read the signal — choose LONG or SHORT',
+  },
+
+  /**
+   * The decision clock both levels share.
+   *
+   * Level 1 and Level 2 run identical preparation delays and identical decision windows, so
+   * the only thing that differs between them is the matching rule. The countdown is drawn as a
+   * bar and printed as a number; the screen-reader announcement is throttled to whole seconds
+   * rather than firing ten times a second.
+   */
+  clock: {
+    barLabel: 'Time left to answer',
+    remainingSuffix: 's remaining',
+    /** "{seconds} seconds remaining" — the polite announcement, once per whole second. */
+    announce: '{seconds} seconds left to answer',
+    announceOne: '1 second left to answer',
+    lowLabel: 'Almost out of time',
   },
 
   /** Streak and combo feedback, shared by both levels. */
@@ -239,37 +286,51 @@ export const copy = {
   },
 
   clobGame: {
-    eyebrow: 'Level A — fastest wins',
+    eyebrow: 'Level 1 — fastest wins',
     heading: 'Beat the bot',
     instruction: 'Watch the price. When the signal lands, pick your direction.',
     waiting: 'Watching the tape…',
     waitingHint: 'Watching the tape — wait for the signal before you choose',
+    /** Shown under the disabled buttons during the preparation phase. */
+    waitingNote: 'LONG and SHORT unlock the moment the signal lands.',
     armed: 'Signal in. Choose.',
     earlyLabel: 'Too early',
     earlyBody: 'Nothing has moved yet. Wait for the signal.',
+    /**
+     * Shown once, before round 1. The point of Level 1 is not clicking speed, and saying so up
+     * front stops the player reading a fair loss as a broken interface.
+     */
+    speedNote:
+      'You cannot beat a 10ms bot by clicking faster. Read the signal and prove your market judgment was right.',
     roundLabel: 'Round',
     priceLabel: 'BTC price',
+    frozenLabel: 'Price held at the signal',
     targetLabel: 'Attractive quote',
     yourFillLabel: 'Your fill',
     slippageLabel: 'Slippage',
     outcomes: {
       correctButOutpaced: 'Correct read. Bot got there first.',
       wrongDirection: 'Wrong read — and the bot was first anyway.',
-      noAnswer: 'No answer. The quote was gone.',
+      noAnswer: 'Time expired',
     },
     /** Requirement: when the read is right, say so explicitly before explaining the loss. */
     analysisCorrect: 'Your analysis was correct.',
     analysisWrong: 'The signal pointed the other way.',
     queueLine:
       'The bot reached the attractive quote first because a continuous book matches on arrival-time priority.',
+    /** The two ideas kept apart: the race was already over, the read was still yours to make. */
+    raceAlreadyLost: 'The bot already won the speed race before your hand could move.',
+    judgmentCounts:
+      'Reading the signal correctly is what this level scores. It did not buy you queue priority, and no click could have.',
     fillLine: 'You were filled at a slightly worse price. Illustrative game data.',
-    noAnswerLine: 'The round closed before you answered, so there was nothing to route.',
+    noAnswerLine:
+      'The decision window closed with no answer, so this signal went unanswered and nothing was routed. The next round opens a fresh one.',
     nextLabel: 'Next round',
     finishLabel: 'See what happened',
   },
 
   clobReveal: {
-    eyebrow: 'Level A — what just happened',
+    eyebrow: 'Level 1 — what just happened',
     /** The exact reveal line the level builds to. */
     heading: 'You read the market correctly. You lost the queue.',
     lede: 'A typical human reaction is around 200 to 350 milliseconds. That is normal. The bot did not need a better read — only an earlier arrival.',
@@ -290,8 +351,11 @@ export const copy = {
   },
 
   dfbaTutorial: {
-    eyebrow: 'Level B of 3',
-    heading: 'The discrete frequent batch auction',
+    eyebrow: 'Level 2 of 3 — Dual Flow Batch Auction',
+    /** DFBA is a Dual Flow Batch Auction. The D is not "discrete". */
+    heading: 'The Dual Flow Batch Auction',
+    acronymNote:
+      'DFBA stands for Dual Flow Batch Auction. The two flows are maker and taker, and each batch runs its own auction for each of them. Batching in discrete windows is how it collects orders, not what the D stands for.',
     lines: [
       {
         title: 'Orders collect into a short batch',
@@ -299,7 +363,7 @@ export const copy = {
       },
       {
         title: 'Maker and taker flows are separated',
-        body: 'Resting maker liquidity and incoming taker demand are handled as separate flows.',
+        body: 'Resting maker liquidity and incoming taker demand are the two flows the design is named for, and they are handled separately.',
       },
       {
         title: 'Two auctions, two prices',
@@ -310,9 +374,15 @@ export const copy = {
   },
 
   dfbaGame: {
-    eyebrow: 'Level B — prism mode',
+    eyebrow: 'Level 2 — prism mode',
     heading: 'Same signal, inside a batch',
     instruction: 'Read the signal and choose. Arriving early inside the batch does not help.',
+    /** The strongest Superluminal-branded moment in the game. */
+    prismBanner: 'SUPERLUMINAL PRISM MODE',
+    prismBannerSub: 'Dual Flow Batch Auction on Fogo',
+    /** Level 2 gets the same clock as Level 1: the structure changes, the time does not. */
+    sameClockNote:
+      'Same preparation time and same decision window as Level 1. Only the matching rule has changed.',
     slowedNote:
       'The modelled batch is 40ms. The window on screen is slowed down so you can actually see it.',
     replayHeading: 'Batch replay',
@@ -328,7 +398,7 @@ export const copy = {
     outcomes: {
       filledSameprice: 'Correct read. Same clearing price as the bot.',
       wrongDirectionFilled: 'Wrong read — but arrival time still gave the bot no edge.',
-      noAnswer: 'No answer. Your order never joined the batch.',
+      noAnswer: 'Time expired',
     },
     /** Requirement 8: name the arrival gap and say it created no priority. */
     noPriorityLine:
@@ -341,7 +411,8 @@ export const copy = {
     /** Requirement 9: never imply one universal price across both auctions. */
     otherAuctionNote:
       'The other auction cleared at its own separate price in the same batch.',
-    noAnswerLine: 'Nothing submitted, so nothing routed into an auction.',
+    noAnswerLine:
+      'The decision window closed with no answer, so nothing joined the batch and nothing routed into an auction. The next round opens a fresh one.',
     clearingPriceLabel: 'Clearing price',
     thisAuctionLabel: 'Your auction',
     otherAuctionLabel: 'Other auction',
@@ -351,7 +422,7 @@ export const copy = {
 
   /** The comparison reveal shown after both levels. */
   comparison: {
-    eyebrow: 'Level A vs Level B',
+    eyebrow: 'Level 1 vs Level 2',
     heading: 'Same reads. Different rules.',
     clobColumn: 'Continuous book',
     dfbaColumn: 'Batch auction',
@@ -384,7 +455,7 @@ export const copy = {
   },
 
   dfbaReveal: {
-    eyebrow: 'Level B — inside the batch',
+    eyebrow: 'Level 2 — inside the batch',
     heading: 'Two auctions, two clearing prices',
     lede: 'The window closed and the venue ran two auctions. Each has its own uniform clearing price.',
     bidAuctionLabel: 'Bid auction',
@@ -410,7 +481,7 @@ export const copy = {
   },
 
   marketMakerTutorial: {
-    eyebrow: 'Level C of 3',
+    eyebrow: 'Level 3 of 3 — Market Maker Survival',
     heading: 'Market Maker Survival',
     lines: [
       {
@@ -429,9 +500,11 @@ export const copy = {
     continueLabel: 'Start quoting',
   },
 
-  /** LEVEL C — Market Maker Survival. Every bps value here is an illustrative game mechanic. */
+  /** LEVEL 3 — Market Maker Survival. Every bps value here is an illustrative game mechanic. */
   makerSurvival: {
-    eyebrow: 'Level C — Market Maker Survival',
+    eyebrow: 'Level 3 — Market Maker Survival',
+    /** Context, not a claim that this screen is a Superluminal market-making interface. */
+    contextLine: 'Market structure through the market maker’s eyes',
     illustrativeBadge: 'Illustrative game mechanics — not Superluminal performance data',
     illustrativeNote:
       'Every basis-point value, metric and outcome in this level is an invented game mechanic chosen for teaching. None of it is Superluminal performance data, none of it is a measured market statistic, and this level does not reproduce live results from any venue.',
@@ -482,7 +555,7 @@ export const copy = {
     },
 
     clobVerdict: {
-      eyebrow: 'Level C — part 1 result',
+      eyebrow: 'Level 3 — part 1 result',
       headline: 'You widened the spread to survive. Every trader paid for the speed race.',
       body: 'That is the trap of the speed race. Protecting your capital and giving traders a good price pull in opposite directions, and something loses either way.',
       chainHeading: 'How the pressure builds',
@@ -498,7 +571,7 @@ export const copy = {
     },
 
     prismVerdict: {
-      eyebrow: 'Level C — part 2 result',
+      eyebrow: 'Level 3 — part 2 result',
       headline: 'Batching changed what a tight quote costs you.',
       body: 'Arrival time inside a batch no longer decides who reaches your quote first, so a tighter spread stops bleeding capital on every move. A design that is meant to reduce speed-based pick-off risk can support tighter quoting more sustainably. It does not set the risk to zero, and it does not guarantee the market maker earns a profit.',
       chainHeading: 'How the pressure eases',
@@ -531,7 +604,7 @@ export const copy = {
     outOf: 'out of 100',
     gradeLabel: 'Rank',
     notSkill:
-      'This score rewards reading the signal, not clicking fast. Level A was never winnable on speed, so losing every race there costs you nothing.',
+      'This score rewards reading the signal, not clicking fast. Level 1 was never winnable on speed, so losing every race there costs you nothing.',
     breakdownHeading: 'Breakdown',
     clobLine: 'Correct reads on the continuous book',
     dfbaLine: 'Correct reads inside the batch',
@@ -551,7 +624,7 @@ export const copy = {
       knowledgeHint:
         'How much of the batch mechanism this run demonstrated: reads inside the batch, rounds where arriving first stopped mattering, and the market you left behind.',
       queueLossHint:
-        'Losing the queue in Level A is the designed outcome, not a mistake. It is counted here because it is the thing being demonstrated.',
+        'Losing the queue in Level 1 is the designed outcome, not a mistake. It is counted here because it is the thing being demonstrated.',
       none: '—',
     },
 
@@ -583,7 +656,7 @@ export const copy = {
       },
       {
         title: 'A batch changes the question',
-        body: 'A DFBA collects orders into a short 40ms batch, separates maker and taker flows, and runs a bid auction and an ask auction, each with its own uniform clearing price. It removes arrival-time priority within the batch, while price priority and size still matter.',
+        body: 'A DFBA — a Dual Flow Batch Auction — collects orders into a short 40ms batch, separates maker and taker flows, and runs a bid auction and an ask auction, each with its own uniform clearing price. It removes arrival-time priority within the batch, while price priority and size still matter.',
       },
       {
         title: 'Less speed risk can support tighter quotes',
@@ -630,7 +703,7 @@ export const copy = {
       'Better prices receive priority.',
       'At the same price, allocation may be pro-rata by order size.',
       'Reduced adverse selection can support tighter spreads and deeper liquidity.',
-      'A DFBA changes the rules of matching. It is not simply a faster CLOB.',
+      'A Dual Flow Batch Auction changes the rules of matching. It is not simply a faster CLOB.',
     ],
     fogoHeading: 'Where the 40ms comes from',
     fogoBody:
@@ -650,7 +723,7 @@ export const copy = {
       url: 'https://www.fogo.io/',
     },
     {
-      label: 'Dual-flow batch auction',
+      label: 'Dual Flow Batch Auction (DFBA)',
       description: 'Jump Crypto’s write-up of the maker/taker split and the two auctions.',
       url: 'https://jumpcrypto.com/resources/dual-flow-batch-auction',
     },
