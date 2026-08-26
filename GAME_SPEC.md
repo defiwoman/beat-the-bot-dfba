@@ -552,10 +552,10 @@ src/
 The look is built on one idea: **two opposing energies**, and the contrast between them *is* the
 argument the game is making.
 
-| | HEAT — Fogo-inspired | PRISM — Superluminal-inspired |
+| | HEAT — Fogo | NEON — Superluminal |
 | --- | --- | --- |
-| Palette | orange, yellow, ember red | blue, cyan, prism violet |
-| Stands for | the continuous market, the race, arrival-time priority | the batch auction, ordered light, one clearing price per auction |
+| Palette | orange, amber, ember red | yellow-lime sampled from the mark (`#EBFF99`, hue 72°) |
+| Stands for | the continuous market, the race, arrival-time priority, the bot | the batch auction, ordered light, one clearing price per auction — and the primary interface colour everywhere else |
 | Ambient motion | horizontal speed lines + restrained embers | slow vertical prism rays |
 | Lights | Act 1 | Acts 2 and 3, plus the opening and the result |
 

@@ -74,8 +74,11 @@ describe('landing screen', () => {
   it('shows the title, the subtitle and one compact disclaimer line', async () => {
     await renderGame();
 
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(copy.intro.heading);
-    expect(screen.getByText(copy.intro.subheading)).toBeInTheDocument();
+    const title = screen.getByRole('heading', { level: 1 });
+    expect(title).toHaveTextContent(copy.intro.heading);
+    // The subheading is split across two spans so each brand owns half of it; the heading
+    // still reads as one line.
+    expect(title).toHaveTextContent(copy.intro.subheading);
 
     const intro = screen.getByRole('region', { name: copy.intro.heading });
     expect(within(intro).getByText(copy.meta.compactDisclaimer)).toBeInTheDocument();
@@ -100,6 +103,19 @@ describe('landing screen', () => {
     expect(screen.getAllByText(copy.brands.lockup).length).toBeGreaterThan(0);
     expect(screen.getByText(copy.brands.heroKicker)).toBeInTheDocument();
     expect(screen.getByText(copy.brands.tagline)).toBeInTheDocument();
+  });
+
+  it('splits the subtitle so Fogo owns the speed half and Superluminal the market half', async () => {
+    await renderGame();
+
+    const speed = document.querySelector('.title__speed');
+    const market = document.querySelector('.title__market');
+
+    expect(speed).not.toBeNull();
+    expect(market).not.toBeNull();
+    // Together they are exactly the copy string — the split is a colour treatment, not a rewrite.
+    expect(`${speed?.textContent} ${market?.textContent}`).toBe(copy.intro.subheading);
+    expect(market?.textContent).toBe('Market');
   });
 
   it('names the three levels numerically', async () => {
