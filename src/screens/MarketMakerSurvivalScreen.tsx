@@ -374,22 +374,22 @@ function Comparison({ clob, prism }: { clob: MakerMetrics; prism: MakerMetrics }
   ];
 
   return (
-    <section className="compare" aria-label={strings.comparisonHeading}>
-      <span className="compare__head" style={{ textAlign: 'left' }}>
+    <section className="mmcompare" aria-label={strings.comparisonHeading}>
+      <span className="mmcompare__head" style={{ textAlign: 'left' }}>
         {strings.comparisonHeading}
       </span>
-      <span className="compare__head">{strings.clobColumn}</span>
-      <span className="compare__head">{strings.prismColumn}</span>
+      <span className="mmcompare__head">{strings.clobColumn}</span>
+      <span className="mmcompare__head">{strings.prismColumn}</span>
 
       {rows.map((row) => {
         const before = Math.round(clob[row.id]);
         const after = Math.round(prism[row.id]);
         return (
           <Fragment key={row.id}>
-            <span className="compare__name">{row.label}</span>
-            <span className="compare__value compare__value--worse">{before}</span>
+            <span className="mmcompare__name">{row.label}</span>
+            <span className="mmcompare__value mmcompare__value--worse">{before}</span>
             <span
-              className={`compare__value ${after >= before ? 'compare__value--better' : 'compare__value--worse'}`}
+              className={`mmcompare__value ${after >= before ? 'mmcompare__value--better' : 'mmcompare__value--worse'}`}
             >
               {after}
             </span>
@@ -397,15 +397,15 @@ function Comparison({ clob, prism }: { clob: MakerMetrics; prism: MakerMetrics }
         );
       })}
 
-      <span className="compare__name">
+      <span className="mmcompare__name">
         <Zap size={12} aria-hidden="true" /> {strings.overallLabel}
       </span>
-      <span className="compare__value compare__value--worse">{Math.round(marketQuality(clob))}</span>
+      <span className="mmcompare__value mmcompare__value--worse">{Math.round(marketQuality(clob))}</span>
       <span
-        className={`compare__value ${
+        className={`mmcompare__value ${
           marketQuality(prism) >= marketQuality(clob)
-            ? 'compare__value--better'
-            : 'compare__value--worse'
+            ? 'mmcompare__value--better'
+            : 'mmcompare__value--worse'
         }`}
       >
         {Math.round(marketQuality(prism))}

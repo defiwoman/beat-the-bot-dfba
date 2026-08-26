@@ -57,8 +57,12 @@
     -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
 
-  --step--2: clamp(0.68rem, 0.66rem + 0.12vw, 0.74rem);
-  --step--1: clamp(0.78rem, 0.75rem + 0.18vw, 0.86rem);
+  /**
+   * The smallest step is the floor for real prose — the footer disclaimers and the
+   * illustrative-numbers lines live here — so it never renders below 12px on any viewport.
+   */
+  --step--2: clamp(0.75rem, 0.73rem + 0.12vw, 0.82rem);
+  --step--1: clamp(0.82rem, 0.79rem + 0.18vw, 0.9rem);
   --step-0: clamp(0.94rem, 0.9rem + 0.22vw, 1.04rem);
   --step-1: clamp(1.1rem, 1.02rem + 0.4vw, 1.3rem);
   --step-2: clamp(1.35rem, 1.18rem + 0.8vw, 1.8rem);

@@ -366,7 +366,7 @@ button {
 }
 
 .stage__label {
-  font-size: 9px;
+  font-size: 10px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   font-weight: 700;
@@ -891,7 +891,7 @@ button {
 
 .replay__label {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 10px;
   white-space: nowrap;
   color: var(--ink-2);
 }
@@ -1807,7 +1807,7 @@ button {
   color: var(--accent-core);
 }
 
-.compare {
+.mmcompare {
   display: grid;
   grid-template-columns: 1fr auto auto;
   gap: var(--s2) var(--s3);
@@ -1818,7 +1818,7 @@ button {
   background: linear-gradient(165deg, var(--panel-2), var(--panel));
 }
 
-.compare__head {
+.mmcompare__head {
   font-size: var(--step--2);
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1827,13 +1827,13 @@ button {
   text-align: right;
 }
 
-.compare__name {
+.mmcompare__name {
   font-size: var(--step--1);
   color: var(--ink-2);
   min-width: 0;
 }
 
-.compare__value {
+.mmcompare__value {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-weight: 800;
@@ -1841,11 +1841,11 @@ button {
   min-width: 2.6rem;
 }
 
-.compare__value--better {
+.mmcompare__value--better {
   color: var(--good);
 }
 
-.compare__value--worse {
+.mmcompare__value--worse {
   color: var(--ink-3);
 }
 

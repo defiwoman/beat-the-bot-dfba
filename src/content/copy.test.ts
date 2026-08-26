@@ -178,3 +178,52 @@ describe('nuances that must stay visible (ACCURACY_RULES.md section 3)', () => {
     expect(copy.meta.campaign.toLowerCase()).toContain('educational');
   });
 });
+
+/**
+ * The thirteen market-structure claims this game exists to teach.
+ *
+ * Each one is asserted against the copy that actually ships, so a future edit that quietly drops
+ * a mechanism fails the build rather than silently shipping a less accurate lesson.
+ */
+describe('required market-structure teaching (release audit)', () => {
+  const REQUIRED: Array<[claim: string, needle: string]> = [
+    ['CLOBs match continuously', 'matches continuously'],
+    ['arrival time can determine queue position', 'arrival-time priority'],
+    ['small latency advantages can matter', 'latency advantage'],
+    ['a DFBA collects orders into a batch', 'collects orders into'],
+    ['maker and taker flows are segregated', 'separate maker and taker'],
+    ['there are two auctions', 'two auctions'],
+    ['bid auction: maker buys vs taker sells', 'bid auction matches maker buys against taker sells'],
+    ['ask auction: maker sells vs taker buys', 'ask auction matches maker sells against taker buys'],
+    ['each auction has its own uniform clearing price', 'its own uniform clearing price'],
+    ['arrival inside the batch gives no priority', 'does not provide matching priority'],
+    ['price priority remains relevant', 'price priority'],
+    ['equal-price allocation may be pro-rata by size', 'pro-rata by order size'],
+    ['reduced adverse selection supports tighter quoting', 'reduced adverse selection'],
+  ];
+
+  for (const [claim, needle] of REQUIRED) {
+    it(`teaches that ${claim}`, () => {
+      expect(ALL_TEXT).toContain(needle.toLowerCase());
+    });
+  }
+
+  it('routes each direction to the correct auction in the played rounds, not only in the explainer', () => {
+    // A taker buy lifts the ask; a taker sell hits the bid.
+    expect(copy.dfbaGame.routedLong.toLowerCase()).toContain('ask auction');
+    expect(copy.dfbaGame.routedLong.toLowerCase()).toContain('maker sells');
+    expect(copy.dfbaGame.routedShort.toLowerCase()).toContain('bid auction');
+    expect(copy.dfbaGame.routedShort.toLowerCase()).toContain('maker buys');
+  });
+
+  it('keeps the pro-rata claim hedged, because equal-price allocation varies by venue', () => {
+    const rule = copy.howPrism.rules.find((line) => line.includes('pro-rata'));
+    expect(rule).toBeDefined();
+    expect(rule).toContain('may be');
+  });
+
+  it('says a DFBA changes the rules rather than being a faster CLOB', () => {
+    const rules = copy.howPrism.rules.join(' ').toLowerCase();
+    expect(rules).toContain('not simply a faster clob');
+  });
+});
