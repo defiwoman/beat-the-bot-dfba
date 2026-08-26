@@ -168,19 +168,36 @@ Then drag the `dist` folder onto Netlify's **Deploys** page.
 If you ever host this somewhere that is *not* the root of a domain — a `/games/beat-the-bot/`
 subfolder, say — change `base` to that path and rebuild.
 
-## Visual identity — "the heat and the prism"
+## Visual identity — "the heat and the neon"
 
 The look is built from two opposing energies, and the contrast between them is the argument:
 
 - **HEAT** — Fogo-inspired orange, yellow and ember, with speed lines and restrained flame
   particles. Lights **Level 1** and the continuous half of Level 3: the race, arrival-time priority.
-- **PRISM** — Superluminal-inspired blue, cyan and prism light, with slow vertical rays. Lights
-  **Level 2** and the batched half of Level 3: ordered light, one clearing price per auction.
+- **NEON** — Superluminal's own yellow-lime, sampled straight from the mark in
+  [`public/brands`](./public/brands): its field is `#EBFF99`, `hsl(72 100% 80%)`, and the whole
+  ramp is built on that hue. This is the **primary interface colour** — main buttons, active
+  progress, player markers, focus states, important figures, the DFBA and Prism identity, the
+  batch visualisations and the price edge. It lights **Level 2** and the batched half of
+  Level 3: ordered light, one clearing price per auction.
+
+Semantics stay separate from brand. Emerald means "your read was correct", red means a loss or
+a wrong direction, amber means the countdown is nearly out. None of them is the yellow-lime
+brand neon, so an approving message never reads as a piece of branding — a rule the theme tests
+enforce by hue distance rather than by eye. Dark ink (`--on-neon`) is always used on neon
+surfaces; white on neon lands around 1.3:1 and is never permitted.
 
 A screen never picks its own accent — the phase maps to an act theme, the shell sets `data-act`,
-and every accent token follows. On top of that sit a near-black trading-terminal ground, HUD panels
-with clipped corners, a repeating **40ms batch pulse**, and the large **40ms** typography that
-recurs as the game's signature.
+and every accent token follows. On top of that sits a near-black ground with a green undertone,
+HUD panels with clipped corners, a repeating **40ms batch pulse**, and the large **40ms**
+typography that recurs as the game's signature.
+
+Every colour lives in [`src/styles/tokens.css`](./src/styles/tokens.css) as a semantic token —
+`--primary`, `--primary-hover`, `--bot-accent`, `--success`, `--danger`, `--surface`, `--text`
+and the rest. `global.css` carries no chromatic hex of its own, and components carry none at all,
+so re-theming the game is an edit in one file. [`theme.test.ts`](./src/styles/theme.test.ts)
+enforces that: it reads the real stylesheets, checks WCAG contrast for every pairing, and fails
+the build if a blue-dominant value reappears anywhere in the system.
 
 ### Co-branding
 

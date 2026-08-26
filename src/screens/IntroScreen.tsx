@@ -8,6 +8,28 @@ import { copy } from '@/content/copy';
 const ACT_ICONS = [Timer, Layers, TrendingUp];
 
 /**
+ * "The 40ms Market" carries the whole argument in four words, so it is coloured as two halves:
+ * the speed half in Fogo orange, the market-structure half in Superluminal neon.
+ *
+ * The split is computed from the copy string rather than hard-coded, so `copy.intro.subheading`
+ * stays the single source of truth and a future edit to it cannot silently mis-colour the
+ * title. If the last word ever stops being the market half, the whole line falls back to neon.
+ */
+function SplitSubheading() {
+  const text = copy.intro.subheading;
+  const boundary = text.lastIndexOf(' ');
+
+  if (boundary <= 0) return <span className="title__market">{text}</span>;
+
+  return (
+    <>
+      <span className="title__speed">{text.slice(0, boundary)}</span>{' '}
+      <span className="title__market">{text.slice(boundary + 1)}</span>
+    </>
+  );
+}
+
+/**
  * The opening screen, in one deliberate order:
  *
  *   1  the Superluminal × Fogo hero lockup
@@ -31,7 +53,9 @@ export function IntroScreen({ onStart }: { onStart: () => void }) {
       <div>
         <h1 className="title title--display">
           {copy.intro.heading}
-          <span className="title__sub">{copy.intro.subheading}</span>
+          <span className="title__sub">
+            <SplitSubheading />
+          </span>
         </h1>
       </div>
 

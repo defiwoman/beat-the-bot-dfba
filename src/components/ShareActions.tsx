@@ -9,6 +9,7 @@ import {
   currentGameUrl,
   shareFileName,
 } from '@/lib/share';
+import { shareCardBackground } from '@/lib/theme';
 import type { ScoreBreakdown } from '@/types/game';
 
 /** The X mark, which Lucide does not ship. Decorative — the button carries the label. */
@@ -95,7 +96,8 @@ export function ShareActions({
       const dataUrl = await toPng(node, {
         pixelRatio: 2,
         // The card sits on the page background, so give the capture its own opaque ground.
-        backgroundColor: '#04070c',
+        // Matches --surface-root; a transparent capture would lose the dark green-black.
+        backgroundColor: shareCardBackground(),
         cacheBust: true,
       });
 

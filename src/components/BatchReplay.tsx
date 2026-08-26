@@ -9,6 +9,8 @@ interface Marker {
   label: string;
   arrivalMs: number;
   kind: 'bot' | 'player' | 'maker';
+  /** Which label row a maker sits on, so two close arrivals do not collide. */
+  row?: number;
 }
 
 /**
@@ -32,11 +34,17 @@ export function BatchReplay({
 
   const markers: Marker[] = [
     { id: 'bot', label: 'Bot', arrivalMs: round.botArrivalMs, kind: 'bot' },
-    ...round.makerOrders.map((order: BatchOrder) => ({
+    ...round.makerOrders.map((order: BatchOrder, index: number) => ({
       id: order.id,
       label: order.label,
       arrivalMs: order.arrivalMs,
       kind: 'maker' as const,
+      /**
+       * Makers share one band of the track, so two that land a few milliseconds apart would
+       * print their labels over each other. Alternating rows keeps both readable however
+       * close the randomised arrivals fall.
+       */
+      row: index % 2,
     })),
   ];
 
@@ -71,7 +79,13 @@ export function BatchReplay({
         {markers.map((marker) => (
           <motion.span
             key={marker.id}
-            className={`replay__marker replay__marker--${marker.kind}`}
+            className={[
+              'replay__marker',
+              `replay__marker--${marker.kind}`,
+              marker.row === 1 ? 'replay__marker--row2' : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
             style={{ left: `${percent(marker.arrivalMs)}%` }}
             initial={animate ? { opacity: 0, scale: 0.4 } : false}
             animate={{ opacity: 1, scale: 1 }}

@@ -157,7 +157,9 @@ function ModePlay({
 
       <div className="modebar">
         <span className="modebar__label">{copy.makerSurvival.quotingIn}</span>
-        <span className="modebar__value">{copy.makerSurvival.modeNames[mode]}</span>
+        <span className={`modebar__value modebar__value--${mode}`}>
+          {copy.makerSurvival.modeNames[mode]}
+        </span>
         <span className="modebar__label">
           {copy.makerSurvival.eventOf} {index + 1} {copy.common.of} {VOLATILITY_EVENTS.length}
         </span>

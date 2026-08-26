@@ -2,53 +2,154 @@
  * BEAT THE BOT — THE 40MS MARKET
  * Visual identity tokens.
  *
- * Two opposing energies drive the whole look:
+ * ── The palette comes from the logo ──────────────────────────────────────────────────────
  *
- *   HEAT  (Fogo-inspired)         orange / yellow / flame — the continuous market, the race,
- *                                 arrival-time priority, urgency.
- *   PRISM (Superluminal-inspired) blue / cyan / prism light — the batch auction, ordered light,
- *                                 fairness, one clearing price per auction.
+ * `public/brands/superluminal-logo.png` was sampled directly: 89.3% of its pixels are the
+ * neon field #EBFF99 — hsl(72, 100%, 80%) — and 8.2% are the near-black mark ink #031C22.
+ * The whole neon ramp below is built on that hue (70–72°), so the interface and the mark are
+ * literally the same colour family rather than an approximation of it.
  *
- * Act 1 is lit by HEAT. Acts 2 and 3 are lit by PRISM. The contrast is the argument.
+ * ── Two energies, one primary ────────────────────────────────────────────────────────────
+ *
+ *   NEON  (Superluminal)  yellow-lime — the primary interface colour. The DFBA and Prism
+ *                         identity, main buttons, active progress, player markers, important
+ *                         figures, focus states, batch visualisations, price edge.
+ *   HEAT  (Fogo)          orange — the secondary colour. Speed, latency, CLOB pressure, the
+ *                         bot's markers and its execution.
+ *
+ * Act 1 is lit by HEAT. Acts 2 and 3 are lit by NEON. The contrast is the argument: Fogo
+ * speed against Superluminal market structure.
+ *
+ * ── Semantics stay separate from brand ───────────────────────────────────────────────────
+ *
+ * Brand neon is yellow-lime. Success is emerald. They must never collapse into "some green":
+ * a correct read and a Superluminal accent mean different things and are drawn differently.
+ *
+ * ── House rule ───────────────────────────────────────────────────────────────────────────
+ *
+ * Components never name a colour. Every rule in `global.css` reads a semantic token from this
+ * file, so re-theming the game is an edit here and nowhere else.
  */
 
 :root {
-  /* ---------------------------------------------------------- terminal ground */
-  --void: #04070c;
-  --void-2: #070c14;
-  --panel: #0c141f;
-  --panel-2: #111d2b;
-  --panel-3: #17273a;
-  --line: #1e3149;
-  --line-strong: #2f4a68;
+  /* ══════════════════════════════════ SUPERLUMINAL NEON — the primary brand ramp ══════ */
 
-  /* ------------------------------------------------------------------- ink */
-  --ink: #f2f7fc;
-  --ink-2: #b6c8dc;
-  --ink-3: #8298b0;
-  --ink-4: #64809b;
-  --ink-faint: #64809b;
+  /** The logo field itself, hsl(72 100% 80%). The lightest step and the brand anchor. */
+  --slx-neon-bright: #f2ff9c;
+  /** The working primary: one step down, so it reads as a colour rather than a highlight. */
+  --slx-neon: #e6ff68;
+  /** Pressed states and the deep end of button gradients. */
+  --slx-neon-strong: #cfff3f;
+  /** Olive. Disabled controls, completed-but-past progress, quiet neon that must not shout. */
+  --slx-neon-muted: #a7c94f;
+  --slx-neon-glow: rgb(230 255 104 / 28%);
+  --slx-neon-glow-strong: rgb(230 255 104 / 46%);
+  /** Text and icons sitting ON neon. Near-black — never white, which fails on this hue. */
+  --on-neon: #071006;
 
-  /* ------------------------------------------------------- HEAT — Fogo side */
-  --heat-glow: #ffe08a;
-  --heat-core: #ffc247;
-  --heat: #ff8a3d;
-  --heat-deep: #ff4f2e;
+  /* ═══════════════════════════════════════════════ FOGO HEAT — the secondary ramp ═════ */
+
+  --fogo-orange: #ff9d32;
+  --fogo-orange-bright: #ffb34f;
+  --fogo-orange-deep: #ff6a1f;
+  --fogo-glow: rgb(255 157 50 / 28%);
+  --on-fogo: #2a0f04;
+
+  /* ═════════════════════════════════════════════════════════════════ SURFACES ═════════ */
+
+  /**
+   * Near-black with a green undertone rather than the navy the game used to sit on, so the
+   * neon reads as belonging to the ground instead of floating over a different palette.
+   */
+  --surface-root: #040806;
+  --surface-primary: #09110c;
+  --surface-secondary: #0e1912;
+  --surface-elevated: #132019;
+  --surface-soft: rgb(230 255 104 / 4.5%);
+
+  --border-default: rgb(230 255 104 / 20%);
+  --border-emphasis: rgb(230 255 104 / 48%);
+
+  /* ════════════════════════════════════════════════════════════════════ TEXT ══════════ */
+
+  --text-primary: #f5f8f3;
+  --text-secondary: #abb7ad;
+  --text-muted: #758278;
+  /** The quietest legible step. Footer fine print only. */
+  --text-faint: #66746a;
+
+  /* ═══════════════════════════════════════════════════════════════ SEMANTICS ══════════ */
+
+  /** Emerald/mint. Deliberately far from the yellow-lime brand neon. */
+  --success: #45dea0;
+  --success-bright: #6ff5c0;
+  --success-deep: #1fae7a;
+  --on-success: #04241a;
+
+  --danger: #ff5c70;
+  --danger-bright: #ff9aa8;
+  --danger-deep: #e5384f;
+  --on-danger: #2b0710;
+
+  --warning: #ffc24b;
+
+  /* ══════════════════════════════════════════ SEMANTIC ALIASES — what components use ══ */
+
+  --primary: var(--slx-neon);
+  --primary-hover: var(--slx-neon-bright);
+  --primary-active: var(--slx-neon-strong);
+  --primary-muted: var(--slx-neon-muted);
+  --primary-border: var(--border-default);
+  --primary-border-strong: var(--border-emphasis);
+  --primary-glow: var(--slx-neon-glow);
+  --primary-glow-strong: var(--slx-neon-glow-strong);
+  --primary-soft: var(--surface-soft);
+  --on-primary: var(--on-neon);
+
+  /** The bot, its latency and every continuous-book pressure cue. */
+  --bot-accent: var(--fogo-orange);
+  --bot-accent-bright: var(--fogo-orange-bright);
+  --bot-accent-deep: var(--fogo-orange-deep);
+  --bot-glow: var(--fogo-glow);
+  --on-bot: var(--on-fogo);
+
+  --surface: var(--surface-primary);
+  --text: var(--text-primary);
+
+  /* ═══════════════════════════════════════════ legacy names kept as thin aliases ══════ */
+
+  /**
+   * The stylesheet grew up on these names. They now point at the tokens above rather than at
+   * their own hex values, so nothing in `global.css` carries a colour of its own.
+   */
+  --void: var(--surface-root);
+  --void-2: var(--surface-primary);
+  --panel: var(--surface-primary);
+  --panel-2: var(--surface-secondary);
+  --panel-3: var(--surface-elevated);
+  --line: var(--border-default);
+  --line-strong: var(--border-emphasis);
+
+  --ink: var(--text-primary);
+  --ink-2: var(--text-secondary);
+  --ink-3: var(--text-muted);
+  --ink-4: var(--text-faint);
+  --ink-faint: var(--text-faint);
+
+  /**
+   * The Fogo half kept its original names because the stylesheet still reads them in a dozen
+   * places and they still mean what they say. The `--prism-*` names are gone: they described a
+   * blue that no longer exists, and nothing referenced them once the sweep was done.
+   */
+  --heat-glow: var(--fogo-orange-bright);
+  --heat-core: var(--fogo-orange-bright);
+  --heat: var(--fogo-orange);
+  --heat-deep: var(--fogo-orange-deep);
   --heat-ember: #c62d1a;
-  --heat-ink: #2a0f04;
 
-  /* ------------------------------------------- PRISM — Superluminal side */
-  --prism-glow: #b9f4ff;
-  --prism-cyan: #5ee7ff;
-  --prism: #4d9cff;
-  --prism-deep: #3d6bf5;
-  --prism-violet: #9f8bfa;
-  --prism-ink: #04121f;
-
-  /* --------------------------------------------------------------- status */
-  --good: #4fe3a6;
-  --bad: #ff6b83;
-  --warn: var(--heat-core);
+  --good: var(--success);
+  --bad: var(--danger);
+  --warn: var(--warning);
 
   /* ----------------------------------------------------------------- type */
   --font-display:
@@ -89,10 +190,16 @@
   --shell-max-wide: 64rem;
 
   /* --------------------------------------------------------------- effects */
-  --glow-heat: 0 0 24px rgb(255 138 61 / 35%);
-  --glow-prism: 0 0 24px rgb(94 231 255 / 30%);
+  /**
+   * Restrained on purpose. A glow wide enough to blur the glyph underneath makes neon look
+   * arcade-cheap; these are sized to read as light coming off an edge, not as a halo.
+   */
+  --glow-heat: 0 0 20px var(--fogo-glow);
+  --glow-prism: 0 0 20px var(--primary-glow);
+  --glow-primary: 0 0 20px var(--primary-glow);
   --shadow: 0 18px 40px rgb(0 0 0 / 55%);
-  --ring: 0 0 0 2px var(--void), 0 0 0 4px var(--prism-cyan);
+  /** Neon ring over a white spacer, so the focus state survives on any surface. */
+  --ring: 0 0 0 2px var(--surface-root), 0 0 0 4px var(--primary), 0 0 0 6px rgb(255 255 255 / 65%);
 
   /* The 40ms motif. One pulse cycle = one modelled batch, slowed for the eye. */
   --pulse-cycle: 1600ms;
@@ -103,35 +210,35 @@
  * so a component never has to know which act it is in.
  */
 [data-act='heat'] {
-  --accent-glow: var(--heat-glow);
-  --accent-core: var(--heat-core);
-  --accent: var(--heat);
-  --accent-deep: var(--heat-deep);
-  --accent-ink: var(--heat-ink);
-  --accent-soft: rgb(255 138 61 / 12%);
-  --accent-edge: rgb(255 138 61 / 38%);
+  --accent-glow: var(--fogo-orange-bright);
+  --accent-core: var(--fogo-orange-bright);
+  --accent: var(--fogo-orange);
+  --accent-deep: var(--fogo-orange-deep);
+  --accent-ink: var(--on-fogo);
+  --accent-soft: rgb(255 157 50 / 12%);
+  --accent-edge: rgb(255 157 50 / 38%);
   --accent-glow-shadow: var(--glow-heat);
 }
 
 [data-act='prism'] {
-  --accent-glow: var(--prism-glow);
-  --accent-core: var(--prism-cyan);
-  --accent: var(--prism);
-  --accent-deep: var(--prism-deep);
-  --accent-ink: var(--prism-ink);
-  --accent-soft: rgb(77 156 255 / 12%);
-  --accent-edge: rgb(94 231 255 / 38%);
-  --accent-glow-shadow: var(--glow-prism);
+  --accent-glow: var(--slx-neon-bright);
+  --accent-core: var(--slx-neon);
+  --accent: var(--slx-neon);
+  --accent-deep: var(--slx-neon-strong);
+  --accent-ink: var(--on-neon);
+  --accent-soft: var(--surface-soft);
+  --accent-edge: var(--border-emphasis);
+  --accent-glow-shadow: var(--glow-primary);
 }
 
-/* Neutral default so anything rendered outside an act still has an accent. */
+/** Neutral default so anything rendered outside an act still has an accent. */
 :root {
-  --accent-glow: var(--prism-glow);
-  --accent-core: var(--prism-cyan);
-  --accent: var(--prism);
-  --accent-deep: var(--prism-deep);
-  --accent-ink: var(--prism-ink);
-  --accent-soft: rgb(77 156 255 / 12%);
-  --accent-edge: rgb(94 231 255 / 38%);
-  --accent-glow-shadow: var(--glow-prism);
+  --accent-glow: var(--slx-neon-bright);
+  --accent-core: var(--slx-neon);
+  --accent: var(--slx-neon);
+  --accent-deep: var(--slx-neon-strong);
+  --accent-ink: var(--on-neon);
+  --accent-soft: var(--surface-soft);
+  --accent-edge: var(--border-emphasis);
+  --accent-glow-shadow: var(--glow-primary);
 }
