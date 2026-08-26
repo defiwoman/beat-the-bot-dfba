@@ -23,7 +23,8 @@ The game teaches this by making the player *lose* a speed race, then *not need t
 
 **Level A + Level B gameplay stays under 45 seconds.** Measured end to end in a browser at
 390×844, the two levels take roughly 17s of pure interaction, leaving generous headroom for
-reading. The two tutorials and the market maker act sit outside that budget.
+reading. The two tutorials and Level C sit outside that budget; Level C carries its own
+**under-30-second** target, covered in section 7.8.
 
 ## 2. Target experience
 
@@ -62,7 +63,7 @@ intro
 | `dfbaGame` | 3 batch rounds (Level B) | ~14s |
 | `dfbaReveal` | Two auctions + the comparison | ~8s |
 | `marketMakerTutorial` | Role switch explained | ~6s |
-| `marketMakerGame` | 2 spread decisions | ~10s |
+| `marketMakerGame` | Level C: 6 spread decisions across two modes | <30s |
 | `results` | Score, three takeaways, replay | open |
 
 ## 4. The illustrative instrument
@@ -157,41 +158,121 @@ four-row table putting the two levels against each other on matching, who gets t
 arrival gap and price — and finally what still matters (price priority, size, liquidity).
 
 
-## 7. Act III — the market maker game
+## 7. Level C — MARKET MAKER SURVIVAL
+
+The player swaps seats and becomes a fictional market maker. The level runs in two halves inside
+the single `marketMakerGame` phase, so the ten-phase machine stays exactly as specified.
+
+> **Every basis-point value, metric and outcome in this level is an illustrative game mechanic.**
+> None of it is Superluminal performance data, none of it is a measured market statistic, and the
+> level does not reproduce live results from any venue. An "Illustrative game mechanics" badge is
+> on screen for the whole level.
 
 ### 7.1 `marketMakerTutorial`
 
-The player swaps roles: they are now the **market maker** quoting both sides. Two ideas:
+Introduces the three metrics and the single dial. The level's thesis is stated up front: in
+continuous matching there is no perfect spread, only a choice of which cost to take.
 
-1. A maker's main fear is being **picked off** — a faster trader hitting their quote on stale prices.
-2. The wider the quote, the safer the maker, and the worse the price for ordinary "natural flow"
-   traders who just want to trade.
+### 7.2 The three metrics
 
-### 7.2 `marketMakerGame` — 2 rounds
+Each runs 0–100 and renders as a labelled ARIA `meter`.
 
-Each round: pick one of three spreads.
-
-| Choice | Half-spread | |
+| Metric | What it tracks | Starts at |
 | --- | --- | --- |
-| Wide | 12 ticks | Defensive |
-| Medium | 6 ticks | Balanced |
-| Tight | 2 ticks | Aggressive |
+| **Capital Health** | What the maker keeps after the fast participant takes their share | 72 |
+| **Trader Satisfaction** | The price ordinary traders get from the quote | 58 |
+| **Market Depth** | How much size the maker is willing to show | 55 |
 
-- **Round 1 — CLOB venue.** Pick-off risk scales sharply as the spread tightens, because a faster
-  taker can reach the stale quote first. Tight quoting loses ticks.
-- **Round 2 — DFBA venue.** The same tight quote is exposed to less speed-based pick-off risk,
-  because arrival-time priority inside the batch is removed, so the same choice performs differently.
+### 7.3 The three spreads
 
-Each round reports: units picked off, natural-flow fills captured, and net ticks.
+| Choice | Spread | |
+| --- | --- | --- |
+| Tight | 2 bps | Best price for traders, most of a move left uncovered |
+| Balanced | 6 bps | Middle ground |
+| Wide | 12 bps | Protects capital, costs traders price and size |
 
-The framing throughout is conditional: reducing speed-based pick-off risk **can support** tighter
-quoting; it is never stated as a guarantee, and the copy notes that inventory risk, volatility and
-adverse selection from informed flow do not go away.
+### 7.4 The model (`src/lib/marketMaker.ts`)
+
+Pure, and the level's whole testable core.
+
+```
+adverseBps      = max(0, moveBps − spreadBps)
+adverseCostBps  = adverseBps × PICK_OFF_EXPOSURE[mode]     clob 1.0   prism 0.25
+flowCapture     = (0.25 + 0.75 × tightness) × FLOW_BOOST[mode]   clob 1.0   prism 1.35
+spreadRevenue   = spreadBps × flowCapture
+
+capitalDelta       = spreadRevenue − adverseCostBps
+satisfactionDelta  = 8 − (spreadBps − 2) × 3      + SUSTAIN_BONUS[mode]
+depthDelta         = 6 − (spreadBps − 2) × 2.2    + min(0, capitalDelta) × 0.4
+```
+
+The last term is the point of the level: a maker whose capital just took a hit **pulls size**, so
+a speed race thins the book for everyone even when the maker survives it.
+
+### 7.5 Part 1 — CLOB mode
+
+Three escalating volatility events (9, 15, 22 bps). Every move exceeds the tightest spread, which
+is what makes the trade-off real rather than a free win.
+
+**No perfect choice**, and a test asserts it across every event × spread pair:
+
+| | Capital | Satisfaction | Depth |
+| --- | --- | --- | --- |
+| Tight | collapses (72 → 38) | rises | dragged under by the capital hit |
+| Balanced | sags | falls | falls |
+| Wide | protected (→ 68) | floors at 0 | floors |
+
+A **toxic-flow warning** appears whenever a stale quote is picked off, naming the move, the spread
+and what was taken.
+
+Part 1 ends on the required line — *"You widened the spread to survive. Every trader paid for the
+speed race."* — and the causal chain:
+
+```
+Latency advantage → Stale-quote pick-off → Adverse selection → Wider spreads
+```
+
+### 7.6 ACTIVATE PRISM
+
+A deliberately dramatic full-width control with a sweep animation (suppressed under reduced
+motion). Batched mode starts from the metrics continuous mode left behind, so the recovery is
+visible rather than a reset.
+
+### 7.7 Part 2 — Prism mode
+
+The same three events, so the comparison is like for like. Orders go into short batches, maker and
+taker flow are separated, and pick-off exposure drops to a quarter.
+
+Tight quoting becomes roughly sustainable — capital holds around 70 while satisfaction and depth
+climb — which is what "tighter quoting **can become** more sustainable" means here.
+
+**The honesty guards, each covered by a test:**
+
+- Exposure is **never zero**: the warning still fires in batched mode, worded as *reduced*
+  pick-off with some exposure remaining.
+- Capital is **never guaranteed to grow**: the largest modelled move still costs a tight quote
+  capital after batching.
+- Bad decisions still cost: quoting wide in batched mode still empties the book.
+
+Part 2 ends on the second chain and a side-by-side comparison of where both halves finished:
+
+```
+Batching → Less arrival-time privilege → Reduced pick-off pressure
+        → Tighter quoting can become more sustainable
+```
+
+### 7.8 Pacing
+
+Choosing a spread is **never timed**. Only the outcome beat auto-advances, at 1300ms × 6 events
+≈ 8 seconds of forced wait; measured end to end in a browser the level runs about 12 seconds at
+machine speed, leaving the section comfortably inside its 30-second target once a person's own
+decision time is added.
 
 ## 8. `results`
 
 - Headline score out of 100 with a light-hearted grade.
-- Breakdown: CLOB rounds won, DFBA rounds filled, maker net ticks.
+- Breakdown: correct reads per level, best streak, average reaction, and the market-quality
+  score Level C finished on.
 - Three takeaways, phrased within the accuracy rules.
 - A persistent disclaimer that the numbers are illustrative.
 - **Play again** resets the machine.

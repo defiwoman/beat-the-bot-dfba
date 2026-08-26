@@ -4,7 +4,7 @@ import { BrandMarks } from './BrandBar';
 import { BigMs } from './BigMs';
 import { Button } from './Button';
 import { copy } from '@/content/copy';
-import { formatTicks } from '@/lib/format';
+import { marketQuality } from '@/lib/marketMaker';
 import { buildShareText } from '@/lib/share';
 import type { ScoreBreakdown } from '@/types/game';
 
@@ -67,7 +67,7 @@ export function ShareCard({ score }: { score: ScoreBreakdown }) {
         </p>
         <p className="sharecard__row">
           <span>{copy.share.makerLabel}</span>
-          <span>{formatTicks(score.makerNetTicks)}</span>
+          <span>{Math.round(marketQuality(score.makerMetrics))} / 100</span>
         </p>
       </div>
 

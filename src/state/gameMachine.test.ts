@@ -6,7 +6,7 @@ import type {
   DfbaRoundResult,
   GamePhase,
   GameState,
-  MarketMakerRoundResult,
+  MakerEventResult,
 } from '@/types/game';
 
 function clob(wasCorrect: boolean): ClobRoundResult {
@@ -42,14 +42,19 @@ function dfba(wasCorrect: boolean): DfbaRoundResult {
   };
 }
 
-const makerResult: MarketMakerRoundResult = {
-  roundId: 'mm-clob',
-  venue: 'clob',
-  chosenSpreadId: 'tight',
-  halfSpreadTicks: 2,
-  pickedOffUnits: 367,
-  naturalFlowUnits: 554,
-  netTicks: -55,
+const makerResult: MakerEventResult = {
+  eventId: 'vol-1',
+  mode: 'clob',
+  spreadId: 'tight',
+  spreadBps: 2,
+  adverseBps: 7,
+  adverseCostBps: 7,
+  spreadRevenueBps: 2,
+  pickedOff: true,
+  capitalDelta: -5,
+  satisfactionDelta: 8,
+  depthDelta: 4,
+  metrics: { capitalHealth: 67, traderSatisfaction: 66, marketDepth: 59 },
 };
 
 /* ------------------------------------------------------ phase progression */
@@ -142,7 +147,7 @@ describe('recording results', () => {
     });
     const afterDfba = gameReducer(afterClob, { type: 'RECORD_DFBA_ROUND', result: dfba(true) });
     const afterMaker = gameReducer(afterDfba, {
-      type: 'RECORD_MAKER_ROUND',
+      type: 'RECORD_MAKER_EVENT',
       result: makerResult,
     });
 
@@ -182,7 +187,7 @@ describe('correct-direction streak', () => {
 
   it('is not disturbed by a market maker round', () => {
     let state = gameReducer(initialGameState, { type: 'RECORD_CLOB_ROUND', result: clob(true) });
-    state = gameReducer(state, { type: 'RECORD_MAKER_ROUND', result: makerResult });
+    state = gameReducer(state, { type: 'RECORD_MAKER_EVENT', result: makerResult });
     expect(state.streak).toBe(1);
   });
 });

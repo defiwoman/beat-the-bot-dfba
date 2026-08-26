@@ -4,7 +4,8 @@ import { Button } from '@/components/Button';
 import { Screen } from '@/components/Screen';
 import { ShareCard } from '@/components/ShareCard';
 import { copy } from '@/content/copy';
-import { formatMs, formatTicks } from '@/lib/format';
+import { formatMs } from '@/lib/format';
+import { marketQuality } from '@/lib/marketMaker';
 import type { ScoreBreakdown } from '@/types/game';
 
 export function ResultsScreen({
@@ -56,7 +57,9 @@ export function ResultsScreen({
         <li className="round-row">
           <span className="round-row__index">$</span>
           <span>{copy.results.makerLine}</span>
-          <span className="round-row__value">{formatTicks(score.makerNetTicks)}</span>
+          <span className="round-row__value">
+            {Math.round(marketQuality(score.makerMetrics))} / 100
+          </span>
         </li>
       </ul>
 

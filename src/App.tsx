@@ -6,7 +6,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { GameFooter } from '@/components/GameFooter';
 import { GameHeader } from '@/components/GameHeader';
 import { copy } from '@/content/copy';
-import { buildClobRounds, buildDfbaRounds, MARKET_MAKER_ROUNDS } from '@/data/rounds';
+import { buildClobRounds, buildDfbaRounds } from '@/data/rounds';
 import { computeScore } from '@/lib/scoring';
 import { themeForPhase } from '@/lib/stages';
 import { ClobGameScreen } from '@/screens/ClobGameScreen';
@@ -14,7 +14,7 @@ import { ClobRevealScreen } from '@/screens/ClobRevealScreen';
 import { DfbaGameScreen } from '@/screens/DfbaGameScreen';
 import { DfbaRevealScreen } from '@/screens/DfbaRevealScreen';
 import { IntroScreen } from '@/screens/IntroScreen';
-import { MarketMakerGameScreen } from '@/screens/MarketMakerGameScreen';
+import { MarketMakerSurvivalScreen } from '@/screens/MarketMakerSurvivalScreen';
 import { ResultsScreen } from '@/screens/ResultsScreen';
 import { TutorialScreen } from '@/screens/TutorialScreen';
 import { GameProvider } from '@/state/GameProvider';
@@ -26,7 +26,7 @@ import type {
   ClobRoundResult,
   DfbaRound,
   DfbaRoundResult,
-  MarketMakerRoundResult,
+  MakerEventResult,
 } from '@/types/game';
 
 function clampIndex(index: number, length: number): number {
@@ -73,10 +73,9 @@ function GameRouter({ rounds }: { rounds: GeneratedRounds }) {
     [dispatch],
   );
 
-  const handleMakerRound = useCallback(
-    (result: MarketMakerRoundResult, isLast: boolean) => {
-      dispatch({ type: 'RECORD_MAKER_ROUND', result });
-      dispatch(isLast ? { type: 'ADVANCE_PHASE' } : { type: 'NEXT_ROUND' });
+  const handleMakerEvent = useCallback(
+    (result: MakerEventResult) => {
+      dispatch({ type: 'RECORD_MAKER_EVENT', result });
     },
     [dispatch],
   );
@@ -168,19 +167,13 @@ function GameRouter({ rounds }: { rounds: GeneratedRounds }) {
         />
       );
 
-    case 'marketMakerGame': {
-      const index = clampIndex(state.roundIndex, MARKET_MAKER_ROUNDS.length);
-      const round = MARKET_MAKER_ROUNDS[index];
-      const isLast = index === MARKET_MAKER_ROUNDS.length - 1;
-      return (
-        <MarketMakerGameScreen
-          key={round.id}
-          round={round}
-          isLastRound={isLast}
-          onComplete={(result) => handleMakerRound(result, isLast)}
-        />
-      );
-    }
+    case 'marketMakerGame':
+      /**
+       * Level C runs both of its halves inside this one phase. The continuous run, the
+       * ACTIVATE PRISM switch and the batched run are sub-stages of the screen, which keeps
+       * the ten-phase machine exactly as specified.
+       */
+      return <MarketMakerSurvivalScreen onEvent={handleMakerEvent} onFinish={advance} />;
 
     case 'results':
       return <ResultsScreen score={score} onReplay={restart} />;

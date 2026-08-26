@@ -177,34 +177,65 @@ export interface DfbaRoundResult {
   outcome: DfbaOutcome;
 }
 
-/* ------------------------------------------------------ market maker rounds */
+/* --------------------------------- LEVEL C — market maker survival */
 
-export type Venue = 'clob' | 'dfba';
+/**
+ * Which matching design the maker is quoting into.
+ *
+ * `clob` is continuous matching with arrival-time priority. `prism` is the batched mode the
+ * player switches on halfway through the level. Every coefficient attached to these is an
+ * illustrative game mechanic, not a measurement of any venue.
+ */
+export type MakerMode = 'clob' | 'prism';
 
-export interface SpreadOption {
-  id: string;
+export type SpreadId = 'tight' | 'balanced' | 'wide';
+
+export interface SpreadChoice {
+  id: SpreadId;
   label: string;
-  halfSpreadTicks: number;
+  /** Illustrative quoted spread in basis points. Game mechanic, not venue performance data. */
+  bps: number;
   hint: string;
 }
 
-export interface MarketMakerRound {
-  id: string;
-  index: number;
-  venue: Venue;
-  naturalFlowUnits: number;
-  fastFlowUnits: number;
-  spreadOptions: SpreadOption[];
+/**
+ * The three metrics the player is keeping alive. Each runs 0–100 and is an invented game
+ * mechanic — none of them is a measured market statistic.
+ */
+export interface MakerMetrics {
+  capitalHealth: number;
+  traderSatisfaction: number;
+  marketDepth: number;
 }
 
-export interface MarketMakerRoundResult {
-  roundId: string;
-  venue: Venue;
-  chosenSpreadId: string;
-  halfSpreadTicks: number;
-  pickedOffUnits: number;
-  naturalFlowUnits: number;
-  netTicks: number;
+export type MetricId = keyof MakerMetrics;
+
+export interface VolatilityEvent {
+  id: string;
+  headline: string;
+  detail: string;
+  /** Illustrative size of the price move, in basis points. */
+  moveBps: number;
+}
+
+export interface MakerEventResult {
+  eventId: string;
+  mode: MakerMode;
+  spreadId: SpreadId;
+  spreadBps: number;
+  /** Basis points of the move the quoted spread did not cover. */
+  adverseBps: number;
+  /** What the fast participant actually captured, after mode exposure. */
+  adverseCostBps: number;
+  /** Illustrative spread revenue earned from natural flow. */
+  spreadRevenueBps: number;
+  /** True when a stale quote was reached after the price moved. */
+  pickedOff: boolean;
+  capitalDelta: number;
+  satisfactionDelta: number;
+  depthDelta: number;
+  /** Metrics after this event was applied. */
+  metrics: MakerMetrics;
 }
 
 /* ------------------------------------------------------------------ scoring */
@@ -220,7 +251,10 @@ export interface ScoreBreakdown {
   bestStreak: number;
   directionPoints: number;
   comboBonus: number;
-  makerNetTicks: number;
+  /** Where the three survival metrics ended up in batched mode. */
+  makerMetrics: MakerMetrics;
+  /** Where they stood at the end of continuous mode, kept for the comparison reveal. */
+  makerClobMetrics: MakerMetrics;
   makerPoints: number;
   totalPoints: number;
   grade: Grade;
@@ -237,7 +271,7 @@ export interface GameState {
   roundIndex: number;
   clobResults: ClobRoundResult[];
   dfbaResults: DfbaRoundResult[];
-  makerResults: MarketMakerRoundResult[];
+  makerResults: MakerEventResult[];
   /** Current run of correct direction reads. */
   streak: number;
   /** Longest run this playthrough. */
@@ -251,6 +285,6 @@ export type GameAction =
   | { type: 'ADVANCE_PHASE' }
   | { type: 'RECORD_CLOB_ROUND'; result: ClobRoundResult }
   | { type: 'RECORD_DFBA_ROUND'; result: DfbaRoundResult }
-  | { type: 'RECORD_MAKER_ROUND'; result: MarketMakerRoundResult }
+  | { type: 'RECORD_MAKER_EVENT'; result: MakerEventResult }
   | { type: 'NEXT_ROUND' }
   | { type: 'RESTART' };

@@ -5,10 +5,11 @@ import { ClobGameScreen } from './ClobGameScreen';
 import { ClobRevealScreen } from './ClobRevealScreen';
 import { DfbaGameScreen } from './DfbaGameScreen';
 import { DfbaRevealScreen } from './DfbaRevealScreen';
-import { MarketMakerGameScreen } from './MarketMakerGameScreen';
+import { MarketMakerSurvivalScreen } from './MarketMakerSurvivalScreen';
 import { ResultsScreen } from './ResultsScreen';
 import { copy } from '@/content/copy';
-import { buildClobRounds, buildDfbaRounds, MARKET_MAKER_ROUNDS } from '@/data/rounds';
+import { SPREAD_CHOICES, VOLATILITY_EVENTS } from '@/data/marketMaker';
+import { buildClobRounds, buildDfbaRounds } from '@/data/rounds';
 import { formatUsd } from '@/lib/format';
 import { seededRng } from '@/lib/rng';
 import { computeScore } from '@/lib/scoring';
@@ -258,39 +259,185 @@ describe('DfbaRevealScreen', () => {
   });
 });
 
-describe('MarketMakerGameScreen', () => {
-  it('offers three spreads and reports the round result once one is chosen', async () => {
-    const user = userEvent.setup();
-    const onComplete = vi.fn();
-    const round = MARKET_MAKER_ROUNDS[0];
-    render(<MarketMakerGameScreen round={round} isLastRound={false} onComplete={onComplete} />);
+/* ═══════════════════════════════════ LEVEL C — market maker survival ══════ */
 
-    const choices = screen.getAllByRole('button', { pressed: false });
-    expect(choices).toHaveLength(round.spreadOptions.length);
+describe('MarketMakerSurvivalScreen', () => {
+  /**
+   * Play one half of the level by choosing the same spread for all three events.
+   *
+   * Each choice is followed by a short outcome beat that auto-advances, so between events we
+   * re-query the control rather than holding a reference across the re-render. After the last
+   * event the half ends and the controls go away, so that wait is skipped.
+   */
+  async function playMode(user: ReturnType<typeof userEvent.setup>, spreadLabel: string) {
+    const pattern = new RegExp(`^${spreadLabel} —`);
 
-    await user.click(choices[2]);
+    for (let i = 0; i < VOLATILITY_EVENTS.length; i += 1) {
+      await user.click(await screen.findByRole('button', { name: pattern }, { timeout: 4000 }));
 
-    expect(screen.getByText(copy.marketMakerGame.resultHeading)).toBeInTheDocument();
-    expect(screen.getByText(copy.marketMakerGame.caveat)).toBeInTheDocument();
+      if (i < VOLATILITY_EVENTS.length - 1) {
+        await waitFor(() => expect(screen.getByRole('button', { name: pattern })).toBeEnabled(), {
+          timeout: 4000,
+        });
+      }
+    }
+  }
 
-    await user.click(screen.getByRole('button', { name: copy.marketMakerGame.nextLabel }));
-    expect(onComplete).toHaveBeenCalledOnce();
-    expect(onComplete.mock.calls[0][0]).toMatchObject({ venue: 'clob', chosenSpreadId: 'tight' });
+  it('shows the three survival metrics as labelled meters', () => {
+    render(<MarketMakerSurvivalScreen onEvent={vi.fn()} onFinish={vi.fn()} />);
+
+    for (const label of [
+      copy.makerSurvival.metrics.capitalHealth,
+      copy.makerSurvival.metrics.traderSatisfaction,
+      copy.makerSurvival.metrics.marketDepth,
+    ]) {
+      const meter = screen.getByRole('meter', { name: label });
+      expect(meter).toHaveAttribute('aria-valuemin', '0');
+      expect(meter).toHaveAttribute('aria-valuemax', '100');
+    }
   });
+
+  it('offers the three advertised spreads in basis points', () => {
+    render(<MarketMakerSurvivalScreen onEvent={vi.fn()} onFinish={vi.fn()} />);
+
+    for (const spread of SPREAD_CHOICES) {
+      const button = screen.getByRole('button', { name: new RegExp(`^${spread.label} —`) });
+      expect(button).toHaveTextContent(String(spread.bps));
+      expect(button).toHaveAccessibleName(new RegExp(`${spread.bps} bps`));
+    }
+  });
+
+  it('labels the level as illustrative game mechanics rather than venue data', () => {
+    render(<MarketMakerSurvivalScreen onEvent={vi.fn()} onFinish={vi.fn()} />);
+    expect(screen.getByText(copy.makerSurvival.illustrativeBadge)).toBeInTheDocument();
+  });
+
+  it('shows a toxic-flow warning when a tight quote is picked off in continuous mode', async () => {
+    const user = userEvent.setup();
+    render(<MarketMakerSurvivalScreen onEvent={vi.fn()} onFinish={vi.fn()} />);
+
+    await user.click(screen.getByRole('button', { name: /^Tight —/ }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      copy.makerSurvival.clob.toxicWarning,
+    );
+  });
+
+  it('records every event it resolves', async () => {
+    const onEvent = vi.fn();
+    const user = userEvent.setup();
+    render(<MarketMakerSurvivalScreen onEvent={onEvent} onFinish={vi.fn()} />);
+
+    await playMode(user, 'Tight');
+
+    await waitFor(() => expect(onEvent).toHaveBeenCalledTimes(VOLATILITY_EVENTS.length), {
+      timeout: 6000,
+    });
+    for (const call of onEvent.mock.calls) {
+      expect(call[0].mode).toBe('clob');
+    }
+  }, 20000);
+
+  it('lands the part-one verdict and the pressure chain, then offers ACTIVATE PRISM', async () => {
+    const user = userEvent.setup();
+    render(<MarketMakerSurvivalScreen onEvent={vi.fn()} onFinish={vi.fn()} />);
+
+    await playMode(user, 'Wide');
+
+    const headline = await screen.findByText(
+      copy.makerSurvival.clobVerdict.headline,
+      {},
+      { timeout: 6000 },
+    );
+    expect(headline).toBeInTheDocument();
+
+    for (const step of copy.makerSurvival.clobVerdict.chain) {
+      expect(screen.getByText(step)).toBeInTheDocument();
+    }
+
+    expect(
+      screen.getByRole('button', { name: copy.makerSurvival.clobVerdict.activateHint }),
+    ).toHaveTextContent(copy.makerSurvival.clobVerdict.activateLabel);
+  }, 20000);
+
+  it('switches to batched mode and records the second half against prism', async () => {
+    const onEvent = vi.fn();
+    const user = userEvent.setup();
+    render(<MarketMakerSurvivalScreen onEvent={onEvent} onFinish={vi.fn()} />);
+
+    await playMode(user, 'Tight');
+    await user.click(
+      await screen.findByRole(
+        'button',
+        { name: copy.makerSurvival.clobVerdict.activateHint },
+        { timeout: 6000 },
+      ),
+    );
+
+    expect(screen.getByText(copy.makerSurvival.modeNames.prism)).toBeInTheDocument();
+
+    onEvent.mockClear();
+    await playMode(user, 'Tight');
+
+    await waitFor(() => expect(onEvent).toHaveBeenCalledTimes(VOLATILITY_EVENTS.length), {
+      timeout: 6000,
+    });
+    for (const call of onEvent.mock.calls) {
+      expect(call[0].mode).toBe('prism');
+    }
+  }, 30000);
+
+  it('ends on the batching chain, the comparison and the honesty caveat', async () => {
+    const onFinish = vi.fn();
+    const user = userEvent.setup();
+    render(<MarketMakerSurvivalScreen onEvent={vi.fn()} onFinish={onFinish} />);
+
+    await playMode(user, 'Tight');
+    await user.click(
+      await screen.findByRole(
+        'button',
+        { name: copy.makerSurvival.clobVerdict.activateHint },
+        { timeout: 6000 },
+      ),
+    );
+    await playMode(user, 'Tight');
+
+    await screen.findByText(copy.makerSurvival.prismVerdict.headline, {}, { timeout: 6000 });
+
+    for (const step of copy.makerSurvival.prismVerdict.chain) {
+      expect(screen.getByText(step)).toBeInTheDocument();
+    }
+    expect(
+      screen.getByRole('region', { name: copy.makerSurvival.prismVerdict.comparisonHeading }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(copy.makerSurvival.caveat)).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole('button', { name: copy.makerSurvival.prismVerdict.continueLabel }),
+    );
+    expect(onFinish).toHaveBeenCalledOnce();
+  }, 30000);
 });
 
 describe('ResultsScreen', () => {
-  it('shows the score, the breakdown and what the game does not claim', async () => {
-    const user = userEvent.setup();
-    const onReplay = vi.fn();
-    const score = computeScore([], [], []);
-    render(<ResultsScreen score={score} onReplay={onReplay} />);
+  const score = computeScore(clobResults, [], []);
 
-    expect(screen.getByText(score.grade)).toBeInTheDocument();
-    expect(screen.getByText(copy.results.streakLine)).toBeInTheDocument();
+  it('shows the score, the takeaways and what the game does not claim', () => {
+    render(<ResultsScreen score={score} onReplay={vi.fn()} />);
+
+    expect(screen.getByText(copy.results.heading)).toBeInTheDocument();
+    for (const takeaway of copy.results.takeaways) {
+      expect(screen.getByText(takeaway.title)).toBeInTheDocument();
+    }
     for (const line of copy.results.honesty) {
       expect(screen.getByText(line)).toBeInTheDocument();
     }
+  });
+
+  it('replays on demand', async () => {
+    const user = userEvent.setup();
+    const onReplay = vi.fn();
+    render(<ResultsScreen score={score} onReplay={onReplay} />);
 
     await user.click(screen.getByRole('button', { name: copy.results.replayHint }));
     expect(onReplay).toHaveBeenCalledOnce();

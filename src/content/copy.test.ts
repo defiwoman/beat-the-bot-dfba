@@ -125,12 +125,12 @@ describe('nuances that must stay visible (ACCURACY_RULES.md section 3)', () => {
   });
 
   it('keeps the market maker benefit conditional', () => {
-    expect(copy.marketMakerTutorial.lines[2].body).toContain('can support');
-    expect(copy.marketMakerGame.caveat).toContain('designed to reduce');
+    expect(copy.makerSurvival.prismVerdict.body).toContain('can support');
+    expect(copy.makerSurvival.caveat).toContain('designed to reduce');
   });
 
   it('says the other market maker risks do not go away', () => {
-    const caveat = copy.marketMakerGame.caveat.toLowerCase();
+    const caveat = copy.makerSurvival.caveat.toLowerCase();
     expect(caveat).toContain('inventory risk');
     expect(caveat).toContain('adverse selection');
   });

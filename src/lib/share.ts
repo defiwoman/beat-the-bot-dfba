@@ -1,5 +1,5 @@
 import { copy } from '@/content/copy';
-import { formatTicks } from './format';
+import { marketQuality } from './marketMaker';
 import type { ScoreBreakdown } from '@/types/game';
 
 /**
@@ -15,7 +15,7 @@ export function buildShareText(score: ScoreBreakdown): string {
     `${copy.share.racesLabel}: ${score.clobCorrect}/${score.clobRoundsPlayed}`,
     `${copy.share.batchesLabel}: ${score.dfbaCorrect}/${score.dfbaRoundsPlayed}`,
     `${copy.share.streakLabel}: ${score.bestStreak}`,
-    `${copy.share.makerLabel}: ${formatTicks(score.makerNetTicks)}`,
+    `${copy.share.makerLabel}: ${Math.round(marketQuality(score.makerMetrics))}/100`,
     copy.footer.legal,
   ].join('\n');
 }

@@ -9,7 +9,14 @@ win that race, and the game tells you why rather than leaving you annoyed.
 **Level B** — the same kind of signal, matched inside a ~40ms batch replayed in slow motion. Your
 order and the bot's land in the same batch, the bot arrives first, and it changes nothing.
 
-**Act 3** — you swap seats and quote the market yourself.
+**Level C — Market Maker Survival** — you swap seats and quote the market yourself, keeping
+**Capital Health**, **Trader Satisfaction** and **Market Depth** alive across three volatility
+events. In continuous mode no spread is a good spread: quote tight and you are picked off, quote
+wide and the book empties. Then you hit **ACTIVATE PRISM**, replay the same three events in batched
+mode, and watch what a tight quote costs when arrival time stops deciding who reaches it first.
+
+Every basis-point value and metric in that level is an illustrative game mechanic, labelled as such
+on screen — not Superluminal performance data.
 
 Correct reads build a streak and a combo multiplier. Speed is never scored.
 
@@ -51,9 +58,9 @@ No backend, no database, no wallet connection, no API keys, no real money, no re
 The look is built from two opposing energies, and the contrast between them is the argument:
 
 - **HEAT** — Fogo-inspired orange, yellow and ember, with speed lines and restrained flame
-  particles. Lights **Act 1**: the continuous market, the race, arrival-time priority.
+  particles. Lights **Level A** and the continuous half of Level C: the race, arrival-time priority.
 - **PRISM** — Superluminal-inspired blue, cyan and prism light, with slow vertical rays. Lights
-  **Acts 2 and 3**: the batch auction, ordered light, one clearing price per auction.
+  **Level B** and the batched half of Level C: ordered light, one clearing price per auction.
 
 A screen never picks its own accent — the phase maps to an act theme, the shell sets `data-act`,
 and every accent token follows. On top of that sit a near-black trading-terminal ground, HUD panels
@@ -79,11 +86,13 @@ motion carries meaning) · Lucide React · Vitest + React Testing Library.
 public/brands/       Official logo assets — used exactly as supplied, never edited
 src/
   components/        BrandBar, GameHeader/Footer, StageProgress, MuteToggle, AmbientBackdrop,
-                     BatchPulse, BigMs, ShareCard, AboutPanel, Button, Meter, ErrorBoundary
+                     BatchPulse, BatchReplay, BigMs, ComboMeter, MetricBars, CausalChain,
+                     ShareCard, AboutPanel, Button, Meter, ErrorBoundary
   content/copy.ts    Single source of truth for every user-facing string
   content/copy.test.ts   Enforces ACCURACY_RULES.md against that copy
-  data/rounds.ts     Illustrative round and market-event fixtures
-  lib/               Pure helpers: scoring, formatting, simulation, stages, share, sound
+  data/              Illustrative fixtures: rounds.ts (Levels A/B), marketMaker.ts (Level C)
+  lib/               Pure helpers: simulation, marketMaker, scoring, reaction, rng,
+                     format, stages, share, sound, haptics
   screens/           One component per game phase
   state/             gameMachine.ts (pure reducer) + game/sound providers + hooks
   styles/            tokens.css (identity) + global.css, mobile-first

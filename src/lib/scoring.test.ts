@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { computeScore, gradeFor, longestStreak } from './scoring';
-import type { ClobRoundResult, DfbaRoundResult, MarketMakerRoundResult } from '@/types/game';
+import { MAKER_POINTS_MAX, computeScore, gradeFor, longestStreak } from './scoring';
+import { STARTING_METRICS, marketQuality } from './marketMaker';
+import type { ClobRoundResult, DfbaRoundResult, MakerEventResult } from '@/types/game';
 
 function clob(wasCorrect: boolean, reactionMs: number | null = 240): ClobRoundResult {
   return {
@@ -35,15 +36,23 @@ function dfba(wasCorrect: boolean, reactionMs: number | null = 300): DfbaRoundRe
   };
 }
 
-function maker(netTicks: number): MarketMakerRoundResult {
+function maker(
+  mode: 'clob' | 'prism',
+  metrics: { capitalHealth: number; traderSatisfaction: number; marketDepth: number },
+): MakerEventResult {
   return {
-    roundId: `mm-${netTicks}`,
-    venue: 'dfba',
-    chosenSpreadId: 'medium',
-    halfSpreadTicks: 6,
-    pickedOffUnits: 40,
-    naturalFlowUnits: 369,
-    netTicks,
+    eventId: `vol-${mode}`,
+    mode,
+    spreadId: 'balanced',
+    spreadBps: 6,
+    adverseBps: 3,
+    adverseCostBps: mode === 'clob' ? 3 : 0.8,
+    spreadRevenueBps: 4.2,
+    pickedOff: true,
+    capitalDelta: 1.2,
+    satisfactionDelta: -4,
+    depthDelta: -2.8,
+    metrics,
   };
 }
 
@@ -74,12 +83,14 @@ describe('longestStreak', () => {
 });
 
 describe('computeScore', () => {
-  it('scores an empty playthrough as the maker baseline only', () => {
+  it('scores an empty playthrough from the untouched starting market only', () => {
     const score = computeScore([], [], []);
+    const baseline = Math.round((marketQuality(STARTING_METRICS) / 100) * MAKER_POINTS_MAX);
+
     expect(score.directionPoints).toBe(0);
     expect(score.comboBonus).toBe(0);
-    expect(score.makerPoints).toBe(20);
-    expect(score.totalPoints).toBe(20);
+    expect(score.makerPoints).toBe(baseline);
+    expect(score.totalPoints).toBe(baseline);
   });
 
   it('rewards correct reads rather than race wins', () => {
@@ -99,17 +110,45 @@ describe('computeScore', () => {
     expect(allCorrect.comboBonus).toBe(12);
   });
 
-  it('clamps maker points into the 0-40 band', () => {
-    expect(computeScore([], [], [maker(-500)]).makerPoints).toBe(0);
-    expect(computeScore([], [], [maker(500)]).makerPoints).toBe(40);
-    expect(computeScore([], [], [maker(5)]).makerPoints).toBe(25);
+  it('scores Level C on the health of the market the player left behind', () => {
+    const dead = { capitalHealth: 0, traderSatisfaction: 0, marketDepth: 0 };
+    const perfect = { capitalHealth: 100, traderSatisfaction: 100, marketDepth: 100 };
+    const middling = { capitalHealth: 60, traderSatisfaction: 45, marketDepth: 45 };
+
+    expect(computeScore([], [], [maker('prism', dead)]).makerPoints).toBe(0);
+    expect(computeScore([], [], [maker('prism', perfect)]).makerPoints).toBe(40);
+    expect(computeScore([], [], [maker('prism', middling)]).makerPoints).toBe(20);
+  });
+
+  it('does not reward quoting wide to protect yourself while the book empties', () => {
+    // High capital, but traders and depth are gone — a worse market than a balanced one.
+    const hoarded = { capitalHealth: 95, traderSatisfaction: 5, marketDepth: 10 };
+    const healthy = { capitalHealth: 70, traderSatisfaction: 80, marketDepth: 72 };
+    expect(computeScore([], [], [maker('prism', hoarded)]).makerPoints).toBeLessThan(
+      computeScore([], [], [maker('prism', healthy)]).makerPoints,
+    );
+  });
+
+  it('reads each mode back separately for the comparison reveal', () => {
+    const clobEnd = { capitalHealth: 68, traderSatisfaction: 10, marketDepth: 12 };
+    const prismEnd = { capitalHealth: 70, traderSatisfaction: 88, marketDepth: 72 };
+    const score = computeScore([], [], [maker('clob', clobEnd), maker('prism', prismEnd)]);
+
+    expect(score.makerClobMetrics).toEqual(clobEnd);
+    expect(score.makerMetrics).toEqual(prismEnd);
+  });
+
+  it('falls back to the starting metrics for a mode that was never played', () => {
+    const score = computeScore([], [], []);
+    expect(score.makerMetrics).toEqual(STARTING_METRICS);
+    expect(score.makerClobMetrics).toEqual(STARTING_METRICS);
   });
 
   it('never exceeds 100 points', () => {
     const score = computeScore(
       [clob(true), clob(true), clob(true)],
       [dfba(true), dfba(true), dfba(true)],
-      [maker(999)],
+      [maker('prism', { capitalHealth: 100, traderSatisfaction: 100, marketDepth: 100 })],
     );
     expect(score.totalPoints).toBe(100);
     expect(score.grade).toBe('Batch Boss');

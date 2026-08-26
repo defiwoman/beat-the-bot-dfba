@@ -113,7 +113,7 @@ outright rather than leaving them implied:
 7. **Slowed-down time.** The visible batch window is stretched for playability. The screen says the
    modelled batch is 40ms and the view is slowed.
 8. **Illustrative numbers.** A disclaimer is visible on the landing screen and the results screen,
-   and the instrument is an obviously fictional ticker (`SLX-PERP`).
+   and every price is stamped "illustrative game data" on screen beside it (see section 3b).
 
 ## 3b. Illustrative game data — the labelling rule
 
@@ -140,6 +140,33 @@ hand. That unfairness is the demonstration, and the rules that keep it honest ar
   (`copy.clobReveal.unfairNote`) says the race was not winnable and why that is the point.
 - **Stay neutral about the bot.** Racing is a rational response to a venue that rewards arriving
   first — never cheating, theft or fraud.
+
+## 3d. Level C — Market Maker Survival
+
+The survival level invents a whole scoreboard, so it carries the heaviest labelling burden in the
+game.
+
+**Everything in the level is an illustrative game mechanic.** Every basis-point value, every metric
+and every outcome is invented for teaching. An **"Illustrative game mechanics — not Superluminal
+performance data"** badge is on screen for the entire level, and the closing screen repeats it in
+full. The level must never be described as reproducing live results from any venue.
+
+The three metrics — Capital Health, Trader Satisfaction, Market Depth — are game mechanics on a
+0–100 scale. They are not measurements of anything, and must never be presented as such.
+
+**What the model is allowed to show:**
+
+| Claim | Enforced by |
+| --- | --- |
+| Batching **reduces** speed-based pick-off risk | `PICK_OFF_EXPOSURE.prism = 0.25`, tested to be strictly between 0 and the continuous value |
+| Risk is **not** set to zero | Test: `adverseCostBps(..., 'prism') > 0` for every shipped event |
+| The maker is **not** guaranteed a profit | Test: the largest modelled move still costs a tight quote capital in batched mode |
+| There is **no perfect spread** in continuous mode | Test: `isCostlessChoice` is false for every event × spread pair |
+| Tighter quoting **can become** more sustainable | Conditional wording only — never "will", never "always" |
+
+The toxic-flow warning is worded per mode: a full **pick-off** in continuous matching, and
+**reduced pick-off with some exposure remaining** in batched mode. The batched wording must never
+read as "safe" — that is the whole point of keeping exposure above zero.
 
 ## 4. Brand asset rules
 

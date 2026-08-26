@@ -12,10 +12,8 @@ import type {
   ClobRound,
   DfbaRound,
   Direction,
-  MarketMakerRound,
   MarketSignal,
   Rng,
-  SpreadOption,
 } from '@/types/game';
 
 export const BATCH_WINDOW_MS = 40;
@@ -220,30 +218,3 @@ export function buildDfbaRounds(rng: Rng = Math.random): DfbaRound[] {
     };
   });
 }
-
-/* ----------------------------------------------------------- act 3 (maker) */
-
-export const SPREAD_OPTIONS: readonly SpreadOption[] = [
-  { id: 'wide', label: 'Wide', halfSpreadTicks: 12, hint: 'Safe for you, expensive for everyone else.' },
-  { id: 'medium', label: 'Medium', halfSpreadTicks: 6, hint: 'A middle setting.' },
-  { id: 'tight', label: 'Tight', halfSpreadTicks: 2, hint: 'Great for traders, exposed to pick-off.' },
-];
-
-export const MARKET_MAKER_ROUNDS: readonly MarketMakerRound[] = [
-  {
-    id: 'mm-clob',
-    index: 0,
-    venue: 'clob',
-    naturalFlowUnits: 600,
-    fastFlowUnits: 400,
-    spreadOptions: [...SPREAD_OPTIONS],
-  },
-  {
-    id: 'mm-dfba',
-    index: 1,
-    venue: 'dfba',
-    naturalFlowUnits: 600,
-    fastFlowUnits: 400,
-    spreadOptions: [...SPREAD_OPTIONS],
-  },
-];

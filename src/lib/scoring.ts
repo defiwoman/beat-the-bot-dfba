@@ -1,9 +1,12 @@
 import { clamp } from './format';
+import { STARTING_METRICS, marketQuality } from './marketMaker';
 import type {
   ClobRoundResult,
   DfbaRoundResult,
   Grade,
-  MarketMakerRoundResult,
+  MakerEventResult,
+  MakerMetrics,
+  MakerMode,
   ScoreBreakdown,
 } from '@/types/game';
 
@@ -16,7 +19,6 @@ import type {
 export const POINTS_PER_CORRECT_DIRECTION = 8;
 export const COMBO_BONUS_PER_STREAK = 2;
 export const MAX_COMBO_BONUS = 12;
-export const MAKER_POINTS_BASE = 20;
 export const MAKER_POINTS_MAX = 40;
 
 export function gradeFor(totalPoints: number): Grade {
@@ -55,10 +57,25 @@ export function longestStreak(
   return best;
 }
 
+/**
+ * Where the three survival metrics stood at the end of one half of Level C.
+ *
+ * Read back from the recorded events rather than trusted from live state, so the result card
+ * always agrees with what the player actually did. Before a mode has been played, its metrics
+ * are the level's starting values.
+ */
+export function metricsForMode(
+  makerResults: readonly MakerEventResult[],
+  mode: MakerMode,
+): MakerMetrics {
+  const last = [...makerResults].reverse().find((result) => result.mode === mode);
+  return last ? last.metrics : STARTING_METRICS;
+}
+
 export function computeScore(
   clobResults: readonly ClobRoundResult[],
   dfbaResults: readonly DfbaRoundResult[],
-  makerResults: readonly MarketMakerRoundResult[],
+  makerResults: readonly MakerEventResult[],
 ): ScoreBreakdown {
   const clobCorrect = clobResults.filter((result) => result.wasCorrect).length;
   const dfbaCorrect = dfbaResults.filter((result) => result.wasCorrect).length;
@@ -67,9 +84,13 @@ export function computeScore(
   const directionPoints = (clobCorrect + dfbaCorrect) * POINTS_PER_CORRECT_DIRECTION;
   const comboBonus = Math.min(bestStreak * COMBO_BONUS_PER_STREAK, MAX_COMBO_BONUS);
 
-  const makerNetTicks =
-    Math.round(makerResults.reduce((total, result) => total + result.netTicks, 0) * 10) / 10;
-  const makerPoints = Math.round(clamp(MAKER_POINTS_BASE + makerNetTicks, 0, MAKER_POINTS_MAX));
+  // Level C is scored on the health of the market the player left behind, not on the maker's
+  // takings alone — quoting wide to protect yourself while the book empties is not a good score.
+  const makerClobMetrics = metricsForMode(makerResults, 'clob');
+  const makerMetrics = metricsForMode(makerResults, 'prism');
+  const makerPoints = Math.round(
+    clamp((marketQuality(makerMetrics) / 100) * MAKER_POINTS_MAX, 0, MAKER_POINTS_MAX),
+  );
 
   const totalPoints = directionPoints + comboBonus + makerPoints;
 
@@ -85,7 +106,8 @@ export function computeScore(
     bestStreak,
     directionPoints,
     comboBonus,
-    makerNetTicks,
+    makerMetrics,
+    makerClobMetrics,
     makerPoints,
     totalPoints,
     grade: gradeFor(totalPoints),

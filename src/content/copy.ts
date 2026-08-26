@@ -108,7 +108,7 @@ export const copy = {
     racesLabel: 'Correct reads on the continuous book',
     batchesLabel: 'Correct reads inside the batch',
     streakLabel: 'Best streak',
-    makerLabel: 'Net ticks as a market maker',
+    makerLabel: 'Market health you left behind',
   },
 
   footer: {
@@ -123,16 +123,16 @@ export const copy = {
     bullets: [
       'Level A — read the signal, race a bot on a continuous book.',
       'Level B — same signals, matched inside a 40ms batch.',
-      'Act 3 — take the other seat and quote the market yourself.',
+      'Level C — take the other seat and keep a market alive.',
     ],
     duration: 'Takes about 90 seconds.',
     startLabel: 'Start Game',
     /** Accessible names must contain the visible label (WCAG 2.5.3 Label in Name). */
-    startHint: 'Start Game — begin at act one',
+    startHint: 'Start Game — begin at Level A',
   },
 
   clobTutorial: {
-    eyebrow: 'Act 1 of 3',
+    eyebrow: 'Level A of 3',
     heading: 'The continuous order book',
     lines: [
       {
@@ -224,7 +224,7 @@ export const copy = {
   },
 
   dfbaTutorial: {
-    eyebrow: 'Act 2 of 3',
+    eyebrow: 'Level B of 3',
     heading: 'The discrete frequent batch auction',
     lines: [
       {
@@ -344,47 +344,118 @@ export const copy = {
   },
 
   marketMakerTutorial: {
-    eyebrow: 'Act 3 of 3',
-    heading: 'Swap seats — you are the market maker',
+    eyebrow: 'Level C of 3',
+    heading: 'Market Maker Survival',
     lines: [
       {
-        title: 'Your quote is a standing offer',
-        body: 'A market maker posts a bid and an ask and earns the spread between them. The catch is that anyone may take either side at any time.',
+        title: 'You are the market maker now',
+        body: 'You quote a spread and keep three things alive: Capital Health, Trader Satisfaction, and Market Depth. Volatility is about to hit your quote three times.',
       },
       {
-        title: 'Getting picked off is the fear',
-        body: 'When news moves the fair price, a faster trader can take your stale quote before you can pull it. Widening the spread is the defence.',
+        title: 'Your spread is the only dial',
+        body: 'Quote tight and traders get a better price, but more of any sudden move is left uncovered. Quote wide and you are protected, while traders pay in price and in size.',
       },
       {
-        title: 'Wide quotes cost everyone else',
-        body: 'A wider spread protects you and gives ordinary natural-flow traders a worse price. A design that is meant to reduce speed-based pick-off risk can support quoting tighter.',
+        title: 'There is no perfect setting here',
+        body: 'In continuous matching, every spread costs you something. The level is asking which cost you are willing to take, not which answer is right.',
       },
     ],
-    continueLabel: 'Set my quote',
+    continueLabel: 'Start quoting',
   },
 
-  marketMakerGame: {
-    eyebrow: 'Act 3 — quoting',
-    heading: 'Choose your spread',
-    venueLabel: 'Venue',
-    venueNames: {
+  /** LEVEL C — Market Maker Survival. Every bps value here is an illustrative game mechanic. */
+  makerSurvival: {
+    eyebrow: 'Level C — Market Maker Survival',
+    illustrativeBadge: 'Illustrative game mechanics — not Superluminal performance data',
+    illustrativeNote:
+      'Every basis-point value, metric and outcome in this level is an invented game mechanic chosen for teaching. None of it is Superluminal performance data, none of it is a measured market statistic, and this level does not reproduce live results from any venue.',
+
+    metrics: {
+      heading: 'Your book',
+      capitalHealth: 'Capital Health',
+      traderSatisfaction: 'Trader Satisfaction',
+      marketDepth: 'Market Depth',
+      capitalHint: 'What you keep after the fast participant takes their share.',
+      satisfactionHint: 'The price ordinary traders get from your quote.',
+      depthHint: 'How much size you are willing to show.',
+    },
+
+    spreadPrompt: 'Choose your spread',
+    spreadUnit: 'bps',
+    eventLabel: 'Event',
+    moveLabel: 'Price move',
+    yourSpreadLabel: 'Your spread',
+    takenLabel: 'Taken from you',
+    quotingIn: 'Quoting into',
+
+    modeNames: {
       clob: 'Continuous order book',
-      dfba: 'Discrete frequent batch auction',
+      prism: 'Prism batched mode',
     },
-    venuePrompt: {
-      clob: 'Speed-advantaged flow can reach your stale quote first here. How wide do you want to sit?',
-      dfba: 'This venue is designed to reduce speed-based pick-off risk. Same news, same flow — try the same choice again.',
+
+    clob: {
+      heading: 'Survive the speed race',
+      prompt:
+        'Continuous matching, arrival-time priority. A faster participant can reach your quote the instant the price moves.',
+      toxicWarning: 'Toxic flow — your stale quote was picked off',
+      toxicDetail:
+        'The price moved further than your spread covered, and a faster participant reached the quote before you could pull it.',
+      safeLabel: 'Spread covered the move',
+      safeDetail: 'Nothing was left uncovered this time, and the quote survived intact.',
     },
-    spreadLabel: 'Half-spread',
-    ticksLabel: 'ticks',
-    resultHeading: 'Round result',
-    pickedOffLabel: 'Picked off',
-    naturalFlowLabel: 'Natural flow filled',
-    netLabel: 'Net ticks',
+
+    prism: {
+      heading: 'Quote inside the batch',
+      prompt:
+        'Orders now collect into short batches and maker flow is separated from taker flow. Speed-based pick-off risk is reduced in this model — it is not removed.',
+      toxicWarning: 'Reduced pick-off — some exposure remains',
+      toxicDetail:
+        'Part of the move was still uncovered. Batching is designed to reduce what a faster participant can take, not to set that risk to zero.',
+      safeLabel: 'Spread covered the move',
+      safeDetail: 'Nothing was left uncovered this time.',
+    },
+
+    clobVerdict: {
+      eyebrow: 'Level C — part 1 result',
+      headline: 'You widened the spread to survive. Every trader paid for the speed race.',
+      body: 'That is the trap of the speed race. Protecting your capital and giving traders a good price pull in opposite directions, and something loses either way.',
+      chainHeading: 'How the pressure builds',
+      chain: [
+        'Latency advantage',
+        'Stale-quote pick-off',
+        'Adverse selection',
+        'Wider spreads',
+      ],
+      activateLabel: 'ACTIVATE PRISM',
+      activateHint: 'ACTIVATE PRISM — switch to batched matching and quote the same events again',
+      activateTease: 'Same three events. Same three choices. One structural change.',
+    },
+
+    prismVerdict: {
+      eyebrow: 'Level C — part 2 result',
+      headline: 'Batching changed what a tight quote costs you.',
+      body: 'Arrival time inside a batch no longer decides who reaches your quote first, so a tighter spread stops bleeding capital on every move. A design that is meant to reduce speed-based pick-off risk can support tighter quoting more sustainably. It does not set the risk to zero, and it does not guarantee the market maker earns a profit.',
+      chainHeading: 'How the pressure eases',
+      chain: [
+        'Batching',
+        'Less arrival-time privilege',
+        'Reduced pick-off pressure',
+        'Tighter quoting can become more sustainable',
+      ],
+      comparisonHeading: 'Where you ended up',
+      overallLabel: 'Overall market health',
+      clobColumn: 'Continuous',
+      prismColumn: 'Batched',
+      continueLabel: 'See my results',
+    },
+
     caveat:
-      'Batching is designed to reduce speed-based pick-off risk. It does not remove inventory risk, volatility, or adverse selection from better-informed traders.',
-    nextLabel: 'Next venue',
-    finishLabel: 'See my results',
+      'Batching is designed to reduce speed-based pick-off risk. It does not remove inventory risk, volatility, or adverse selection from better-informed traders, and it does not guarantee the market maker earns a profit.',
+
+    deltaUp: 'up',
+    deltaDown: 'down',
+    nextEvent: 'Next event',
+    eventOf: 'Event',
   },
 
   results: {
@@ -400,7 +471,7 @@ export const copy = {
     dfbaLine: 'Correct reads inside the batch',
     streakLine: 'Best correct-direction streak',
     reactionLine: 'Your average reaction',
-    makerLine: 'Net ticks as a market maker',
+    makerLine: 'Market health you left behind',
     takeawaysHeading: 'Three things to take away',
     takeaways: [
       {

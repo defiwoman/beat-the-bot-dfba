@@ -74,7 +74,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         ...applyStreak(state, action.result.wasCorrect),
       };
 
-    case 'RECORD_MAKER_ROUND':
+    case 'RECORD_MAKER_EVENT':
       return { ...state, makerResults: [...state.makerResults, action.result] };
 
     case 'RESTART':

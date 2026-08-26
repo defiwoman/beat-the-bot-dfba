@@ -4,7 +4,6 @@ import {
   inSameBatch,
   resolveClobRound,
   resolveDfbaRound,
-  simulateMakerRound,
 } from './simulation';
 import { seededRng } from './rng';
 import {
@@ -13,10 +12,8 @@ import {
   buildClobRounds,
   buildDfbaRounds,
   drawSignals,
-  MARKET_MAKER_ROUNDS,
   ROUNDS_PER_LEVEL,
   SIGNAL_DELAY_MS,
-  SPREAD_OPTIONS,
 } from '@/data/rounds';
 import { auctionSideForDirection } from '@/types/game';
 
@@ -24,10 +21,6 @@ const rng = () => seededRng(42);
 const clobRounds = buildClobRounds(rng());
 const dfbaRounds = buildDfbaRounds(rng());
 
-const tight = SPREAD_OPTIONS.find((option) => option.id === 'tight')!;
-const wide = SPREAD_OPTIONS.find((option) => option.id === 'wide')!;
-const clobVenue = MARKET_MAKER_ROUNDS.find((round) => round.venue === 'clob')!;
-const dfbaVenue = MARKET_MAKER_ROUNDS.find((round) => round.venue === 'dfba')!;
 
 /* ------------------------------------------------------- round generation */
 
@@ -238,32 +231,5 @@ describe('DFBA result calculation', () => {
     expect(result.sameBatch).toBe(true);
     // Same batch, but not enough resting liquidity — so no promise of the same price.
     expect(result.samePriceAsBot).toBe(false);
-  });
-});
-
-/* ============================================================== act three == */
-
-describe('simulateMakerRound', () => {
-  it('exposes a tight quote to more pick-off than a wide one on the same venue', () => {
-    expect(simulateMakerRound(clobVenue, tight).pickedOffUnits).toBeGreaterThan(
-      simulateMakerRound(clobVenue, wide).pickedOffUnits,
-    );
-  });
-
-  it('reduces, but does not remove, pick-off exposure on the batch venue', () => {
-    const onClob = simulateMakerRound(clobVenue, tight);
-    const onDfba = simulateMakerRound(dfbaVenue, tight);
-    expect(onDfba.pickedOffUnits).toBeLessThan(onClob.pickedOffUnits);
-    expect(onDfba.pickedOffUnits).toBeGreaterThan(0);
-  });
-
-  it('makes the same tight quote perform better on the batch venue', () => {
-    expect(simulateMakerRound(dfbaVenue, tight).netTicks).toBeGreaterThan(
-      simulateMakerRound(clobVenue, tight).netTicks,
-    );
-  });
-
-  it('is pure — the same inputs always give the same result', () => {
-    expect(simulateMakerRound(dfbaVenue, tight)).toEqual(simulateMakerRound(dfbaVenue, tight));
   });
 });
