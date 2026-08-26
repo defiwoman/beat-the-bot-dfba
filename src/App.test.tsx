@@ -98,10 +98,10 @@ describe('landing screen', () => {
     expect(superluminal.length).toBeGreaterThanOrEqual(2);
 
     for (const logo of fogo) {
-      expect(logo).toHaveAttribute('src', './brands/fogo-logo.jpg');
+      expect(logo).toHaveAttribute('src', '/brands/fogo-logo.jpg');
     }
     for (const logo of superluminal) {
-      expect(logo).toHaveAttribute('src', './brands/superluminal-logo.png');
+      expect(logo).toHaveAttribute('src', '/brands/superluminal-logo.png');
     }
   });
 

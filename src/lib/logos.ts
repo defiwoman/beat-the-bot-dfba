@@ -4,10 +4,13 @@
  * The real files in this repository are `fogo-logo.jpg` and `superluminal-logo.png`, referenced
  * by their real filenames rather than converted. They are used exactly as supplied — no
  * recolouring, cropping, distortion, tracing or re-encoding.
+ *
+ * The paths are absolute, not relative. Under the SPA fallback a relative path would resolve
+ * against whatever URL the visitor happened to land on, so the marks would 404 on any deep link.
  */
 
-export const FOGO_LOGO_SRC = './brands/fogo-logo.jpg';
-export const SUPERLUMINAL_LOGO_SRC = './brands/superluminal-logo.png';
+export const FOGO_LOGO_SRC = '/brands/fogo-logo.jpg';
+export const SUPERLUMINAL_LOGO_SRC = '/brands/superluminal-logo.png';
 
 /**
  * Where to load the artwork from. Only the delivery changes between these: the PNG export

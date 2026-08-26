@@ -2,6 +2,17 @@
 
 A 90-second, mobile-first educational browser game about how a market decides **who trades first**.
 
+> **This is a community-built educational game**, associated with the Superluminal x Fogo DFBA
+> campaign. It is not an official product of either project.
+>
+> **Every number in it is illustrative** — invented to teach a mechanism, not measured from any
+> market. The prices, latencies, spreads and scores are all made up for the lesson. The game does
+> not use live Superluminal data, makes no claim about any venue's real performance, and is not
+> financial advice.
+>
+> There is no backend, no database, no wallet connection and no account. Nothing you do here
+> touches a real market.
+
 **Level A** — an illustrative BTC signal lands and you pick LONG or SHORT. Your read is right, and a
 bot answering in 8–25ms still reaches the quote first, so you're filled a little worse. You cannot
 win that race, and the game tells you why rather than leaving you annoyed.
@@ -42,11 +53,6 @@ whole game builds to —
 source material. The result card can be shared through the device share sheet, copied, posted to
 X, or saved as a PNG with both logos rendered in.
 
-> A community-built educational game associated with the **Superluminal x Fogo DFBA campaign**.
->
-> Every number in it is illustrative and invented for teaching. It does not use live Superluminal
-> data, it makes no market-performance claims, and it is not financial advice.
-
 ## What it teaches
 
 1. A **CLOB** matches continuously and uses **arrival-time priority**, so a small latency advantage
@@ -62,18 +68,81 @@ The exact claims the app may and may not make are written down in
 [ACCURACY_RULES.md](./ACCURACY_RULES.md) — and enforced by a test.
 Full gameplay is specified in [GAME_SPEC.md](./GAME_SPEC.md).
 
-## Running it
+## Running it on your own machine
+
+You need **Node.js 20 or newer** and npm. Nothing else — no database to install, no API key to
+sign up for, no account to create.
+
+**1. Get the code and install the dependencies.**
+
+```bash
+git clone https://github.com/defiwoman/beat-the-bot-dfba.git
+cd beat-the-bot-dfba
+npm install
+```
+
+**2. Start it.**
+
+```bash
+npm run dev
+```
+
+That prints a local address (usually `http://localhost:5173`). Open it in a browser and the game
+runs. Edits to the code refresh the page automatically.
+
+### Checking your changes
+
+```bash
+npm run lint          # code style
+npm test              # the test suite, in watch mode
+npm test -- --run     # the test suite once, then exit — this is what CI runs
+npm run build         # typecheck + production build into dist/
+npm run preview       # serve the built dist/ folder, to check the real build
+```
+
+If you change any user-facing wording, run `npm test` — the accuracy tests read the copy file and
+will fail the build if a sentence drifts into a claim the project is not allowed to make.
+
+No backend, no database, no wallet connection, no API keys, no real money, no real trading data.
+
+## Deploying to Netlify
+
+The whole app is static files, so deployment is genuinely just "build it and upload the folder".
+[`netlify.toml`](./netlify.toml) in the project root already tells Netlify how.
+
+**The easy way — connect the repository.**
+
+1. Sign in to Netlify and choose **Add new site → Import an existing project**.
+2. Pick GitHub and choose this repository.
+3. Netlify reads `netlify.toml` and fills the settings in for you. They should read:
+   - **Build command:** `npm run build`
+   - **Publish directory:** `dist`
+4. Press **Deploy**. The first build takes a couple of minutes.
+
+**There is nothing else to configure.** Leave the environment-variables section empty — this
+project has none, and needs none. If a deploy ever asks you for a key or a secret, something is
+wrong; check you are deploying the right repository.
+
+**The manual way — drag and drop.**
 
 ```bash
 npm install
-npm run dev        # local dev server
-npm run lint       # eslint
-npm test           # vitest + react testing library
-npm run build      # typecheck + production build to dist/
-npm run preview    # serve the production build
+npm run build
 ```
 
-No backend, no database, no wallet connection, no API keys, no real money, no real trading data.
+Then drag the `dist` folder onto Netlify's **Deploys** page.
+
+### Two settings that matter
+
+- **`base: '/'` in `vite.config.ts`.** This is set for deployment at the root of a domain
+  (`yoursite.com`), and it must stay `'/'`. `netlify.toml` sends every unmatched path to the app,
+  and with a relative base the browser would look for the code files inside whatever URL the
+  visitor landed on and find nothing — a blank page.
+- **The SPA redirect in `netlify.toml`.** It means a shared or mistyped link still opens the game
+  instead of a 404.
+
+If you ever host this somewhere that is *not* the root of a domain — a `/games/beat-the-bot/`
+subfolder, say — change `base` to that path and rebuild.
 
 ## Visual identity — "the heat and the prism"
 

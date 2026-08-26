@@ -15,8 +15,8 @@ import { GAME_PHASES } from '@/types/game';
 
 describe('brand assets', () => {
   it('points at the real files supplied in the repository', () => {
-    expect(FOGO_LOGO_SRC).toBe('./brands/fogo-logo.jpg');
-    expect(SUPERLUMINAL_LOGO_SRC).toBe('./brands/superluminal-logo.png');
+    expect(FOGO_LOGO_SRC).toBe('/brands/fogo-logo.jpg');
+    expect(SUPERLUMINAL_LOGO_SRC).toBe('/brands/superluminal-logo.png');
   });
 
   it('renders both marks with descriptive alt text in the compact bar', () => {
