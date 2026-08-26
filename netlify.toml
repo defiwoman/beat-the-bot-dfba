@@ -1,0 +1,48 @@
+# Netlify deployment for Beat the Bot: The 40ms Market.
+#
+# The app is a static single-page build with no backend, no database and no runtime services,
+# so there is nothing to configure beyond the build itself. It needs no environment variables
+# and no secrets — if a deploy ever asks you for one, something has gone wrong.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  # Match the major version the project is developed and tested against.
+  NODE_VERSION = "20"
+
+# ─────────────────────────────────────────────────────────────── SPA fallback
+#
+# Every unmatched path serves the app rather than a 404, so a shared or mistyped link still
+# lands on the game. This is why `base` in vite.config.ts must stay '/' — with a relative base
+# the bundle would be requested against the visitor's URL and the app would not boot here.
+#
+# force = false so real files (the brand assets, the JS and CSS bundles) are served first and
+# only genuinely missing paths fall through to the app.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  force = false
+
+# ────────────────────────────────────────────────────────────────── headers
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    # The game reads no sensors, location, camera or payment APIs.
+    Permissions-Policy = "geolocation=(), microphone=(), camera=(), payment=()"
+
+# Hashed bundles are immutable, so they can be cached hard.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# The brand marks keep their filenames across deploys, so they get a shorter cache.
+[[headers]]
+  for = "/brands/*"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"

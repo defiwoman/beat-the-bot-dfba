@@ -1,0 +1,603 @@
+# GAME_SPEC — Beat the Bot: The 40ms Market
+
+A community-built educational browser game associated with the **Superluminal x Fogo DFBA campaign**.
+
+> **Important:** every number in this game is illustrative and invented for teaching. The game does
+> not connect to any exchange, wallet, backend or data feed. See [ACCURACY_RULES.md](./ACCURACY_RULES.md).
+
+---
+
+## 1. Purpose
+
+The player should leave with a working mental model of two ways a market can match orders:
+
+| | Continuous Limit Order Book (CLOB) | Discrete Frequent Batch Auction (DFBA) |
+| --- | --- | --- |
+| When it matches | Continuously, order by order | At the end of each short batch window |
+| Who gets a contested quote | The order that arrives first | Decided by the auction, not by arrival time inside the batch |
+| Price | Each match at its own resting price | One uniform clearing price per auction |
+| Auctions per batch | n/a | Two: a bid auction and an ask auction, each with its **own** clearing price |
+| Maker / taker flow | Interleaved in one queue | Separated into maker and taker flows |
+
+The game teaches this by making the player *lose* a speed race, then *not need to win* one.
+
+**Level A + Level B gameplay stays under 45 seconds.** Measured end to end in a browser at
+390×844, the two levels take roughly 17s of pure interaction, leaving generous headroom for
+reading. The two tutorials and Level C sit outside that budget; Level C carries its own
+**under-30-second** target, covered in section 7.8.
+
+## 2. Target experience
+
+- **Platform:** mobile-first responsive web, portrait-friendly, one thumb.
+- **Length:** approximately **75–90 seconds** end to end.
+- **Reading level:** no market-structure background assumed. Jargon is introduced once, in plain words.
+- **No** backend, database, wallet connection, API key, real money or real trading data.
+
+## 3. Phase machine
+
+The whole app is driven by one state machine with exactly ten phases, advanced in a fixed order:
+
+```
+intro
+  → clobTutorial → clobGame → clobReveal
+  → dfbaTutorial → dfbaGame → dfbaReveal
+  → marketMakerTutorial → marketMakerGame
+  → results
+```
+
+`results` offers **Play again**, which resets state and returns to `intro`.
+
+- The machine lives in `src/state/gameMachine.ts` as a pure reducer plus a pure `nextPhase()` helper.
+- Screens never mutate state directly; they dispatch actions.
+- Round results are appended immutably, so `results` can always be recomputed from the record.
+
+### Budget per phase
+
+| Phase | Interaction | Target time |
+| --- | --- | --- |
+| `intro` | Read title, press **Start Game** | ~8s |
+| `clobTutorial` | Three short lines, press **Got it** | ~8s |
+| `clobGame` | 3 signal rounds (Level A) | ~10s |
+| `clobReveal` | The reveal line + three lessons | ~8s |
+| `dfbaTutorial` | Three short lines, press **Got it** | ~8s |
+| `dfbaGame` | 3 batch rounds (Level B) | ~14s |
+| `dfbaReveal` | Two auctions + the comparison | ~8s |
+| `marketMakerTutorial` | Role switch explained | ~6s |
+| `marketMakerGame` | Level C: 6 spread decisions across two modes | <30s |
+| `results` | Score, three takeaways, replay | open |
+
+## 3a. Feel — opening, meters, controls, pacing
+
+### The opening (about 3 seconds)
+
+The whole argument stated as one image before a word of explanation: a **Fogo flame streak**
+tears across the screen — continuous, arrival-ordered — strikes a **Superluminal prism**, and
+refracts into eight discrete bars landing together. SPEED → BATCH.
+
+It is **skippable at any moment** (tap, click, any key), it shows **no countdown and no timer**,
+and it plays **once**: Try Again goes straight back to the game. Under `prefers-reduced-motion`
+it resolves immediately to the settled frame and holds briefly.
+
+### In-round meters
+
+| Meter | Level | Fills toward | Says |
+| --- | --- | --- | --- |
+| **BOT EDGE** | A | the bot | the head start you cannot beat |
+| **PRICE EDGE** | B | you | what the batch clearing price saved |
+
+Both are ARIA `progressbar`s, so the value reaches assistive technology rather than living only
+in a fill width, and both are labelled illustrative game data.
+
+### Controls
+
+| Input | Does |
+| --- | --- |
+| `↑` / `←` / `L` | LONG |
+| `↓` / `→` / `S` | SHORT |
+| `1` `2` `3` | the three spreads in Level C |
+| `Space` / `Enter` | continue from a resolved round |
+| `M` | mute, from anywhere |
+| any key / tap | skip the opening |
+
+Every shortcut mirrors a control that is already on screen and already reachable by Tab — never
+the only way to do something. Shortcuts are ignored while a modifier is held or while focus is in
+a field, so browser and assistive-technology keys keep working. Hints are hidden on
+touch-primary devices and hidden from assistive technology, since they would only repeat what the
+buttons already announce.
+
+### Pause on losing the tab
+
+A timed round must never run out while the player is looking at something else. When
+`document.hidden` goes true mid-round the game freezes and shows a pause panel.
+
+**Resuming redraws the round with a fresh signal.** That is the point: without it, a player could
+see a direction, switch tabs, and come back knowing the answer. Window *blur* is deliberately not
+treated as leaving — clicking the address bar or a devtools panel leaves the game fully visible.
+
+### Celebration
+
+One short burst when the batched run finishes: a labelled banner and a ring of sparks, once, with
+no score inflation and no reward the player did not earn. Static under reduced motion.
+
+### What this game deliberately does not do
+
+No loot boxes, no streak-loss threats, no daily-return pressure, no artificial rewards, no wallet
+prompts, and **no countdowns anywhere** — the opening and the pause panel both report no clock.
+The only timers are the ones the lesson needs: the signal delay and the round timeout.
+
+### Pacing
+
+**Interaction floor: about 55 seconds**, measured end to end in a browser playing every level
+from the keyboard at a brisk pace. That is the fastest a first run can go while still reading
+enough to answer.
+
+A first-time player who actually reads the three tutorials and the two reveals lands in the
+**75–90 second** window; a player who skims them finishes nearer the floor. **Try Again skips the
+opening and all three tutorials**, dropping straight into a live round in about half a second,
+so a replay is meaningfully faster than a first run.
+
+## 4. The illustrative instrument
+
+All rounds trade **BTC‑PERP** at an illustrative price around **$100,000**. Every price, slippage
+figure and latency in the game is **illustrative game data** — invented for the lesson, never a real
+BTC price and never a measured market statistic. The phrase "illustrative game data" is stamped
+next to the numbers on screen, not buried in a footnote.
+
+## 5. LEVEL A — CLOB, fastest wins
+
+Three short randomised rounds. The player is a taker reading a signal and picking a side.
+
+### 5.1 `clobTutorial`
+
+Three lines: a CLOB matches continuously; among eligible orders it uses arrival-time priority;
+so when news moves the fair price, reaching the stale quote first is simply a race.
+
+### 5.2 `clobGame` — 3 rounds
+
+Each round runs the same loop:
+
+1. Show an illustrative **BTC price around $100,000**, labelled *illustrative game data*.
+2. Wait a randomised **600–1500ms**, so the player cannot pre-fire.
+3. Fire a clear **market signal** (funding flip, large print, oracle step, liquidation cascade).
+4. The player picks **LONG** or **SHORT**.
+5. Measure reaction with `performance.now()` — the signal timestamp against the answer timestamp.
+6. The fictional low-latency bot answers in an illustrative **8–25ms**.
+7. If the read was right, say so explicitly: **"Your analysis was correct."**
+8. Then show that the bot reached the attractive quote first, **because of arrival-time priority**.
+9. The player is filled at a slightly **worse illustrative price**, and the slippage is shown.
+
+Outcomes: `correctButOutpaced`, `wrongDirection`, `noAnswer` (round closed at 2600ms).
+
+> **The race is not winnable, on purpose.** At 8–25ms the bot is beyond any human hand. The
+> player is never told to click faster, the score never rewards speed, and `clobReveal` says
+> outright that losing was the designed outcome rather than a trick. Reading the signal is the
+> only thing being asked of them, and the only thing scored.
+
+Answering before the signal fires shows a "too early" note and costs nothing.
+
+### 5.3 `clobReveal`
+
+Opens on the line the level builds to:
+
+> **"You read the market correctly. You lost the queue."**
+
+Then exactly three short lines, and nothing more:
+
+- Continuous matching processes orders as they arrive.
+- Tiny latency advantages can decide who reaches a quote first.
+- Speed infrastructure can matter more than market judgment.
+
+Plus the per-round table, the player's average reaction against the bot's, and the note explaining
+that the unfairness was the demonstration.
+
+## 6. LEVEL B — DFBA, prism mode
+
+Three fresh randomised rounds using the same kinds of signal, so the comparison is like-for-like.
+
+### 6.1 `dfbaTutorial`
+
+Three lines — orders collect into a short 40ms batch; maker and taker flows are separated; the
+batch runs a bid auction and an ask auction, each with **its own** uniform clearing price — over a
+live `BatchPulse` carrying the slow-motion label.
+
+### 6.2 `dfbaGame` — 3 rounds
+
+1. The signal fires and the player submits a **LONG** or **SHORT** decision.
+2. The player order and the bot order land inside the same **~40ms batch**.
+3. The batch is **replayed in clearly labelled slow motion** — a 0–40ms timeline with markers for
+   the bot, the makers and the player, swept by a playhead over ~1400ms.
+4. A **taker buy routes to the ask auction**, against maker sells.
+5. A **taker sell routes to the bid auction**, against maker buys.
+6. The **clearing price of the relevant auction** is shown — alongside the other auction's own,
+   different price, so the two-price rule is never blurred.
+7. With sufficient illustrative liquidity, the player and the bot **receive the same clearing
+   price inside that auction**.
+8. The screen names the arrival gap and says it **created no priority** inside the batch.
+9. It states that the other auction cleared at **its own separate price** — never one universal
+   price across both.
+10. It states that filling **depends on resting liquidity and is not guaranteed** — the game never
+    promises a fill.
+
+Outcomes: `filledSameprice`, `wrongDirectionFilled`, `noAnswer`.
+
+### 6.3 `dfbaReveal` — the comparison
+
+The bid auction and the ask auction side by side with their two different clearing prices, the
+"batching removes arrival-time priority within the batch" note, then the **comparison reveal** — a
+four-row table putting the two levels against each other on matching, who gets the quote, the
+arrival gap and price — and finally what still matters (price priority, size, liquidity).
+
+
+## 7. Level C — MARKET MAKER SURVIVAL
+
+The player swaps seats and becomes a fictional market maker. The level runs in two halves inside
+the single `marketMakerGame` phase, so the ten-phase machine stays exactly as specified.
+
+> **Every basis-point value, metric and outcome in this level is an illustrative game mechanic.**
+> None of it is Superluminal performance data, none of it is a measured market statistic, and the
+> level does not reproduce live results from any venue. An "Illustrative game mechanics" badge is
+> on screen for the whole level.
+
+### 7.1 `marketMakerTutorial`
+
+Introduces the three metrics and the single dial. The level's thesis is stated up front: in
+continuous matching there is no perfect spread, only a choice of which cost to take.
+
+### 7.2 The three metrics
+
+Each runs 0–100 and renders as a labelled ARIA `meter`.
+
+| Metric | What it tracks | Starts at |
+| --- | --- | --- |
+| **Capital Health** | What the maker keeps after the fast participant takes their share | 72 |
+| **Trader Satisfaction** | The price ordinary traders get from the quote | 58 |
+| **Market Depth** | How much size the maker is willing to show | 55 |
+
+### 7.3 The three spreads
+
+| Choice | Spread | |
+| --- | --- | --- |
+| Tight | 2 bps | Best price for traders, most of a move left uncovered |
+| Balanced | 6 bps | Middle ground |
+| Wide | 12 bps | Protects capital, costs traders price and size |
+
+### 7.4 The model (`src/lib/marketMaker.ts`)
+
+Pure, and the level's whole testable core.
+
+```
+adverseBps      = max(0, moveBps − spreadBps)
+adverseCostBps  = adverseBps × PICK_OFF_EXPOSURE[mode]     clob 1.0   prism 0.25
+flowCapture     = (0.25 + 0.75 × tightness) × FLOW_BOOST[mode]   clob 1.0   prism 1.35
+spreadRevenue   = spreadBps × flowCapture
+
+capitalDelta       = spreadRevenue − adverseCostBps
+satisfactionDelta  = 8 − (spreadBps − 2) × 3      + SUSTAIN_BONUS[mode]
+depthDelta         = 6 − (spreadBps − 2) × 2.2    + min(0, capitalDelta) × 0.4
+```
+
+The last term is the point of the level: a maker whose capital just took a hit **pulls size**, so
+a speed race thins the book for everyone even when the maker survives it.
+
+### 7.5 Part 1 — CLOB mode
+
+Three escalating volatility events (9, 15, 22 bps). Every move exceeds the tightest spread, which
+is what makes the trade-off real rather than a free win.
+
+**No perfect choice**, and a test asserts it across every event × spread pair:
+
+| | Capital | Satisfaction | Depth |
+| --- | --- | --- | --- |
+| Tight | collapses (72 → 38) | rises | dragged under by the capital hit |
+| Balanced | sags | falls | falls |
+| Wide | protected (→ 68) | floors at 0 | floors |
+
+A **toxic-flow warning** appears whenever a stale quote is picked off, naming the move, the spread
+and what was taken.
+
+Part 1 ends on the required line — *"You widened the spread to survive. Every trader paid for the
+speed race."* — and the causal chain:
+
+```
+Latency advantage → Stale-quote pick-off → Adverse selection → Wider spreads
+```
+
+### 7.6 ACTIVATE PRISM
+
+A deliberately dramatic full-width control with a sweep animation (suppressed under reduced
+motion). Batched mode starts from the metrics continuous mode left behind, so the recovery is
+visible rather than a reset.
+
+### 7.7 Part 2 — Prism mode
+
+The same three events, so the comparison is like for like. Orders go into short batches, maker and
+taker flow are separated, and pick-off exposure drops to a quarter.
+
+Tight quoting becomes roughly sustainable — capital holds around 70 while satisfaction and depth
+climb — which is what "tighter quoting **can become** more sustainable" means here.
+
+**The honesty guards, each covered by a test:**
+
+- Exposure is **never zero**: the warning still fires in batched mode, worded as *reduced*
+  pick-off with some exposure remaining.
+- Capital is **never guaranteed to grow**: the largest modelled move still costs a tight quote
+  capital after batching.
+- Bad decisions still cost: quoting wide in batched mode still empties the book.
+
+Part 2 ends on the second chain and a side-by-side comparison of where both halves finished:
+
+```
+Batching → Less arrival-time privilege → Reduced pick-off pressure
+        → Tighter quoting can become more sustainable
+```
+
+### 7.8 Pacing
+
+Choosing a spread is **never timed**. Only the outcome beat auto-advances, at 1300ms × 6 events
+≈ 8 seconds of forced wait; measured end to end in a browser the level runs about 12 seconds at
+machine speed, leaving the section comfortably inside its 30-second target once a person's own
+decision time is added.
+
+## 8. `results` — the final educational reveal
+
+The last screen has to do three jobs at once: report what happened, land the lesson, and give
+the player something worth passing on.
+
+### 8.1 The eight numbers
+
+| # | Reported | Source |
+| --- | --- | --- |
+| 1 | Fastest reaction time | the minimum across every answered round, not the mean |
+| 2 | Correct market-direction decisions | Level A + Level B reads |
+| 3 | CLOB queue losses | Level A rounds where the bot reached the quote first |
+| 4 | Batches where arrival-time privilege was neutralised | same batch **and** same clearing price as the bot |
+| 5 | Final market-maker health | Level C capital health, batched mode |
+| 6 | Final trader satisfaction | Level C trader satisfaction, batched mode |
+| 7 | **DFBA Knowledge Score** | see below |
+| 8 | Local high score | `localStorage`, see 8.3 |
+
+Row 3 is captioned: losing the queue is the designed outcome of Level A, counted because it is
+the thing being demonstrated, not because the player did anything wrong.
+
+### 8.2 DFBA Knowledge Score
+
+Deliberately **separate from the game score**, which includes a level that cannot be won on
+speed. This number asks only how much of the batch mechanism the run actually exercised:
+
+```
+40  reading the signal correctly inside the batch
+30  rounds where arriving first stopped mattering
+30  the market left behind while quoting into batched mode
+```
+
+A player who never reached Level B scores zero on the first two components rather than being
+credited for rounds they did not play. Neutralisation still counts when the direction read was
+wrong — getting into a batch and out at the same clearing price is the mechanism lesson, and it
+lands either way.
+
+### 8.3 Local high score
+
+Stored in `localStorage` under `btb.highScore.v1`, and nowhere else — no backend, no account.
+Each field keeps its **own** record, so a run can set a personal best on reaction time without
+also having to beat the score. Reaction time is a minimum rather than a maximum, and a run
+where nothing was answered cannot erase a stored reaction record.
+
+The merge is a pure function (`mergeHighScore`) so those rules are unit-tested without touching
+storage; every read and write is wrapped, because storage throws outright in some private modes.
+
+### 8.4 The central conclusion
+
+The line the whole game builds to, rendered as two opposed questions side by side:
+
+> **CLOB asks:** “Who arrived first?”
+> **DFBA asks:** “Who offered the better price and size?”
+
+### 8.5 HOW PRISM WORKS
+
+An expandable `<details>` disclosure — keyboard operable, announced as a disclosure, and
+open-able without JavaScript. Four stages, in order:
+
+1. Collect orders during a short batch window.
+2. Separate maker and taker flow.
+3. Run two auctions — the **bid auction** matches maker buys against taker sells; the **ask
+   auction** matches maker sells against taker buys.
+4. Determine a **separate uniform clearing price for each auction**.
+
+Then what that changes: arrival time inside the batch gives no matching priority; better prices
+receive priority; at the same price allocation may be pro-rata by order size; reduced adverse
+selection can support tighter spreads and deeper liquidity; and a DFBA changes the rules of
+matching rather than being a faster CLOB.
+
+It closes with where the 40ms comes from (see [ACCURACY_RULES.md §3e](./ACCURACY_RULES.md)) and
+four outbound links: Superluminal, Fogo, Jump Crypto's dual-flow batch auction write-up, and
+Budish, Cramton & Shim (2015) in the QJE. All open in a new tab with `rel="noopener noreferrer"`.
+
+### 8.6 The shareable result card
+
+The artefact that leaves the game, so it stands on its own: both official marks, the game's
+name, the score, the fastest reaction, "I tried to Beat the Bot.", "CLOB rewarded speed. DFBA
+changed the rules.", the game URL, and the simplified-scenarios note.
+
+Four ways out, none of which contact a server:
+
+- **Web Share API** where the device has one; a cancelled sheet is not treated as a failure.
+- **Copy link** — the summary plus the URL, always available, and the fallback where there is
+  no share sheet.
+- **Post on X** via the web intent, with text and url as separate parameters so the link is not
+  double-counted.
+- **Save PNG** — `html-to-image` rasterises the card node. Loaded on demand so it stays out of
+  the initial bundle.
+
+**Local logos in the PNG.** `html-to-image` snapshots the DOM into an SVG `foreignObject`, which
+cannot reach back out for a file-path `src` — the marks would arrive blank. So both are fetched
+and inlined as `data:` URIs before capture (`useEmbeddedLogos`), and the download waits on that.
+Only the delivery changes: the same bytes, the same aspect ratio, no re-encoding. Verified by
+downloading the PNG in a real browser and looking at it.
+
+Every share target carries the lesson line and the disclaimer, so a score cannot travel stripped
+of its context.
+
+### 8.7 Also on the screen
+
+The three takeaways, what the game does not claim, the simplified-scenarios note, the
+illustrative-numbers disclaimer, both brand marks, and **Play again**.
+
+## 9. Scoring
+
+Defined once, purely, in `src/lib/scoring.ts`.
+
+```
+directionPoints = (clobCorrect + dfbaCorrect) × 8        (0–48)
+comboBonus      = min(bestStreak × 2, 12)                (0–12)
+makerPoints     = clamp(20 + netTicks, 0, 40)            (0–40)
+totalPoints     = directionPoints + comboBonus + makerPoints
+```
+
+Grades: `≥85 Batch Boss`, `≥65 Auction Apprentice`, `≥40 Latency Learner`, else `Speed Bump`.
+
+**Scoring rewards reading the market, never clicking fast.** Level A is unwinnable on speed by
+design, so tying points to race wins would punish the player for the exact thing being taught. A
+player who loses all three races but reads all three signals correctly scores full marks for
+Level A. The results screen says this outright.
+
+`bestStreak` is recomputed from the recorded results by `longestStreak()` rather than trusted from
+live state, so the result card always agrees with what actually happened.
+
+### Streak and combo
+
+A correct read extends the streak; a wrong read or no answer resets it. The streak carries across
+both levels and is untouched by the market maker act. The combo multiplier runs 1× → 3× at a
+five-round streak, shown in a `ComboMeter` above every round.
+
+## 10. Project structure
+
+```
+public/brands/          Official logo assets — never edited, recoloured, cropped or replaced
+src/
+  components/           BrandBar, GameHeader, GameFooter, StageProgress, MuteToggle,
+                        AmbientBackdrop, BatchPulse, BigMs, ShareCard, AboutPanel,
+                        Button, Meter, Stat, TeachList, Screen, ErrorBoundary
+  content/copy.ts       SINGLE SOURCE OF TRUTH for every user-facing string
+  data/rounds.ts        Illustrative round + market-event fixtures
+  lib/                  Pure helpers: scoring, formatting, simulation, stages, share, sound
+  screens/              One component per phase
+  state/                gameMachine.ts (pure reducer), GameProvider, SoundProvider, hooks
+  styles/               tokens.css (identity) + global.css, mobile-first
+  types/game.ts         Shared types: phases, rounds, events, results, scores
+```
+
+### Rules the codebase keeps
+
+- **No user-facing string is written inline in a component.** Everything reads from `copy.ts`.
+  A test asserts the copy object against the accuracy rules.
+- The reducer is pure and unit-tested; timers live in screens, never in the reducer.
+- Every interactive control is a real `<button>` with a visible label or an `aria-label`, a visible
+  focus ring, and a minimum 44×44px touch target.
+- `prefers-reduced-motion` disables non-essential animation.
+- An `ErrorBoundary` wraps the app and each screen, so a failure in one phase shows a recovery card
+  rather than a blank page.
+
+## 10a. Visual identity — "the heat and the prism"
+
+The look is built on one idea: **two opposing energies**, and the contrast between them *is* the
+argument the game is making.
+
+| | HEAT — Fogo-inspired | PRISM — Superluminal-inspired |
+| --- | --- | --- |
+| Palette | orange, yellow, ember red | blue, cyan, prism violet |
+| Stands for | the continuous market, the race, arrival-time priority | the batch auction, ordered light, one clearing price per auction |
+| Ambient motion | horizontal speed lines + restrained embers | slow vertical prism rays |
+| Lights | Act 1 | Acts 2 and 3, plus the opening and the result |
+
+A screen never picks its own accent. `themeForPhase()` maps the phase to `heat` or `prism`, the
+shell sets `data-act` on a wrapper, and every accent token (`--accent`, `--accent-core`,
+`--accent-edge`, glow, button fill) is redefined under that attribute in `tokens.css`. Adding a
+screen therefore inherits the right half of the identity for free.
+
+**Ground.** A near-black terminal field (`--void` `#04070c`) with an act-tinted radial wash and a
+very low-contrast 48px grid, masked to fade out at the edges — texture, not a data table.
+
+**Surfaces.** `.panel` uses a clipped top-right corner (`clip-path`) so cards read as game HUD
+rather than dashboard tiles. Buttons are chunky, gradient-filled and glow with the act colour.
+
+**The 40ms anchor.** `<BigMs>` renders the number in a tabular mono display face with a gradient
+fill and a soft glow. It recurs on the opening screen, inside every batch pulse, on the DFBA
+screens and on the result card, so the number becomes the signature of the game.
+
+**Deliberately not.** No KPI grid, no sparkline wall, no generic admin-dashboard chrome, and no
+imitation of any existing simulator's layout. This is a three-act game with a stage rail and one
+big action button per screen.
+
+### New identity components
+
+| Component | What it does |
+| --- | --- |
+| `BrandBar` / `BrandMarks` / `BrandLockup` | The Superluminal x Fogo lockup. The single place either logo is rendered. |
+| `GameHeader` | Persistent: brand bar, stage rail, mute, About. |
+| `StageProgress` | Five labelled stages (Start / Race / Batch / Quote / Result) as an ARIA `progressbar`. |
+| `MuteToggle` | Real button, `aria-pressed`, 44px, name states both current state and action. |
+| `AmbientBackdrop` | Speed lines + embers, or prism rays, by act. Decorative and `aria-hidden`. |
+| `BatchPulse` | The 40ms motif: expanding rings, a sweep, and the slow-motion label. |
+| `BigMs` | The recurring 40ms typography anchor. |
+| `ShareCard` | The final shareable result card, with both marks and a copy-to-clipboard summary. |
+| `AboutPanel` | The educational About section as a labelled modal dialog. |
+
+### Sound
+
+A tiny synthesised engine (`lib/sound.ts`) built on the Web Audio API — no audio files, no network,
+no third-party service. Cues are short percussive blips for the event firing, a win, a loss, a fill
+and a selection. The context is created lazily so it always starts inside a user gesture, every
+entry point is wrapped so a failure can never interrupt the game loop, and the muted preference
+persists to `localStorage` behind a `try/catch`.
+
+## 10b. Accessibility and responsiveness
+
+- **Touch targets.** Every button is at least 44px high; verified in a browser at 360px.
+- **Accessible names** always contain the visible label (WCAG 2.5.3).
+- **Stage rail** is a labelled `progressbar` with `aria-valuetext` naming the stage.
+- **About** is a labelled `role="dialog"`, `aria-modal`, Escape to close, focus moved in on open
+  and returned to the trigger on close.
+- **Live regions** announce round outcomes and the batch window state.
+- **Responsive** from 360px to desktop; the shell widens at 60rem. Verified with zero horizontal
+  overflow at 360 / 390 / 768 / 1280px.
+- **Contrast**: body ink `#f2f7fc` and muted `#b6c8dc` on a near-black ground.
+
+## 11. Motion
+
+Framer Motion is used only where motion carries meaning:
+
+- the ambient act backdrop (speed lines vs prism rays),
+- the 40ms batch pulse,
+- the countdown/batch window filling,
+- the stale-quote flash when a market event fires,
+- the reveal of the two auction clearing prices,
+- phase cross-fades.
+
+**Reduced motion is a first-class path, not an afterthought.** Under `prefers-reduced-motion` the
+ambient particles are not rendered at all, the pulse renders in its resting state, transitions drop
+to zero duration, and a global CSS rule neutralises anything left. Nothing that carries meaning is
+lost — the batch pulse still shows the 40ms anchor and its slow-motion label.
+
+## 12. Testing
+
+Vitest + React Testing Library:
+
+- `gameMachine.test.ts` — phase order, action handling, reset, immutability of results.
+- `scoring.test.ts` — score maths and grade boundaries.
+- `simulation.test.ts` — round resolution and the maker model, including that the batch venue
+  reduces but never zeroes pick-off exposure.
+- `copy.test.ts` — enforces ACCURACY_RULES.md programmatically: forbidden claims absent,
+  required hedged phrasings present, the exact slow-motion label, the footer legal line.
+- `identity.test.tsx` — brand marks unmodified and pointing at the real files, the 40ms anchor,
+  the batch pulse's slow-motion label, stage mapping and act theming, ambient backdrop motifs,
+  and the result card carrying the disclaimer into the copied text.
+- `sound.test.ts` — silent and non-throwing without Web Audio, silent when muted, synthesises
+  when available, and swallows audio-graph failures.
+- `App.test.tsx` — landing screen, logos in header and opening, stage rail, mute toggle, About
+  dialog open/close/Escape, footer disclaimer, and **Start Game** advancing the machine.
+- `screens.test.tsx` — each phase renders its heading, primary control and slow-motion labelling.
+
+## 13. Explicitly out of scope
+
+No backend, no database, no wallet connection, no API keys, no real money, no live or historical
+market data, no matching-engine performance claims, no token price talk, no financial advice.
