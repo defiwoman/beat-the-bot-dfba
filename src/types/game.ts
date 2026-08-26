@@ -249,6 +249,20 @@ export interface ScoreBreakdown {
   dfbaRoundsPlayed: number;
   /** Longest run of correct direction reads across both levels. */
   bestStreak: number;
+  /** Correct direction reads across both levels. */
+  correctDecisions: number;
+  /** Rounds played across both levels. */
+  decisionsPlayed: number;
+  /**
+   * Level A rounds where the bot reached the quote first — the queue losses. On the shipped
+   * bot latencies this is every round the player answered, which is the point of Level A.
+   */
+  clobQueueLosses: number;
+  /**
+   * Level B rounds where the player and the bot landed in the same batch and received the same
+   * clearing price: arrival-time privilege neutralised inside the batch.
+   */
+  dfbaNeutralized: number;
   directionPoints: number;
   comboBonus: number;
   /** Where the three survival metrics ended up in batched mode. */
@@ -258,10 +272,28 @@ export interface ScoreBreakdown {
   makerPoints: number;
   totalPoints: number;
   grade: Grade;
+  /**
+   * How much of the DFBA mechanism the playthrough actually demonstrated, 0–100.
+   * Separate from the game score: it measures understanding, not points.
+   */
+  knowledgeScore: number;
   /** Mean player reaction across every round they answered, or null. */
   averageReactionMs: number | null;
+  /** The player's single fastest reaction across both levels, or null. */
+  fastestReactionMs: number | null;
   /** Mean bot reaction across the CLOB rounds. Illustrative game data. */
   averageBotReactionMs: number | null;
+}
+
+/** What survives a session, stored locally in the browser and never sent anywhere. */
+export interface HighScore {
+  totalPoints: number;
+  knowledgeScore: number;
+  /** Lower is better, so this is a minimum rather than a maximum. */
+  fastestReactionMs: number | null;
+  bestStreak: number;
+  /** ISO timestamp of the run that set this record. */
+  updatedAt: string;
 }
 
 /* -------------------------------------------------------------- game state */

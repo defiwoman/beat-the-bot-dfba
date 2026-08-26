@@ -102,17 +102,38 @@ export const copy = {
   share: {
     heading: 'Your result card',
     title: 'Beat the Bot — the 40ms market',
-    copyLabel: 'Copy result',
-    copiedLabel: 'Copied',
-    copyHint: 'Copy result — copy a text summary to your clipboard',
+    /** The two lines printed on the card itself, and carried into every share target. */
+    boast: 'I tried to Beat the Bot.',
+    lesson: 'CLOB rewarded speed. DFBA changed the rules.',
+
+    scoreLabel: 'Score',
+    knowledgeLabel: 'DFBA Knowledge',
+    fastestLabel: 'Fastest reaction',
     racesLabel: 'Correct reads on the continuous book',
     batchesLabel: 'Correct reads inside the batch',
     streakLabel: 'Best streak',
     makerLabel: 'Market health you left behind',
+
+    actionsHeading: 'Share your result',
+    shareLabel: 'Share',
+    shareHint: 'Share — open your device share sheet',
+    copyLabel: 'Copy link',
+    copiedLabel: 'Copied',
+    copyHint: 'Copy link — copy the result summary and game link to your clipboard',
+    xLabel: 'Post on X',
+    xHint: 'Post on X — open X with your result ready to post',
+    downloadLabel: 'Save PNG',
+    downloadHint: 'Save PNG — download the result card as an image',
+    downloadingLabel: 'Saving…',
+    downloadFailed: 'The image could not be generated in this browser. The other share options still work.',
+    cardAlt: 'Your Beat the Bot result card',
   },
 
   footer: {
     legal: 'Community-built educational game — not financial advice.',
+    /** Shown wherever the game presents its results as if they meant something. */
+    scenarioNote:
+      'This game uses simplified illustrative scenarios to explain market structure. It is not a live exchange simulation or financial advice.',
   },
 
   intro: {
@@ -472,6 +493,43 @@ export const copy = {
     streakLine: 'Best correct-direction streak',
     reactionLine: 'Your average reaction',
     makerLine: 'Market health you left behind',
+
+    /** The eight lines the final report has to carry. */
+    stats: {
+      fastestReaction: 'Your fastest reaction',
+      correctDecisions: 'Correct market-direction calls',
+      queueLosses: 'CLOB rounds where you lost the queue',
+      neutralized: 'Batches where arrival-time privilege was neutralised',
+      makerHealth: 'Final market-maker health',
+      satisfaction: 'Final trader satisfaction',
+      knowledge: 'DFBA Knowledge Score',
+      knowledgeHint:
+        'How much of the batch mechanism this run actually demonstrated: reading the signal inside the batch, rounds where arriving first stopped mattering, and the market you left behind while quoting.',
+      queueLossHint:
+        'Losing the queue in Level A is the designed outcome, not a mistake. It is counted here because it is the thing being demonstrated.',
+      none: '—',
+    },
+
+    /** The line the whole game builds to. */
+    conclusionHeading: 'The whole game in two questions',
+    conclusion: {
+      clobQuestion: 'Who arrived first?',
+      dfbaQuestion: 'Who offered the better price and size?',
+      clobAsks: 'CLOB asks',
+      dfbaAsks: 'DFBA asks',
+      body: 'That is the entire difference. One venue ranks orders by when they turned up. The other ranks them by what they offered.',
+    },
+
+    highScore: {
+      heading: 'Your local best',
+      note: 'Saved in this browser only. There is no account and no backend — clearing your site data clears it.',
+      newRecord: 'New personal best',
+      scoreLabel: 'Best score',
+      knowledgeLabel: 'Best DFBA Knowledge Score',
+      reactionLabel: 'Fastest reaction',
+      streakLabel: 'Longest streak',
+      unavailable: 'This browser is not storing a local best.',
+    },
     takeawaysHeading: 'Three things to take away',
     takeaways: [
       {
@@ -497,6 +555,67 @@ export const copy = {
     replayLabel: 'Play again',
     replayHint: 'Play again — reset the game and start over from the beginning',
   },
+
+  /** The expandable mechanism explainer on the results screen. */
+  howPrism: {
+    summary: 'HOW PRISM WORKS',
+    summaryHint: 'HOW PRISM WORKS — expand the four stages of a batch',
+    intro: 'One batch, four stages.',
+    stages: [
+      {
+        title: 'Collect orders during a short batch window',
+        body: 'Nothing matches on arrival. Orders arriving inside the window are gathered together and matched as one group when it closes.',
+      },
+      {
+        title: 'Separate maker and taker flow',
+        body: 'Resting maker liquidity and incoming taker demand are handled as two distinct flows rather than being interleaved in a single queue.',
+      },
+      {
+        title: 'Run two auctions',
+        body: 'The bid auction matches maker buys against taker sells. The ask auction matches maker sells against taker buys.',
+      },
+      {
+        title: 'Determine a separate uniform clearing price for each auction',
+        body: 'Every order matched inside one auction receives that auction’s uniform clearing price. The bid auction and the ask auction each have their own, and the two need not be equal.',
+      },
+    ],
+    rulesHeading: 'What that changes',
+    rules: [
+      'Arrival time inside the batch does not provide matching priority.',
+      'Better prices receive priority.',
+      'At the same price, allocation may be pro-rata by order size.',
+      'Reduced adverse selection can support tighter spreads and deeper liquidity.',
+      'A DFBA changes the rules of matching. It is not simply a faster CLOB.',
+    ],
+    fogoHeading: 'Where the 40ms comes from',
+    fogoBody:
+      'Fogo’s approximately 40ms block production makes extremely frequent on-chain interaction possible while preserving an experience that feels fast. That is a stated design parameter of the platform, not something this game measured.',
+    learnMoreHeading: 'Read the source material',
+  },
+
+  learnMore: [
+    {
+      label: 'Superluminal',
+      description: 'The team behind the batched design this game models.',
+      url: 'https://slx.fi/',
+    },
+    {
+      label: 'Fogo',
+      description: 'The chain whose approximately 40ms block production the game names.',
+      url: 'https://www.fogo.io/',
+    },
+    {
+      label: 'Dual-flow batch auction',
+      description: 'Jump Crypto’s write-up of the maker/taker split and the two auctions.',
+      url: 'https://jumpcrypto.com/resources/dual-flow-batch-auction',
+    },
+    {
+      label: 'Budish, Cramton & Shim (2015)',
+      description:
+        'The Quarterly Journal of Economics paper on the high-frequency trading arms race and frequent batch auctions.',
+      url: 'https://academic.oup.com/qje/article/130/4/1547/1916146',
+    },
+  ],
 
   common: {
     continueLabel: 'Continue',

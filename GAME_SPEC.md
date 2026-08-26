@@ -268,14 +268,109 @@ Choosing a spread is **never timed**. Only the outcome beat auto-advances, at 13
 machine speed, leaving the section comfortably inside its 30-second target once a person's own
 decision time is added.
 
-## 8. `results`
+## 8. `results` — the final educational reveal
 
-- Headline score out of 100 with a light-hearted grade.
-- Breakdown: correct reads per level, best streak, average reaction, and the market-quality
-  score Level C finished on.
-- Three takeaways, phrased within the accuracy rules.
-- A persistent disclaimer that the numbers are illustrative.
-- **Play again** resets the machine.
+The last screen has to do three jobs at once: report what happened, land the lesson, and give
+the player something worth passing on.
+
+### 8.1 The eight numbers
+
+| # | Reported | Source |
+| --- | --- | --- |
+| 1 | Fastest reaction time | the minimum across every answered round, not the mean |
+| 2 | Correct market-direction decisions | Level A + Level B reads |
+| 3 | CLOB queue losses | Level A rounds where the bot reached the quote first |
+| 4 | Batches where arrival-time privilege was neutralised | same batch **and** same clearing price as the bot |
+| 5 | Final market-maker health | Level C capital health, batched mode |
+| 6 | Final trader satisfaction | Level C trader satisfaction, batched mode |
+| 7 | **DFBA Knowledge Score** | see below |
+| 8 | Local high score | `localStorage`, see 8.3 |
+
+Row 3 is captioned: losing the queue is the designed outcome of Level A, counted because it is
+the thing being demonstrated, not because the player did anything wrong.
+
+### 8.2 DFBA Knowledge Score
+
+Deliberately **separate from the game score**, which includes a level that cannot be won on
+speed. This number asks only how much of the batch mechanism the run actually exercised:
+
+```
+40  reading the signal correctly inside the batch
+30  rounds where arriving first stopped mattering
+30  the market left behind while quoting into batched mode
+```
+
+A player who never reached Level B scores zero on the first two components rather than being
+credited for rounds they did not play. Neutralisation still counts when the direction read was
+wrong — getting into a batch and out at the same clearing price is the mechanism lesson, and it
+lands either way.
+
+### 8.3 Local high score
+
+Stored in `localStorage` under `btb.highScore.v1`, and nowhere else — no backend, no account.
+Each field keeps its **own** record, so a run can set a personal best on reaction time without
+also having to beat the score. Reaction time is a minimum rather than a maximum, and a run
+where nothing was answered cannot erase a stored reaction record.
+
+The merge is a pure function (`mergeHighScore`) so those rules are unit-tested without touching
+storage; every read and write is wrapped, because storage throws outright in some private modes.
+
+### 8.4 The central conclusion
+
+The line the whole game builds to, rendered as two opposed questions side by side:
+
+> **CLOB asks:** “Who arrived first?”
+> **DFBA asks:** “Who offered the better price and size?”
+
+### 8.5 HOW PRISM WORKS
+
+An expandable `<details>` disclosure — keyboard operable, announced as a disclosure, and
+open-able without JavaScript. Four stages, in order:
+
+1. Collect orders during a short batch window.
+2. Separate maker and taker flow.
+3. Run two auctions — the **bid auction** matches maker buys against taker sells; the **ask
+   auction** matches maker sells against taker buys.
+4. Determine a **separate uniform clearing price for each auction**.
+
+Then what that changes: arrival time inside the batch gives no matching priority; better prices
+receive priority; at the same price allocation may be pro-rata by order size; reduced adverse
+selection can support tighter spreads and deeper liquidity; and a DFBA changes the rules of
+matching rather than being a faster CLOB.
+
+It closes with where the 40ms comes from (see [ACCURACY_RULES.md §3e](./ACCURACY_RULES.md)) and
+four outbound links: Superluminal, Fogo, Jump Crypto's dual-flow batch auction write-up, and
+Budish, Cramton & Shim (2015) in the QJE. All open in a new tab with `rel="noopener noreferrer"`.
+
+### 8.6 The shareable result card
+
+The artefact that leaves the game, so it stands on its own: both official marks, the game's
+name, the score, the fastest reaction, "I tried to Beat the Bot.", "CLOB rewarded speed. DFBA
+changed the rules.", the game URL, and the simplified-scenarios note.
+
+Four ways out, none of which contact a server:
+
+- **Web Share API** where the device has one; a cancelled sheet is not treated as a failure.
+- **Copy link** — the summary plus the URL, always available, and the fallback where there is
+  no share sheet.
+- **Post on X** via the web intent, with text and url as separate parameters so the link is not
+  double-counted.
+- **Save PNG** — `html-to-image` rasterises the card node. Loaded on demand so it stays out of
+  the initial bundle.
+
+**Local logos in the PNG.** `html-to-image` snapshots the DOM into an SVG `foreignObject`, which
+cannot reach back out for a file-path `src` — the marks would arrive blank. So both are fetched
+and inlined as `data:` URIs before capture (`useEmbeddedLogos`), and the download waits on that.
+Only the delivery changes: the same bytes, the same aspect ratio, no re-encoding. Verified by
+downloading the PNG in a real browser and looking at it.
+
+Every share target carries the lesson line and the disclaimer, so a score cannot travel stripped
+of its context.
+
+### 8.7 Also on the screen
+
+The three takeaways, what the game does not claim, the simplified-scenarios note, the
+illustrative-numbers disclaimer, both brand marks, and **Play again**.
 
 ## 9. Scoring
 

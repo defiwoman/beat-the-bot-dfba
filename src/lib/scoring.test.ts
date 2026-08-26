@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { MAKER_POINTS_MAX, computeScore, gradeFor, longestStreak } from './scoring';
+import {
+  KNOWLEDGE_MAKER_WEIGHT,
+  KNOWLEDGE_NEUTRALISED_WEIGHT,
+  KNOWLEDGE_READ_WEIGHT,
+  MAKER_POINTS_MAX,
+  computeScore,
+  countNeutralized,
+  countQueueLosses,
+  gradeFor,
+  knowledgeScoreFor,
+  longestStreak,
+} from './scoring';
 import { STARTING_METRICS, marketQuality } from './marketMaker';
 import type { ClobRoundResult, DfbaRoundResult, MakerEventResult } from '@/types/game';
 
@@ -163,5 +174,103 @@ describe('computeScore', () => {
   it('reports null averages when nothing was answered', () => {
     expect(computeScore([], [], []).averageReactionMs).toBeNull();
     expect(computeScore([], [], []).averageBotReactionMs).toBeNull();
+  });
+});
+
+/* ═══════════════════════════════ the final report's eight numbers ════════ */
+
+describe('report statistics', () => {
+  it('reports the single fastest reaction, not the average', () => {
+    const score = computeScore([clob(true, 400), clob(true, 210), clob(true, 330)], [], []);
+    expect(score.fastestReactionMs).toBe(210);
+    expect(score.averageReactionMs).toBe(313);
+  });
+
+  it('reports no fastest reaction when nothing was answered', () => {
+    expect(computeScore([clob(false, null)], [], []).fastestReactionMs).toBeNull();
+  });
+
+  it('counts correct direction calls across both levels', () => {
+    const score = computeScore([clob(true), clob(false)], [dfba(true)], []);
+    expect(score.correctDecisions).toBe(2);
+    expect(score.decisionsPlayed).toBe(3);
+  });
+
+  it('counts the CLOB rounds where the bot took the queue', () => {
+    expect(countQueueLosses([clob(true), clob(false), clob(true)])).toBe(3);
+    expect(computeScore([clob(true), clob(true)], [], []).clobQueueLosses).toBe(2);
+  });
+
+  it('counts only batches where the arrival gap was actually neutralised', () => {
+    const neutralised = dfba(true);
+    const missed: DfbaRoundResult = {
+      ...dfba(false),
+      roundId: 'dfba-missed',
+      sameBatch: false,
+      samePriceAsBot: false,
+    };
+
+    expect(countNeutralized([neutralised, missed])).toBe(1);
+    expect(computeScore([], [neutralised, missed], []).dfbaNeutralized).toBe(1);
+  });
+});
+
+describe('DFBA Knowledge Score', () => {
+  const perfectMaker = maker('prism', {
+    capitalHealth: 100,
+    traderSatisfaction: 100,
+    marketDepth: 100,
+  });
+
+  it('is zero when the batch level was never played and no market was left behind', () => {
+    const deadMaker = maker('prism', { capitalHealth: 0, traderSatisfaction: 0, marketDepth: 0 });
+    expect(knowledgeScoreFor([], [deadMaker])).toBe(0);
+  });
+
+  it('is 100 for a perfect batch run', () => {
+    expect(knowledgeScoreFor([dfba(true), dfba(true), dfba(true)], [perfectMaker])).toBe(100);
+  });
+
+  it('does not credit batch rounds the player never played', () => {
+    // A great Level C alone caps out at the maker component.
+    expect(knowledgeScoreFor([], [perfectMaker])).toBe(KNOWLEDGE_MAKER_WEIGHT);
+  });
+
+  it('splits its three components at the documented weights', () => {
+    const deadMaker = maker('prism', { capitalHealth: 0, traderSatisfaction: 0, marketDepth: 0 });
+
+    // All reads right, all neutralised, nothing left behind.
+    expect(knowledgeScoreFor([dfba(true), dfba(true)], [deadMaker])).toBe(
+      KNOWLEDGE_READ_WEIGHT + KNOWLEDGE_NEUTRALISED_WEIGHT,
+    );
+  });
+
+  it('still credits neutralisation when the direction read was wrong', () => {
+    // Getting into the batch and out at the same price is the mechanism lesson, and it lands
+    // whether or not the player guessed the direction correctly.
+    const deadMaker = maker('prism', { capitalHealth: 0, traderSatisfaction: 0, marketDepth: 0 });
+    expect(knowledgeScoreFor([dfba(false), dfba(false)], [deadMaker])).toBe(
+      KNOWLEDGE_NEUTRALISED_WEIGHT,
+    );
+  });
+
+  it('is reported on the score breakdown', () => {
+    const score = computeScore([], [dfba(true), dfba(true)], [perfectMaker]);
+    expect(score.knowledgeScore).toBe(knowledgeScoreFor([dfba(true), dfba(true)], [perfectMaker]));
+    expect(score.knowledgeScore).toBe(100);
+  });
+
+  it('stays inside 0-100 for every combination the game can produce', () => {
+    for (const results of [[], [dfba(true)], [dfba(false), dfba(true), dfba(false)]]) {
+      for (const metrics of [
+        { capitalHealth: 0, traderSatisfaction: 0, marketDepth: 0 },
+        { capitalHealth: 100, traderSatisfaction: 100, marketDepth: 100 },
+        { capitalHealth: 38, traderSatisfaction: 82, marketDepth: 59 },
+      ]) {
+        const value = knowledgeScoreFor(results, [maker('prism', metrics)]);
+        expect(value).toBeGreaterThanOrEqual(0);
+        expect(value).toBeLessThanOrEqual(100);
+      }
+    }
   });
 });

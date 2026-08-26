@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ClobGameScreen } from './ClobGameScreen';
 import { ClobRevealScreen } from './ClobRevealScreen';
@@ -10,10 +10,12 @@ import { ResultsScreen } from './ResultsScreen';
 import { copy } from '@/content/copy';
 import { SPREAD_CHOICES, VOLATILITY_EVENTS } from '@/data/marketMaker';
 import { buildClobRounds, buildDfbaRounds } from '@/data/rounds';
-import { formatUsd } from '@/lib/format';
+import { formatMs, formatUsd } from '@/lib/format';
 import { seededRng } from '@/lib/rng';
+import { readHighScore, writeHighScore } from '@/lib/highScore';
 import { computeScore } from '@/lib/scoring';
-import type { ClobRoundResult } from '@/types/game';
+import { currentGameUrl } from '@/lib/share';
+import type { ClobRoundResult, DfbaRoundResult, MakerEventResult } from '@/types/game';
 
 const clobRounds = buildClobRounds(seededRng(3));
 const dfbaRounds = buildDfbaRounds(seededRng(3));
@@ -44,6 +46,40 @@ const clobResults: ClobRoundResult[] = [
     targetPrice: 100_200,
     filledPrice: 100_220,
     slippageUsd: 20,
+  },
+];
+
+const dfbaResults: DfbaRoundResult[] = [
+  {
+    roundId: 'dfba-1',
+    chosenDirection: 'long',
+    correctDirection: 'long',
+    wasCorrect: true,
+    reactionMs: 210,
+    auctionSide: 'ask',
+    clearingPrice: 100_058,
+    sameBatch: true,
+    botArrivalMs: 3,
+    playerArrivalMs: 31,
+    samePriceAsBot: true,
+    outcome: 'filledSameprice',
+  },
+];
+
+const makerResults: MakerEventResult[] = [
+  {
+    eventId: 'vol-1',
+    mode: 'prism',
+    spreadId: 'tight',
+    spreadBps: 2,
+    adverseBps: 7,
+    adverseCostBps: 1.8,
+    spreadRevenueBps: 2.7,
+    pickedOff: true,
+    capitalDelta: 0.9,
+    satisfactionDelta: 10,
+    depthDelta: 6,
+    metrics: { capitalHealth: 73, traderSatisfaction: 68, marketDepth: 61 },
   },
 ];
 
@@ -420,7 +456,11 @@ describe('MarketMakerSurvivalScreen', () => {
 });
 
 describe('ResultsScreen', () => {
-  const score = computeScore(clobResults, [], []);
+  const score = computeScore(clobResults, dfbaResults, makerResults);
+
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
 
   it('shows the score, the takeaways and what the game does not claim', () => {
     render(<ResultsScreen score={score} onReplay={vi.fn()} />);
@@ -434,6 +474,82 @@ describe('ResultsScreen', () => {
     }
   });
 
+  it('reports all eight required numbers', () => {
+    render(<ResultsScreen score={score} onReplay={vi.fn()} />);
+    const stats = copy.results.stats;
+
+    // 1. fastest reaction — the minimum, not the average
+    expect(screen.getByText(stats.fastestReaction)).toBeInTheDocument();
+    expect(score.fastestReactionMs).toBe(210);
+    expect(screen.getAllByText(formatMs(210)).length).toBeGreaterThan(0);
+
+    // 2. correct direction decisions
+    expect(screen.getByText(stats.correctDecisions)).toBeInTheDocument();
+    // 3. CLOB queue losses
+    expect(screen.getByText(stats.queueLosses)).toBeInTheDocument();
+    // 4. batches where arrival-time privilege was neutralised
+    expect(screen.getByText(stats.neutralized)).toBeInTheDocument();
+    // 5. final market-maker health, 6. final trader satisfaction
+    expect(screen.getByText(stats.makerHealth)).toBeInTheDocument();
+    expect(screen.getByText(stats.satisfaction)).toBeInTheDocument();
+    // 7. the DFBA Knowledge Score
+    expect(screen.getAllByText(stats.knowledge).length).toBeGreaterThan(0);
+    // 8. the local high score
+    expect(
+      screen.getByRole('region', { name: copy.results.highScore.heading }),
+    ).toBeInTheDocument();
+  });
+
+  it('explains that losing the queue was the designed outcome', () => {
+    render(<ResultsScreen score={score} onReplay={vi.fn()} />);
+    expect(screen.getByText(copy.results.stats.queueLossHint)).toBeInTheDocument();
+  });
+
+  it('lands the central conclusion as two opposed questions', () => {
+    render(<ResultsScreen score={score} onReplay={vi.fn()} />);
+    const conclusion = screen.getByRole('region', { name: copy.results.conclusionHeading });
+
+    expect(within(conclusion).getByText(copy.results.conclusion.clobAsks)).toBeInTheDocument();
+    expect(
+      within(conclusion).getByText(`“${copy.results.conclusion.clobQuestion}”`),
+    ).toBeInTheDocument();
+    expect(within(conclusion).getByText(copy.results.conclusion.dfbaAsks)).toBeInTheDocument();
+    expect(
+      within(conclusion).getByText(`“${copy.results.conclusion.dfbaQuestion}”`),
+    ).toBeInTheDocument();
+  });
+
+  it('carries the simplified-scenarios note', () => {
+    render(<ResultsScreen score={score} onReplay={vi.fn()} />);
+    expect(screen.getAllByText(copy.footer.scenarioNote).length).toBeGreaterThan(0);
+  });
+
+  it('saves a local high score and marks it as a new record on a first run', () => {
+    render(<ResultsScreen score={score} onReplay={vi.fn()} />);
+
+    expect(screen.getByText(copy.results.highScore.newRecord)).toBeInTheDocument();
+    expect(readHighScore()?.totalPoints).toBe(score.totalPoints);
+  });
+
+  it('reads back a stored best that this run did not beat', () => {
+    writeHighScore({
+      totalPoints: 100,
+      knowledgeScore: 100,
+      fastestReactionMs: 99,
+      bestStreak: 12,
+      updatedAt: '2025-01-01T00:00:00.000Z',
+    });
+
+    render(<ResultsScreen score={score} onReplay={vi.fn()} />);
+
+    const panel = screen.getByRole('region', { name: copy.results.highScore.heading });
+    // Both the score and the knowledge row read 100 / 100 here, so assert on the pair.
+    expect(within(panel).getAllByText('100 / 100')).toHaveLength(2);
+    expect(within(panel).getByText(formatMs(99))).toBeInTheDocument();
+    expect(within(panel).getByText('12')).toBeInTheDocument();
+    expect(screen.queryByText(copy.results.highScore.newRecord)).toBeNull();
+  });
+
   it('replays on demand', async () => {
     const user = userEvent.setup();
     const onReplay = vi.fn();
@@ -441,5 +557,129 @@ describe('ResultsScreen', () => {
 
     await user.click(screen.getByRole('button', { name: copy.results.replayHint }));
     expect(onReplay).toHaveBeenCalledOnce();
+  });
+});
+
+describe('HOW PRISM WORKS', () => {
+  const score = computeScore(clobResults, dfbaResults, makerResults);
+
+  it('is a collapsed disclosure until the player opens it', () => {
+    render(<ResultsScreen score={score} onReplay={vi.fn()} />);
+    const details = screen.getByText(copy.howPrism.summary).closest('details');
+    expect(details).not.toBeNull();
+    expect(details).not.toHaveAttribute('open');
+  });
+
+  it('lists the four batch stages in order', () => {
+    render(<ResultsScreen score={score} onReplay={vi.fn()} />);
+
+    expect(copy.howPrism.stages).toHaveLength(4);
+    const titles = screen.getAllByText(/^(Collect orders|Separate maker|Run two auctions|Determine a separate)/);
+    expect(titles).toHaveLength(4);
+
+    // The two auctions are named with the flows each one matches.
+    const auctions = copy.howPrism.stages[2].body;
+    expect(auctions).toContain('bid auction matches maker buys against taker sells');
+    expect(auctions).toContain('ask auction matches maker sells against taker buys');
+  });
+
+  it('states each rule the batch changes', () => {
+    render(<ResultsScreen score={score} onReplay={vi.fn()} />);
+    for (const rule of copy.howPrism.rules) {
+      expect(screen.getByText(rule)).toBeInTheDocument();
+    }
+  });
+
+  it('attributes the 40ms figure to Fogo as a design parameter, not a measurement', () => {
+    render(<ResultsScreen score={score} onReplay={vi.fn()} />);
+    expect(screen.getByText(copy.howPrism.fogoBody)).toBeInTheDocument();
+    expect(copy.howPrism.fogoBody).toContain('not something this game measured');
+  });
+
+  it('links out to all four sources, opened safely in a new tab', () => {
+    render(<ResultsScreen score={score} onReplay={vi.fn()} />);
+
+    const expected = [
+      'https://slx.fi/',
+      'https://www.fogo.io/',
+      'https://jumpcrypto.com/resources/dual-flow-batch-auction',
+      'https://academic.oup.com/qje/article/130/4/1547/1916146',
+    ];
+    expect(copy.learnMore.map((link) => link.url)).toEqual(expected);
+
+    for (const link of copy.learnMore) {
+      // The label is plain text, not a pattern — parentheses in it are literal.
+      const anchor = screen.getByRole('link', {
+        name: (name: string) => name.includes(link.label),
+      });
+      expect(anchor).toHaveAttribute('href', link.url);
+      expect(anchor).toHaveAttribute('target', '_blank');
+      expect(anchor).toHaveAttribute('rel', expect.stringContaining('noopener'));
+    }
+  });
+});
+
+describe('share actions', () => {
+  const score = computeScore(clobResults, dfbaResults, makerResults);
+
+  it('offers copy, X and PNG download', () => {
+    render(<ResultsScreen score={score} onReplay={vi.fn()} />);
+
+    expect(screen.getByRole('button', { name: copy.share.copyHint })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: copy.share.xHint })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: copy.share.downloadHint })).toBeInTheDocument();
+  });
+
+  it('hides the share-sheet button where the Web Share API is unavailable', () => {
+    // jsdom has no navigator.share, so the copy fallback stands in for it.
+    expect('share' in navigator).toBe(false);
+    render(<ResultsScreen score={score} onReplay={vi.fn()} />);
+    expect(screen.queryByRole('button', { name: copy.share.shareHint })).toBeNull();
+  });
+
+  it('uses the Web Share API when the device has one', async () => {
+    const user = userEvent.setup();
+    const share = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'share', { value: share, configurable: true });
+
+    try {
+      render(<ResultsScreen score={score} onReplay={vi.fn()} />);
+      await user.click(screen.getByRole('button', { name: copy.share.shareHint }));
+
+      expect(share).toHaveBeenCalledOnce();
+      expect(share.mock.calls[0][0].text).toContain(copy.share.lesson);
+    } finally {
+      Reflect.deleteProperty(navigator, 'share');
+    }
+  });
+
+  it('copies the result and the game link to the clipboard', async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+
+    render(<ResultsScreen score={score} onReplay={vi.fn()} />);
+    await user.click(screen.getByRole('button', { name: copy.share.copyHint }));
+
+    expect(writeText).toHaveBeenCalledOnce();
+    const text = writeText.mock.calls[0][0] as string;
+    expect(text).toContain(copy.share.boast);
+    expect(text).toContain(copy.share.lesson);
+    expect(text).toContain(copy.footer.legal);
+    expect(text).toContain(currentGameUrl());
+  });
+
+  it('opens X with the result prepared', async () => {
+    const user = userEvent.setup();
+    const open = vi.spyOn(window, 'open').mockReturnValue(null);
+
+    render(<ResultsScreen score={score} onReplay={vi.fn()} />);
+    await user.click(screen.getByRole('button', { name: copy.share.xHint }));
+
+    expect(open).toHaveBeenCalledOnce();
+    const [url, target, features] = open.mock.calls[0];
+    expect(String(url)).toContain('https://x.com/intent/tweet');
+    expect(target).toBe('_blank');
+    expect(features).toContain('noopener');
   });
 });

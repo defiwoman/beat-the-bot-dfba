@@ -1,14 +1,14 @@
-import { describe, expect, it, vi } from 'vitest';
+import { createRef } from 'react';
+import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { AmbientBackdrop } from './AmbientBackdrop';
 import { BatchPulse } from './BatchPulse';
 import { BigMs } from './BigMs';
-import { BrandBar, BrandLockup, FOGO_LOGO_SRC, SUPERLUMINAL_LOGO_SRC } from './BrandBar';
+import { BrandBar, BrandLockup } from './BrandBar';
+import { FOGO_LOGO_SRC, SUPERLUMINAL_LOGO_SRC } from '@/lib/logos';
 import { ShareCard } from './ShareCard';
 import { StageProgress } from './StageProgress';
 import { copy } from '@/content/copy';
-import { buildShareText } from '@/lib/share';
 import { computeScore } from '@/lib/scoring';
 import { STAGES, stageIndexForPhase, themeForPhase } from '@/lib/stages';
 import { GAME_PHASES } from '@/types/game';
@@ -128,36 +128,45 @@ describe('AmbientBackdrop', () => {
 describe('ShareCard', () => {
   const score = computeScore([], [], []);
 
-  it('shows the score, both marks and the not-financial-advice line', () => {
+  it('carries everything the card has to stand alone', () => {
     render(<ShareCard score={score} />);
 
-    expect(screen.getByText(String(score.totalPoints))).toBeInTheDocument();
-    expect(screen.getByText(score.grade)).toBeInTheDocument();
+    // title, both marks, score, fastest reaction, both lines, and the scenario note
+    expect(screen.getByText(copy.share.title)).toBeInTheDocument();
     expect(screen.getByAltText(copy.brands.fogoAlt)).toBeInTheDocument();
     expect(screen.getByAltText(copy.brands.superluminalAlt)).toBeInTheDocument();
-    expect(screen.getByText(copy.footer.legal)).toBeInTheDocument();
+    expect(screen.getByText(String(score.totalPoints))).toBeInTheDocument();
+    expect(screen.getByText(score.grade)).toBeInTheDocument();
+    expect(screen.getByText(copy.share.fastestLabel)).toBeInTheDocument();
+    expect(screen.getByText(copy.share.boast)).toBeInTheDocument();
+    expect(screen.getByText(copy.share.lesson)).toBeInTheDocument();
+    expect(screen.getByText(copy.footer.scenarioNote)).toBeInTheDocument();
   });
 
-  it('copies a summary that carries the disclaimer with it', async () => {
-    // userEvent.setup() installs its own clipboard stub, so ours has to be applied afterwards.
-    const user = userEvent.setup();
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, 'clipboard', {
-      value: { writeText },
-      configurable: true,
-    });
+  it('renders the marks from whatever sources it is given, so the PNG can inline them', () => {
+    const sources = { fogo: 'data:image/jpeg;base64,AAAA', superluminal: 'data:image/png;base64,BBBB' };
+    render(<ShareCard score={score} logoSources={sources} />);
 
+    expect(screen.getByAltText(copy.brands.fogoAlt)).toHaveAttribute('src', sources.fogo);
+    expect(screen.getByAltText(copy.brands.superluminalAlt)).toHaveAttribute(
+      'src',
+      sources.superluminal,
+    );
+  });
+
+  it('defaults to the real supplied files', () => {
     render(<ShareCard score={score} />);
-    await user.click(screen.getByRole('button', { name: copy.share.copyHint }));
-
-    expect(writeText).toHaveBeenCalledOnce();
-    expect(writeText.mock.calls[0][0]).toContain(copy.footer.legal);
+    expect(screen.getByAltText(copy.brands.fogoAlt)).toHaveAttribute('src', FOGO_LOGO_SRC);
+    expect(screen.getByAltText(copy.brands.superluminalAlt)).toHaveAttribute(
+      'src',
+      SUPERLUMINAL_LOGO_SRC,
+    );
   });
 
-  it('builds a share summary that never leaves the score without context', () => {
-    const text = buildShareText(score);
-    expect(text).toContain(copy.share.title);
-    expect(text).toContain(`${score.totalPoints}/100`);
-    expect(text).toContain(copy.footer.legal);
+  it('exposes the card node through a ref, which is what the PNG export captures', () => {
+    const ref = createRef<HTMLElement>();
+    render(<ShareCard ref={ref} score={score} />);
+    expect(ref.current).toBeInstanceOf(HTMLElement);
+    expect(ref.current).toHaveAccessibleName(copy.share.heading);
   });
 });

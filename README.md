@@ -20,6 +20,17 @@ on screen — not Superluminal performance data.
 
 Correct reads build a streak and a combo multiplier. Speed is never scored.
 
+**The reveal** — the final screen reports your fastest reaction, your correct calls, the queue
+losses, the batches where arriving first stopped mattering, the market you left behind, and a
+**DFBA Knowledge Score**. It keeps a local high score in your browser, lands the conclusion the
+whole game builds to —
+
+> **CLOB asks:** “Who arrived first?” · **DFBA asks:** “Who offered the better price and size?”
+
+— and unfolds a **HOW PRISM WORKS** explainer with the four stages of a batch and links to the
+source material. The result card can be shared through the device share sheet, copied, posted to
+X, or saved as a PNG with both logos rendered in.
+
 > A community-built educational game associated with the **Superluminal x Fogo DFBA campaign**.
 >
 > Every number in it is illustrative and invented for teaching. It does not use live Superluminal
@@ -78,7 +89,8 @@ is a mute control in the header that persists your choice.
 ## Stack
 
 React 19 · Vite 6 · TypeScript (strict) · npm · custom responsive CSS · Framer Motion (only where
-motion carries meaning) · Lucide React · Vitest + React Testing Library.
+motion carries meaning) · Lucide React · html-to-image (result card PNG, loaded on demand) ·
+Vitest + React Testing Library.
 
 ## Layout
 
@@ -91,8 +103,8 @@ src/
   content/copy.ts    Single source of truth for every user-facing string
   content/copy.test.ts   Enforces ACCURACY_RULES.md against that copy
   data/              Illustrative fixtures: rounds.ts (Levels A/B), marketMaker.ts (Level C)
-  lib/               Pure helpers: simulation, marketMaker, scoring, reaction, rng,
-                     format, stages, share, sound, haptics
+  lib/               Pure helpers: simulation, marketMaker, scoring, knowledge, highScore,
+                     reaction, rng, format, stages, share, logos, embedImage, sound, haptics
   screens/           One component per game phase
   state/             gameMachine.ts (pure reducer) + game/sound providers + hooks
   styles/            tokens.css (identity) + global.css, mobile-first

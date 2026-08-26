@@ -192,6 +192,28 @@ button {
   padding-top: var(--s6);
   padding-bottom: var(--s2);
   background: linear-gradient(180deg, transparent, var(--void) 45%);
+  /**
+   * The bar's fade is several centimetres tall, and while it sticks over scrolling content that
+   * whole box would otherwise swallow taps meant for whatever is underneath it. Only the
+   * controls themselves take pointer events; the fade is decoration and lets clicks through.
+   */
+  pointer-events: none;
+}
+
+.screen__actions > * {
+  pointer-events: auto;
+}
+
+/**
+ * Bringing something into view — a focused control, an opened disclosure — must clear the
+ * sticky bar rather than parking the element underneath it.
+ */
+.screen > *,
+.screen__actions button,
+.share-actions .btn,
+.learn-more__link,
+.prism-explainer__summary {
+  scroll-margin-bottom: 8rem;
 }
 
 /* ═══════════════════════════════════════════════════════════════════ header */
@@ -1910,4 +1932,353 @@ button {
   font-size: var(--step--2);
   font-weight: 700;
   text-align: center;
+}
+
+/* ════════════════════════════════════ final reveal — results & share ══════ */
+
+.sharecard__boast {
+  font-size: var(--step-1);
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.sharecard__figures {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s3);
+  flex-wrap: wrap;
+}
+
+.sharecard__fastest {
+  display: grid;
+  gap: 2px;
+  text-align: right;
+}
+
+.sharecard__fastestValue {
+  font-size: var(--step-2);
+  font-weight: 800;
+  color: var(--heat-core);
+  line-height: 1;
+}
+
+.sharecard__lesson {
+  font-size: var(--step--1);
+  font-weight: 700;
+  color: var(--accent-core);
+  border-left: 2px solid var(--accent);
+  padding-left: var(--s3);
+}
+
+.sharecard__url {
+  font-size: var(--step--2);
+  color: var(--ink-3);
+  word-break: break-all;
+  text-align: right;
+}
+
+/* ───────────────────────────────────────────────────────────── share actions */
+
+.share-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--s2);
+  margin-top: var(--s3);
+}
+
+.share-actions .btn {
+  width: 100%;
+}
+
+/* ─────────────────────────────────────────────────────── knowledge score */
+
+.knowledge {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s3);
+  flex-wrap: wrap;
+  margin-bottom: var(--s2);
+}
+
+.knowledge__value {
+  font-size: var(--step-3);
+  font-weight: 800;
+  color: var(--accent-core);
+  line-height: 1;
+}
+
+.knowledge__outOf {
+  font-size: var(--step-0);
+  color: var(--ink-3);
+}
+
+.round-row__value--good {
+  color: var(--good);
+}
+
+.round-row__value--accent {
+  color: var(--accent-core);
+}
+
+/* ───────────────────────────────────────────────────────────── high score */
+
+.highscore__head {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  flex-wrap: wrap;
+  margin-bottom: var(--s3);
+}
+
+.highscore__head svg {
+  color: var(--heat-core);
+}
+
+.highscore__badge {
+  margin-left: auto;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgb(255 194 71 / 16%);
+  border: 1px solid rgb(255 194 71 / 45%);
+  color: var(--heat-core);
+  font-size: var(--step--2);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.highscore__rows {
+  display: grid;
+  gap: 6px;
+  margin-bottom: var(--s3);
+}
+
+.highscore__row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s3);
+  font-size: var(--step--1);
+  color: var(--ink-2);
+  border-bottom: 1px dashed var(--line);
+  padding-bottom: 5px;
+}
+
+.highscore__row span:last-child {
+  color: var(--ink);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.highscore__star {
+  color: var(--heat-core);
+}
+
+/* ────────────────────────────────────────────────────── central conclusion */
+
+.conclusion {
+  display: grid;
+  gap: var(--s3);
+  padding: var(--s5) var(--s4);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line-strong);
+  background:
+    radial-gradient(28rem 14rem at 50% -4rem, var(--accent-soft), transparent 70%),
+    linear-gradient(165deg, var(--panel-2), var(--void-2));
+}
+
+.conclusion__heading {
+  font-size: var(--step--2);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 800;
+  color: var(--ink-3);
+}
+
+.conclusion__pair {
+  display: grid;
+  gap: var(--s3);
+}
+
+@media (min-width: 30rem) {
+  .conclusion__pair {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.conclusion__side {
+  display: grid;
+  gap: 4px;
+  padding: var(--s4);
+  border-radius: var(--r);
+  border: 1px solid var(--line);
+  background: var(--void-2);
+}
+
+.conclusion__side--clob {
+  border-color: rgb(255 138 61 / 45%);
+}
+
+.conclusion__side--dfba {
+  border-color: rgb(94 231 255 / 45%);
+}
+
+.conclusion__who {
+  font-size: var(--step--2);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 800;
+  color: var(--ink-3);
+}
+
+.conclusion__question {
+  font-size: var(--step-1);
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.conclusion__side--clob .conclusion__question {
+  color: var(--heat-core);
+}
+
+.conclusion__side--dfba .conclusion__question {
+  color: var(--prism-cyan);
+}
+
+/* ──────────────────────────────────────────────────── HOW PRISM WORKS ───── */
+
+.prism-explainer {
+  border-radius: var(--r);
+  border: 1px solid var(--accent-edge);
+  background: linear-gradient(165deg, var(--panel-2), var(--panel));
+  overflow: hidden;
+}
+
+.prism-explainer__summary {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  min-height: var(--tap);
+  padding: var(--s3) var(--s4);
+  cursor: pointer;
+  list-style: none;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--accent-core);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.prism-explainer__summary::-webkit-details-marker {
+  display: none;
+}
+
+.prism-explainer__summaryText {
+  flex: 1;
+  min-width: 0;
+}
+
+.prism-explainer__chevron {
+  flex-shrink: 0;
+  transition: transform 200ms ease;
+}
+
+.prism-explainer[open] .prism-explainer__chevron {
+  transform: rotate(180deg);
+}
+
+.prism-explainer__body {
+  display: grid;
+  gap: var(--s4);
+  padding: 0 var(--s4) var(--s5);
+  border-top: 1px solid var(--line);
+  padding-top: var(--s4);
+}
+
+.prism-stages {
+  display: grid;
+  gap: var(--s3);
+  counter-reset: prism;
+}
+
+.prism-stage {
+  display: grid;
+  grid-template-columns: 1.85rem 1fr;
+  gap: var(--s3);
+  align-items: start;
+  padding: var(--s3);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: var(--void-2);
+}
+
+.prism-stage__num {
+  display: grid;
+  place-items: center;
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: var(--r-sm);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-edge);
+  color: var(--accent-core);
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  font-weight: 800;
+}
+
+.prism-stage__title {
+  display: block;
+  font-weight: 800;
+  font-size: var(--step--1);
+}
+
+.prism-stage__body {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--step--1);
+  color: var(--ink-2);
+}
+
+/* ──────────────────────────────────────────────────────────── learn more */
+
+.learn-more {
+  display: grid;
+  gap: var(--s2);
+}
+
+.learn-more__link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  min-height: var(--tap);
+  padding: var(--s3);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 160ms ease, background-color 160ms ease;
+}
+
+.learn-more__link:hover {
+  border-color: var(--accent-edge);
+  background: var(--accent-soft);
+}
+
+.learn-more__link svg {
+  color: var(--accent-core);
+  flex-shrink: 0;
+}
+
+.learn-more__label {
+  display: block;
+  font-weight: 800;
+  font-size: var(--step--1);
+}
+
+.learn-more__description {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--step--2);
+  color: var(--ink-3);
 }

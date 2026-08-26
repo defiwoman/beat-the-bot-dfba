@@ -72,6 +72,62 @@ export function metricsForMode(
   return last ? last.metrics : STARTING_METRICS;
 }
 
+/* --------------------------------------------------- DFBA Knowledge Score */
+
+export const KNOWLEDGE_READ_WEIGHT = 40;
+export const KNOWLEDGE_NEUTRALISED_WEIGHT = 30;
+export const KNOWLEDGE_MAKER_WEIGHT = 30;
+
+/**
+ * How much of the DFBA mechanism this playthrough actually demonstrated, 0–100.
+ *
+ * Deliberately separate from the game score. The game score includes Level A, which is
+ * unwinnable on speed; this number only asks how much of the *batch* the player exercised:
+ *
+ *   40  reading the signal correctly inside the batch
+ *   30  rounds where arrival-time privilege was neutralised — player and bot, same batch,
+ *       same clearing price
+ *   30  the market they left behind while quoting into batched mode
+ *
+ * A player who never reached Level B scores zero on the first two components rather than being
+ * credited for rounds they did not play.
+ */
+export function knowledgeScoreFor(
+  dfbaResults: readonly DfbaRoundResult[],
+  makerResults: readonly MakerEventResult[],
+): number {
+  const played = dfbaResults.length;
+  const correct = dfbaResults.filter((result) => result.wasCorrect).length;
+  const neutralised = countNeutralized(dfbaResults);
+
+  const readShare = played === 0 ? 0 : correct / played;
+  const neutralisedShare = played === 0 ? 0 : neutralised / played;
+  const makerShare = clamp(marketQuality(metricsForMode(makerResults, 'prism')) / 100, 0, 1);
+
+  return Math.round(
+    readShare * KNOWLEDGE_READ_WEIGHT +
+      neutralisedShare * KNOWLEDGE_NEUTRALISED_WEIGHT +
+      makerShare * KNOWLEDGE_MAKER_WEIGHT,
+  );
+}
+
+/**
+ * Level B rounds where arrival-time privilege was neutralised: the player and the bot landed
+ * in the same batch and came out with the same clearing price.
+ */
+export function countNeutralized(dfbaResults: readonly DfbaRoundResult[]): number {
+  return dfbaResults.filter((result) => result.sameBatch && result.samePriceAsBot).length;
+}
+
+/** Level A rounds where the bot reached the quote first. */
+export function countQueueLosses(clobResults: readonly ClobRoundResult[]): number {
+  return clobResults.filter((result) => result.botFirst).length;
+}
+
+function fastest(values: readonly number[]): number | null {
+  return values.length === 0 ? null : Math.round(Math.min(...values));
+}
+
 export function computeScore(
   clobResults: readonly ClobRoundResult[],
   dfbaResults: readonly DfbaRoundResult[],
@@ -104,6 +160,10 @@ export function computeScore(
     dfbaCorrect,
     dfbaRoundsPlayed: dfbaResults.length,
     bestStreak,
+    correctDecisions: clobCorrect + dfbaCorrect,
+    decisionsPlayed: clobResults.length + dfbaResults.length,
+    clobQueueLosses: countQueueLosses(clobResults),
+    dfbaNeutralized: countNeutralized(dfbaResults),
     directionPoints,
     comboBonus,
     makerMetrics,
@@ -111,7 +171,9 @@ export function computeScore(
     makerPoints,
     totalPoints,
     grade: gradeFor(totalPoints),
+    knowledgeScore: knowledgeScoreFor(dfbaResults, makerResults),
     averageReactionMs: mean(playerReactions),
+    fastestReactionMs: fastest(playerReactions),
     averageBotReactionMs: mean(clobResults.map((result) => result.botReactionMs)),
   };
 }

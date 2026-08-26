@@ -1,54 +1,58 @@
-import { useCallback, useState } from 'react';
-import { Check, Copy } from 'lucide-react';
+import { forwardRef } from 'react';
 import { BrandMarks } from './BrandBar';
+import { DEFAULT_LOGO_SOURCES } from '@/lib/logos';
+import type { LogoSources } from '@/lib/logos';
 import { BigMs } from './BigMs';
-import { Button } from './Button';
 import { copy } from '@/content/copy';
+import { formatMs } from '@/lib/format';
 import { marketQuality } from '@/lib/marketMaker';
-import { buildShareText } from '@/lib/share';
+import { currentGameUrl } from '@/lib/share';
 import type { ScoreBreakdown } from '@/types/game';
 
 /**
- * The final shareable result card. Both official marks appear here, unmodified, alongside the
- * 40ms anchor and the score. The disclaimer travels with the card — including into the copied
- * text — so the numbers cannot be passed around stripped of their context.
+ * The shareable result card.
+ *
+ * This is the artefact that leaves the game, so it has to stand on its own: both official
+ * marks, the game's name, the score, the fastest reaction, the two lines that say what
+ * happened, the URL to play it, and the disclaimer. Someone who sees only this image should be
+ * able to tell what it is and that the numbers are illustrative.
+ *
+ * It takes a ref because the PNG export rasterises this exact node.
  */
-export function ShareCard({ score }: { score: ScoreBreakdown }) {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = useCallback(() => {
-    const text = buildShareText(score);
-    const done = () => {
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
-    };
-
-    try {
-      const clipboard = navigator.clipboard;
-      if (clipboard?.writeText) {
-        void clipboard.writeText(text).then(done, () => setCopied(false));
-        return;
-      }
-    } catch {
-      /* fall through — copying is a convenience, not a requirement */
-    }
-    setCopied(false);
-  }, [score]);
+export const ShareCard = forwardRef<
+  HTMLElement,
+  { score: ScoreBreakdown; logoSources?: LogoSources }
+>(function ShareCard({ score, logoSources = DEFAULT_LOGO_SOURCES }, ref) {
+  const url = currentGameUrl();
+  const fastest =
+    score.fastestReactionMs === null ? copy.results.stats.none : formatMs(score.fastestReactionMs);
 
   return (
-    <section className="sharecard" aria-label={copy.share.heading}>
+    <section className="sharecard" aria-label={copy.share.heading} ref={ref}>
       <div className="sharecard__head">
         <span className="sharecard__title">{copy.share.title}</span>
-        <BrandMarks />
+        <BrandMarks sources={logoSources} />
       </div>
 
-      <div className="sharecard__score">
-        <span className="sharecard__value">{score.totalPoints}</span>
-        <span className="faint">{copy.results.outOf}</span>
+      <p className="sharecard__boast">{copy.share.boast}</p>
+
+      <div className="sharecard__figures">
+        <div className="sharecard__score">
+          <span className="sharecard__value">{score.totalPoints}</span>
+          <span className="faint">{copy.results.outOf}</span>
+        </div>
+        <div className="sharecard__fastest">
+          <span className="stat__label">{copy.share.fastestLabel}</span>
+          <span className="sharecard__fastestValue mono">{fastest}</span>
+        </div>
       </div>
       <p className="sharecard__grade">{score.grade}</p>
 
       <div className="sharecard__rows">
+        <p className="sharecard__row">
+          <span>{copy.share.knowledgeLabel}</span>
+          <span>{score.knowledgeScore} / 100</span>
+        </p>
         <p className="sharecard__row">
           <span>{copy.share.racesLabel}</span>
           <span>
@@ -62,28 +66,19 @@ export function ShareCard({ score }: { score: ScoreBreakdown }) {
           </span>
         </p>
         <p className="sharecard__row">
-          <span>{copy.share.streakLabel}</span>
-          <span>{score.bestStreak}</span>
-        </p>
-        <p className="sharecard__row">
           <span>{copy.share.makerLabel}</span>
           <span>{Math.round(marketQuality(score.makerMetrics))} / 100</span>
         </p>
       </div>
 
+      <p className="sharecard__lesson">{copy.share.lesson}</p>
+
       <div className="sharecard__foot">
         <BigMs size="sm" caption={copy.pulse.caption} />
-        <Button
-          variant="secondary"
-          icon={copied ? <Check size={16} /> : <Copy size={16} />}
-          aria-label={copy.share.copyHint}
-          onClick={handleCopy}
-        >
-          {copied ? copy.share.copiedLabel : copy.share.copyLabel}
-        </Button>
+        {url ? <span className="sharecard__url mono">{url}</span> : null}
       </div>
 
-      <p className="tiny">{copy.footer.legal}</p>
+      <p className="tiny">{copy.footer.scenarioNote}</p>
     </section>
   );
-}
+});

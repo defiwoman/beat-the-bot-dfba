@@ -65,7 +65,7 @@ requires them to appear:
 | Latency arbitrage is **cheating / theft / fraud** | It is a rational response to a market design. Keep it mechanism-level and neutral. |
 | Any **risk-free**, **always wins**, or **can't lose** framing | Untrue and reckless. |
 | Any **price prediction, yield, APY or return** | Out of scope entirely. |
-| Any claim about a venue's **real throughput, uptime or latency** | Unverified by this project. |
+| Any claim about a venue's **real throughput, uptime or latency** | Unverified by this project. One narrow, attributed and explicitly un-measured exception: see section 3e. |
 | Anything implying the player is **trading real money** | There is no wallet, no funds, no order routing. |
 | Any framing of an **animation as a benchmark or measurement** | See section 3a. A browser animation measures nothing. |
 
@@ -167,6 +167,47 @@ The three metrics — Capital Health, Trader Satisfaction, Market Depth — are 
 The toxic-flow warning is worded per mode: a full **pick-off** in continuous matching, and
 **reduced pick-off with some exposure remaining** in batched mode. The batched wording must never
 read as "safe" — that is the whole point of keeping exposure above zero.
+
+## 3e. Naming Fogo's block production — the one attributed figure
+
+Section 2 forbids this project from making claims about a venue's real throughput, uptime or
+latency. The results screen names one number that comes from outside the game:
+
+> Fogo's approximately 40ms block production makes extremely frequent on-chain interaction
+> possible while preserving an experience that feels fast. That is a stated design parameter of
+> the platform, not something this game measured.
+
+This is allowed **only** in that exact shape, and the reasons matter:
+
+1. It is **attributed** to the platform as its own stated design parameter. The game is
+   reporting what Fogo says about itself, not publishing a finding.
+2. The second sentence is not optional. It says outright that the figure was not measured here,
+   and a test asserts that disclaimer is present.
+3. It makes **no comparative claim** — nothing about being faster than, better than, or
+   outperforming any other venue.
+4. It stays away from the forbidden vocabulary: no *benchmark*, no *measured latency*, no
+   *throughput*, no *tps*.
+
+Anything beyond that shape is a section 2 violation. In particular, never quote a latency,
+throughput or uptime figure for any venue as though this project had established it, and never
+present the game's own 40ms batch animation as evidence for it — see section 3a.
+
+The four outbound links on the results screen (Superluminal, Fogo, Jump Crypto's dual-flow batch
+auction write-up, and Budish, Cramton & Shim in the QJE) exist so a reader can check the
+mechanism against its sources rather than taking this game's word for it.
+
+## 3f. What the shared result must carry
+
+The result card is the only part of this game designed to leave it, so it cannot become a bare
+score screenshot:
+
+- The **simplified-scenarios note** is printed on the card itself and rasterised into the PNG:
+  *"This game uses simplified illustrative scenarios to explain market structure. It is not a
+  live exchange simulation or financial advice."*
+- Every share target — the share sheet, the clipboard, the X intent — carries the lesson line
+  and the not-financial-advice line. A test asserts the copied text contains both.
+- The local high score is stored only in the player's own browser. The UI says so; nothing is
+  transmitted anywhere, because there is no backend to transmit to.
 
 ## 4. Brand asset rules
 

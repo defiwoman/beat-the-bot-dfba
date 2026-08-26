@@ -1,4 +1,6 @@
 import { copy } from '@/content/copy';
+import { DEFAULT_LOGO_SOURCES } from '@/lib/logos';
+import type { LogoSources } from '@/lib/logos';
 
 /**
  * The Superluminal x Fogo lockup.
@@ -11,10 +13,13 @@ import { copy } from '@/content/copy';
  * are referenced by their real filenames rather than converted.
  */
 
-export const FOGO_LOGO_SRC = './brands/fogo-logo.jpg';
-export const SUPERLUMINAL_LOGO_SRC = './brands/superluminal-logo.png';
-
-export function BrandMarks({ size = 'sm' }: { size?: 'sm' | 'lg' }) {
+export function BrandMarks({
+  size = 'sm',
+  sources = DEFAULT_LOGO_SOURCES,
+}: {
+  size?: 'sm' | 'lg';
+  sources?: LogoSources;
+}) {
   const className = size === 'lg' ? 'brandbar__logo brandbar__logo--lg' : 'brandbar__logo';
   const px = size === 'lg' ? 40 : 26;
 
@@ -22,7 +27,7 @@ export function BrandMarks({ size = 'sm' }: { size?: 'sm' | 'lg' }) {
     <span className="brandbar__marks">
       <img
         className={className}
-        src={SUPERLUMINAL_LOGO_SRC}
+        src={sources.superluminal}
         alt={copy.brands.superluminalAlt}
         width={px}
         height={px}
@@ -32,7 +37,7 @@ export function BrandMarks({ size = 'sm' }: { size?: 'sm' | 'lg' }) {
       </span>
       <img
         className={className}
-        src={FOGO_LOGO_SRC}
+        src={sources.fogo}
         alt={copy.brands.fogoAlt}
         width={px}
         height={px}
