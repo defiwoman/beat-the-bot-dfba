@@ -3070,3 +3070,386 @@ button {
   background: var(--accent-core);
   box-shadow: 0 0 10px var(--accent-core);
 }
+
+/* ═══════════════════════════════════ PLAYER REGISTRATION & LEADERBOARD ═════ */
+
+/**
+ * Both panels reuse `.about`'s modal shell, so they inherit its scrolling, focus ring and
+ * backdrop rather than growing a second dialog system. Only what differs is written here.
+ */
+
+.register {
+  max-width: 30rem;
+}
+
+.register__heading {
+  font-family: var(--font-display);
+  font-size: var(--step-1);
+  letter-spacing: 0.12em;
+  color: var(--primary);
+  margin: 0;
+}
+
+.register__form {
+  display: grid;
+  gap: var(--s5);
+}
+
+/* ───────────────────────────────────────────────────────────────── fields ── */
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.field__label {
+  font-size: var(--step--2);
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.field__input {
+  min-height: var(--tap);
+  padding: 0 var(--s3);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border-default);
+  background: var(--surface-root);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--step-0);
+  width: 100%;
+}
+
+.field__input:focus-visible {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: var(--ring);
+}
+
+/** An address is a string of look-alike characters; tabular figures make it checkable. */
+.field__input--mono {
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  letter-spacing: 0.01em;
+}
+
+.field__input--bad {
+  border-color: var(--danger);
+}
+
+.field__input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.field__help {
+  font-size: var(--step--2);
+  color: var(--text-muted);
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+/** The seed-phrase warning. Amber, because it is a caution and not an error. */
+.field__help--warn {
+  color: var(--warning);
+}
+
+.field__help--warn svg {
+  flex: none;
+  margin-top: 0.15em;
+}
+
+.field__error {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: var(--step--2);
+  font-weight: 700;
+  color: var(--danger);
+}
+
+.field__error--form {
+  padding: var(--s2) var(--s3);
+  border: 1px solid rgb(255 92 112 / 40%);
+  border-radius: var(--r-sm);
+  background: rgb(255 92 112 / 8%);
+}
+
+.field__consent {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s3);
+  font-size: var(--step--1);
+  color: var(--text-secondary);
+  cursor: pointer;
+  /* A 44px target for the whole row, not just the 16px box. */
+  min-height: var(--tap);
+  padding: var(--s2) 0;
+}
+
+.field__consent input {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 0.1em;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.field__consent input:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+
+/* ────────────────────────────────────────────────── returning player ────── */
+
+.welcome {
+  display: grid;
+  gap: var(--s3);
+  padding: var(--s4);
+  border: 1px solid var(--primary-border);
+  border-radius: var(--r);
+  background: var(--surface-soft);
+}
+
+.welcome__name {
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.welcome__stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s3);
+  margin: 0;
+}
+
+.welcome__stats dt {
+  font-size: var(--step--2);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.welcome__stats dd {
+  margin: 2px 0 0;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+/* ─────────────────────────────────────────────────────── saved score ────── */
+
+.savescore {
+  display: grid;
+  gap: var(--s3);
+}
+
+.savescore__best {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-size: var(--step-0);
+  letter-spacing: 0.1em;
+  color: var(--primary);
+}
+
+.savescore__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s3);
+  margin: 0;
+}
+
+.savescore__grid dt {
+  font-size: var(--step--2);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.savescore__value {
+  margin: 4px 0 0;
+  font-size: var(--step-2);
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.savescore--failed {
+  border-color: rgb(255 92 112 / 45%);
+}
+
+.savescore__failed {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 800;
+  color: var(--danger);
+}
+
+/* ─────────────────────────────────────────────────────── leaderboard ────── */
+
+.leaderboard {
+  max-width: 46rem;
+}
+
+.lb__head {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+}
+
+.lb__heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  margin-right: auto;
+  font-family: var(--font-display);
+  font-size: var(--step-1);
+  letter-spacing: 0.12em;
+  color: var(--primary);
+}
+
+.lb__state {
+  display: grid;
+  gap: var(--s3);
+  justify-items: start;
+  padding: var(--s5) 0;
+  color: var(--text-secondary);
+}
+
+/**
+ * The table scrolls inside its own box rather than pushing the dialog sideways, which is what
+ * keeps five columns usable at 360px without collapsing them into cards.
+ */
+.lb__scroll {
+  overflow-x: auto;
+  border: 1px solid var(--border-default);
+  border-radius: var(--r);
+}
+
+.lb__table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 30rem;
+}
+
+.lb__table th {
+  text-align: left;
+  padding: var(--s2) var(--s3);
+  font-size: var(--step--2);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-default);
+  white-space: nowrap;
+}
+
+.lb__table td {
+  padding: var(--s2) var(--s3);
+  border-bottom: 1px solid rgb(230 255 104 / 8%);
+  font-size: var(--step--1);
+  color: var(--text-secondary);
+}
+
+.lb__row--you {
+  background: var(--surface-soft);
+}
+
+.lb__row--you td {
+  color: var(--text-primary);
+}
+
+.lb__rank {
+  width: 3.5rem;
+  font-family: var(--font-mono);
+  font-weight: 800;
+}
+
+/** Positions 1–3 get a ring, not a trophy graphic. Rank is also printed, so never colour-only. */
+.lb__medal {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.75rem;
+  padding: 2px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--primary-border-strong);
+  color: var(--primary);
+}
+
+.lb__medal--first {
+  background: var(--primary);
+  color: var(--on-primary);
+  border-color: var(--primary);
+}
+
+.lb__medal--second {
+  background: rgb(230 255 104 / 18%);
+}
+
+.lb__medal--third {
+  background: rgb(255 157 50 / 16%);
+  border-color: rgb(255 157 50 / 45%);
+  color: var(--bot-accent-bright);
+}
+
+.lb__name {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+/** A long display name truncates rather than stretching the table. */
+.lb__nameText {
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+/** A visible tag, so "this row is you" is never carried by the background colour alone. */
+.lb__you {
+  flex: none;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.lb__wallet {
+  font-size: var(--step--2);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.lb__score {
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.lb__attempts {
+  color: var(--text-muted);
+}
+
+.lb__ownBody {
+  border-top: 2px solid var(--border-default);
+}
+
+.lb__ownLabel {
+  font-size: var(--step--2);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}

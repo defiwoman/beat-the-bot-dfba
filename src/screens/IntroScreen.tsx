@@ -1,9 +1,10 @@
-import { Play, Timer, Layers, TrendingUp } from 'lucide-react';
+import { Play, Timer, Layers, TrendingUp, Trophy } from 'lucide-react';
 import { BigMs } from '@/components/BigMs';
 import { BrandHero } from '@/components/BrandBar';
 import { Button } from '@/components/Button';
 import { Screen } from '@/components/Screen';
 import { copy } from '@/content/copy';
+import { usePlayer } from '@/state/usePlayer';
 
 const ACT_ICONS = [Timer, Layers, TrendingUp];
 
@@ -45,7 +46,16 @@ function SplitSubheading() {
  * it lives in the About panel, the footer and the results screen, so it is always one glance
  * away from a screen that no longer has to carry it beside the title.
  */
-export function IntroScreen({ onStart }: { onStart: () => void }) {
+export function IntroScreen({
+  onStart,
+  onOpenLeaderboard,
+}: {
+  onStart: () => void;
+  onOpenLeaderboard?: () => void;
+}) {
+  const { status, player, rank } = usePlayer();
+  const registered = status === 'registered' && player !== null;
+
   return (
     <Screen label={copy.intro.heading}>
       <BrandHero />
@@ -80,6 +90,31 @@ export function IntroScreen({ onStart }: { onStart: () => void }) {
 
       <p className="faint">{copy.intro.duration}</p>
 
+      {/* A returning player is recognised rather than asked to register again. */}
+      {registered ? (
+        <div className="welcome" role="status">
+          <p className="welcome__name">
+            {copy.player.welcomeBack.replace('{name}', player.playerName)}
+          </p>
+          <dl className="welcome__stats">
+            <div>
+              <dt>{copy.player.bestLabel}</dt>
+              <dd className="mono">
+                {player.bestScore === null ? copy.player.noScoreYet : player.bestScore}
+              </dd>
+            </div>
+            <div>
+              <dt>{copy.player.rankLabel}</dt>
+              <dd className="mono">{rank === null ? copy.player.unranked : `#${rank}`}</dd>
+            </div>
+            <div>
+              <dt>{copy.player.attemptsLabel}</dt>
+              <dd className="mono">{player.attemptsCompleted}</dd>
+            </div>
+          </dl>
+        </div>
+      ) : null}
+
       <div className="screen__actions">
         {/* Inside the sticky bar so the line is always readable, never under its own fade. */}
         <p className="disclaimer disclaimer--compact">{copy.meta.compactDisclaimer}</p>
@@ -92,6 +127,17 @@ export function IntroScreen({ onStart }: { onStart: () => void }) {
         >
           {copy.intro.startLabel}
         </Button>
+        {onOpenLeaderboard ? (
+          <Button
+            block
+            variant="secondary"
+            icon={<Trophy size={16} />}
+            aria-label={copy.leaderboard.openHint}
+            onClick={onOpenLeaderboard}
+          >
+            {copy.leaderboard.openLabel}
+          </Button>
+        ) : null}
       </div>
     </Screen>
   );

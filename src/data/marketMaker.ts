@@ -6,7 +6,7 @@
  * market statistic.
  */
 
-import type { SpreadChoice, VolatilityEvent } from '@/types/game';
+import type { SpreadChoice, VolatilityEvent } from '../types/game';
 
 /** The three spreads the player quotes. Illustrative game mechanics, in basis points. */
 export const SPREAD_CHOICES: readonly SpreadChoice[] = [

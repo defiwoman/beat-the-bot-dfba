@@ -27,7 +27,7 @@ import type {
   MakerMode,
   SpreadChoice,
   VolatilityEvent,
-} from '@/types/game';
+} from '../types/game';
 
 /* ------------------------------------------------------------------ constants */
 

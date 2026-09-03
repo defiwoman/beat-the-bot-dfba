@@ -1,14 +1,17 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { AboutPanel } from '@/components/AboutPanel';
 import { AmbientBackdrop } from '@/components/AmbientBackdrop';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { GameFooter } from '@/components/GameFooter';
 import { GameHeader } from '@/components/GameHeader';
+import { LeaderboardPanel } from '@/components/LeaderboardPanel';
 import { OpeningSequence } from '@/components/OpeningSequence';
 import { PrismBanner } from '@/components/PrismBanner';
+import { RegistrationPanel } from '@/components/RegistrationPanel';
 import { copy } from '@/content/copy';
 import { buildClobRounds, buildDfbaRounds } from '@/data/rounds';
+import { roundsForSeed, type AttemptTranscript } from '@/lib/attempt';
 import { computeScore } from '@/lib/scoring';
 import { themeForPhase } from '@/lib/stages';
 import { useKeyboard } from '@/lib/useKeyboard';
@@ -21,8 +24,10 @@ import { MarketMakerSurvivalScreen } from '@/screens/MarketMakerSurvivalScreen';
 import { ResultsScreen } from '@/screens/ResultsScreen';
 import { TutorialScreen } from '@/screens/TutorialScreen';
 import { GameProvider } from '@/state/GameProvider';
+import { PlayerProvider } from '@/state/PlayerProvider';
 import { SoundProvider } from '@/state/SoundProvider';
 import { useGame } from '@/state/useGame';
+import { usePlayer } from '@/state/usePlayer';
 import { useSound } from '@/state/useSound';
 import type {
   ClobRound,
@@ -41,7 +46,16 @@ export interface GeneratedRounds {
   dfba: DfbaRound[];
 }
 
-function GameRouter({ rounds }: { rounds: GeneratedRounds }) {
+function GameRouter({
+  rounds,
+  onStart,
+  onOpenLeaderboard,
+}: {
+  rounds: GeneratedRounds;
+  /** Opens registration on a first visit, or starts the game for a known player. */
+  onStart: () => void;
+  onOpenLeaderboard: () => void;
+}) {
   const { state, dispatch } = useGame();
   const { play } = useSound();
 
@@ -88,14 +102,7 @@ function GameRouter({ rounds }: { rounds: GeneratedRounds }) {
 
   switch (state.phase) {
     case 'intro':
-      return (
-        <IntroScreen
-          onStart={() => {
-            play('advance');
-            dispatch({ type: 'START_GAME' });
-          }}
-        />
-      );
+      return <IntroScreen onStart={onStart} onOpenLeaderboard={onOpenLeaderboard} />;
 
     case 'clobTutorial':
       return (
@@ -187,27 +194,107 @@ function GameRouter({ rounds }: { rounds: GeneratedRounds }) {
       return <MarketMakerSurvivalScreen onEvent={handleMakerEvent} onFinish={advance} />;
 
     case 'results':
-      return <ResultsScreen score={score} onReplay={playAgain} />;
+      return (
+        <ResultsScreen score={score} onReplay={playAgain} onOpenLeaderboard={onOpenLeaderboard} />
+      );
   }
 }
 
 function GameShell() {
   const { state, dispatch } = useGame();
-  const { toggleMuted } = useSound();
+  const { play, toggleMuted } = useSound();
+  const { status, session, beginAttempt, submitAttempt } = usePlayer();
+
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [registerOpen, setRegisterOpen] = useState(false);
+  const [leaderboardOpen, setLeaderboardOpen] = useState(false);
   const theme = themeForPhase(state.phase);
 
-  // Fresh randomised rounds per playthrough, so signal timing and market direction both vary
-  // on replay. Generated here rather than in GameRouter, which remounts on every phase change.
+  /**
+   * The rounds this playthrough is played on.
+   *
+   * With a server session, they are built from the session's seed — which is what lets the
+   * server rebuild the identical rounds and score the player's choices itself. Without one
+   * (leaderboard unreachable, or an unregistered visitor) the game falls back to `Math.random`
+   * exactly as it always did and stays fully playable; only the score is not recorded.
+   */
   const rounds = useMemo<GeneratedRounds>(
-    () => ({ clob: buildClobRounds(), dfba: buildDfbaRounds() }),
+    () =>
+      session
+        ? roundsForSeed(session.seed)
+        : { clob: buildClobRounds(), dfba: buildDfbaRounds() },
     // `attempt` bumps when focus returns mid-round, so the resumed round gets a fresh signal
     // and a tab switch can never be used to scout a direction.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [state.playthrough, state.attempt],
+    [state.playthrough, state.attempt, session?.sessionId],
   );
 
   const closeAbout = useCallback(() => setAboutOpen(false), []);
+  const closeLeaderboard = useCallback(() => setLeaderboardOpen(false), []);
+  const openLeaderboard = useCallback(() => setLeaderboardOpen(true), []);
+
+  /** Begin the game for a player who is already registered. */
+  const enterGame = useCallback(() => {
+    play('advance');
+    // Fire and forget: a session that cannot be opened must not block play.
+    void beginAttempt();
+    dispatch({ type: 'START_GAME' });
+  }, [beginAttempt, dispatch, play]);
+
+  /**
+   * START GAME. A first-time visitor gets the registration panel; a known player goes straight
+   * in. The opening screen itself is unchanged either way — nothing is added above the branding.
+   */
+  const handleStart = useCallback(() => {
+    if (status === 'registered') {
+      enterGame();
+      return;
+    }
+    setRegisterOpen(true);
+  }, [enterGame, status]);
+
+  const handleRegistered = useCallback(() => {
+    setRegisterOpen(false);
+    enterGame();
+  }, [enterGame]);
+
+  /**
+   * The game is over. Send the transcript — choices only — and let the server score it.
+   *
+   * Reached on arrival at the results phase, so a finished game is submitted exactly once even
+   * though the results screen itself may re-render many times.
+   */
+  const submittedRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (state.phase !== 'results' || !session) return;
+    if (submittedRef.current === session.sessionId) return;
+
+    const transcript: AttemptTranscript = {
+      clob: state.clobResults.map((result) => ({
+        direction: result.chosenDirection,
+        reactionMs: result.reactionMs,
+      })),
+      dfba: state.dfbaResults.map((result) => ({
+        direction: result.chosenDirection,
+        reactionMs: result.reactionMs,
+      })),
+      maker: state.makerResults.map((result) => ({
+        mode: result.mode,
+        spreadId: result.spreadId,
+      })),
+    };
+
+    submittedRef.current = session.sessionId;
+    void submitAttempt(transcript);
+  }, [
+    session,
+    state.clobResults,
+    state.dfbaResults,
+    state.makerResults,
+    state.phase,
+    submitAttempt,
+  ]);
 
   // Mute is reachable from anywhere on a keyboard, matching the always-visible header control.
   useKeyboard({ m: toggleMuted });
@@ -237,6 +324,8 @@ function GameShell() {
               <GameRouter
                 key={`${state.phase}-${state.roundIndex}-${state.playthrough}-${state.attempt}`}
                 rounds={rounds}
+                onStart={handleStart}
+                onOpenLeaderboard={openLeaderboard}
               />
             </AnimatePresence>
           </ErrorBoundary>
@@ -246,6 +335,19 @@ function GameShell() {
       </div>
 
       <AnimatePresence>{aboutOpen ? <AboutPanel onClose={closeAbout} /> : null}</AnimatePresence>
+
+      <AnimatePresence>
+        {registerOpen ? (
+          <RegistrationPanel
+            onRegistered={handleRegistered}
+            onCancel={() => setRegisterOpen(false)}
+          />
+        ) : null}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {leaderboardOpen ? <LeaderboardPanel onClose={closeLeaderboard} /> : null}
+      </AnimatePresence>
     </div>
   );
 }
@@ -254,9 +356,11 @@ export default function App() {
   return (
     <ErrorBoundary>
       <SoundProvider>
-        <GameProvider>
-          <GameShell />
-        </GameProvider>
+        <PlayerProvider>
+          <GameProvider>
+            <GameShell />
+          </GameProvider>
+        </PlayerProvider>
       </SoundProvider>
     </ErrorBoundary>
   );

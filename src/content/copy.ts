@@ -745,6 +745,108 @@ export const copy = {
     of: 'of',
   },
 
+  /**
+   * PLAYER REGISTRATION.
+   *
+   * A permanent part of the game: register once, keep a best score, appear on the board. There
+   * is deliberately no mention of rewards, prizes, tokens or distribution anywhere in here —
+   * `copy.test.ts` fails the build if any of that language appears in user-facing copy.
+   */
+  registration: {
+    heading: 'PLAYER REGISTRATION',
+    lede: 'Enter your details to save your best score on the Beat the Bot leaderboard.',
+
+    nameLabel: 'PLAYER NAME',
+    nameHelp: 'This is the name shown on the leaderboard.',
+    namePlaceholder: 'Your leaderboard name',
+
+    walletLabel: 'FOGO WALLET ADDRESS',
+    walletHelp: 'Enter your public Fogo wallet address. Never enter a seed phrase or private key.',
+    walletPlaceholder: 'Public Fogo address',
+
+    consentLabel:
+      'I confirm that the information entered is accurate and consent to my player details and game scores being stored.',
+
+    submitLabel: 'ENTER THE MARKET',
+    submitHint: 'ENTER THE MARKET — register and start Level 1',
+    submittingLabel: 'Registering…',
+
+    cancelLabel: 'Back',
+    cancelHint: 'Back — close registration without starting',
+
+    errorHeading: 'Check these fields',
+    networkError: 'Could not reach the leaderboard. Check your connection and try again.',
+    serverError: 'Something went wrong saving your registration. Try again.',
+    unavailable: 'The leaderboard is temporarily unavailable. Try again shortly.',
+    successAnnouncement: 'Registered. Starting Level 1.',
+  },
+
+  /** The returning-player panel, shown instead of the form when credentials still work. */
+  player: {
+    welcomeBack: 'Welcome back, {name}',
+    bestLabel: 'Personal best',
+    rankLabel: 'Leaderboard rank',
+    attemptsLabel: 'Games completed',
+    noScoreYet: 'No completed game yet',
+    unranked: '—',
+    playLabel: 'PLAY AGAIN',
+    playHint: 'PLAY AGAIN — start a new game',
+    changeLabel: 'CHANGE PLAYER',
+    changeHint: 'CHANGE PLAYER — register as someone else on this browser',
+    changeConfirm: 'Register as a different player on this browser?',
+  },
+
+  /** The public board. */
+  leaderboard: {
+    openLabel: 'LEADERBOARD',
+    openHint: 'LEADERBOARD — see the top scores',
+    heading: 'LEADERBOARD',
+    closeLabel: 'Close',
+    closeHint: 'Close — return to the game',
+
+    rankColumn: 'Rank',
+    playerColumn: 'Player',
+    walletColumn: 'Wallet',
+    scoreColumn: 'Best score',
+    attemptsColumn: 'Games to best',
+
+    youTag: 'You',
+    loading: 'Loading the leaderboard…',
+    empty: 'No completed games yet. Be the first player on the board.',
+    failed: 'Could not load the leaderboard.',
+    retryLabel: 'Try again',
+    refreshLabel: 'Refresh',
+    refreshHint: 'Refresh — reload the leaderboard',
+    loadMoreLabel: 'Load more',
+    outsideTop: 'Your position',
+    countLabel: '{shown} of {total} ranked players',
+
+    /** Neutral, mechanical, and the only explanation of ordering anywhere in the game. */
+    rankingNote:
+      'Ranks are based on each player’s highest verified score. Ties are ordered by fewer attempts to reach that score, followed by the earliest achievement.',
+    /** Says plainly why only part of an address is shown. */
+    maskNote: 'Wallet addresses are shown partially masked.',
+  },
+
+  /** What the results screen says about the score that was just saved. */
+  saveScore: {
+    finalScoreLabel: 'FINAL SCORE',
+    personalBestLabel: 'PERSONAL BEST',
+    currentRankLabel: 'CURRENT RANK',
+    newPersonalBest: 'NEW PERSONAL BEST',
+    savingLabel: 'Saving your score…',
+    savedLabel: 'Score saved to the leaderboard.',
+    /** Never claims a save that did not happen. */
+    failedLabel: 'Your score has not been saved yet.',
+    failedBody:
+      'The result below is safe and still on screen. The leaderboard could not be reached, so nothing was recorded.',
+    retryLabel: 'RETRY SAVING SCORE',
+    retryHint: 'RETRY SAVING SCORE — try sending this result to the leaderboard again',
+    retryingLabel: 'Retrying…',
+    notRegistered: 'Register to save your score on the leaderboard.',
+    unranked: 'Unranked',
+  },
+
   errors: {
     heading: 'Something broke in the market',
     body: 'The game hit an unexpected error. Your progress in this round was not saved, but you can start again.',

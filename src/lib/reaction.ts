@@ -5,7 +5,7 @@
  * has no knowledge of markets.
  */
 
-import type { Direction } from '@/types/game';
+import type { Direction } from '../types/game';
 
 /**
  * Milliseconds between the signal firing and the player answering.

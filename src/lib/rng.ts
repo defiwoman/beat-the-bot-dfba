@@ -1,4 +1,4 @@
-import type { Rng } from '@/types/game';
+import type { Rng } from '../types/game';
 
 /**
  * A small deterministic PRNG (mulberry32).

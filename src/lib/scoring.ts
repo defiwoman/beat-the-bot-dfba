@@ -8,7 +8,7 @@ import type {
   MakerMetrics,
   MakerMode,
   ScoreBreakdown,
-} from '@/types/game';
+} from '../types/game';
 
 /**
  * Scoring rewards *reading the market*, not clicking fast.

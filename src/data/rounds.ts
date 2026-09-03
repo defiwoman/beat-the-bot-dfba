@@ -14,7 +14,7 @@ import type {
   Direction,
   MarketSignal,
   Rng,
-} from '@/types/game';
+} from '../types/game';
 
 export const BATCH_WINDOW_MS = 40;
 
