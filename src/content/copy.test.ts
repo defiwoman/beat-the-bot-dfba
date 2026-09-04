@@ -163,7 +163,10 @@ describe('nuances that must stay visible (ACCURACY_RULES.md section 3)', () => {
 
   it('keeps every accessible-name hint containing its visible label (WCAG 2.5.3)', () => {
     const pairs: Array<[label: string, hint: string]> = [
-      [copy.intro.startLabel, copy.intro.startHint],
+      [copy.registration.submitLabel, copy.registration.submitHint],
+      [copy.player.playLabel, copy.player.playHint],
+      [copy.player.changeLabel, copy.player.changeHint],
+      [copy.leaderboard.openLabel, copy.leaderboard.openHint],
       [copy.direction.long, copy.direction.longHint],
       [copy.direction.short, copy.direction.shortHint],
       [copy.results.replayLabel, copy.results.replayHint],
@@ -280,8 +283,14 @@ describe('numeric level labels', () => {
     ]);
   });
 
-  it('starts the game at Level 1 in its accessible hint', () => {
-    expect(copy.intro.startHint).toBe('Start Game — begin at Level 1');
+  /**
+   * The opening screen has exactly one way forward, and it is the form's submit button. A
+   * "start" label here would be a second one.
+   */
+  it('offers no start-the-game label of its own', () => {
+    expect(Object.keys(copy.intro)).not.toContain('startLabel');
+    expect(Object.keys(copy.intro)).not.toContain('startHint');
+    expect(copy.registration.submitLabel).toBe('ENTER THE MARKET');
   });
 });
 
@@ -289,7 +298,7 @@ describe('numeric level labels', () => {
 describe('opening screen disclaimer', () => {
   it('offers one compact line for the opening screen', () => {
     expect(copy.meta.compactDisclaimer).toBe(
-      'Illustrative educational game — no wallet, no funds and no live trading.',
+      'Illustrative educational game — no wallet connection, no funds and no live trading.',
     );
   });
 

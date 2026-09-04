@@ -27,11 +27,16 @@ export const copy = {
      * About panel, the footer and the results screen, so nothing is removed — only moved off
      * the screen that has to compete with the title and the branding.
      */
+    /**
+     * "no wallet" was ambiguous once the form began asking for a wallet address — it reads as
+     * "we do not deal in wallets at all", which is not true: a public address is recorded.
+     * "no wallet connection" says the accurate thing, which is that nothing is connected.
+     */
     compactDisclaimer:
-      'Illustrative educational game — no wallet, no funds and no live trading.',
+      'Illustrative educational game — no wallet connection, no funds and no live trading.',
     shortDisclaimer: 'Illustrative numbers only. Not live data.',
     noConnection:
-      'No wallet, no funds, no order routing, no backend.',
+      'No wallet connection, no funds, no order routing, no transaction request.',
     instrument: 'BTC-PERP',
     instrumentNote: 'An illustrative BTC market used only for this lesson.',
     /** Stamped next to every price, slippage and latency figure in the game. */
@@ -222,9 +227,14 @@ export const copy = {
       'Level 3 — take the other seat and keep a market alive.',
     ],
     duration: 'About 90 seconds.',
-    startLabel: 'Start Game',
-    /** Accessible names must contain the visible label (WCAG 2.5.3 Label in Name). */
-    startHint: 'Start Game — begin at Level 1',
+    /*
+     * There is no START GAME label here any more.
+     *
+     * The opening screen's primary action is now the registration form's own submit button —
+     * ENTER THE MARKET — for a visitor the server has not seen, and PLAY AGAIN for one it has.
+     * A separate "start" button would be a second way into Level 1, which is exactly what this
+     * screen must not have.
+     */
   },
 
   clobTutorial: {
@@ -763,6 +773,12 @@ export const copy = {
     walletLabel: 'FOGO WALLET ADDRESS',
     walletHelp: 'Enter your public Fogo wallet address. Never enter a seed phrase or private key.',
     walletPlaceholder: 'Public Fogo address',
+    /**
+     * Says the four true things at the moment the field is asking for an address: the public
+     * address is recorded, nothing is connected, nothing is signed, and no key is wanted.
+     */
+    walletNote:
+      'Your public address is recorded with your score. No wallet is connected, no transaction is requested, and no private key or seed phrase is ever needed.',
 
     xPostLabel: 'X QUOTE POST LINK',
     xPostHelp: 'Paste the link to your X quote post about Beat the Bot, Superluminal and DFBA.',
@@ -790,9 +806,16 @@ export const copy = {
     cancelHint: 'Back — close registration without starting',
 
     errorHeading: 'Check these fields',
-    networkError: 'Could not reach the leaderboard. Check your connection and try again.',
-    serverError: 'Something went wrong saving your registration. Try again.',
-    unavailable: 'The leaderboard is temporarily unavailable. Try again shortly.',
+    /**
+     * All three say the same two things: it failed, and nothing you typed is gone. The form
+     * keeps every value, so "try again" is one click rather than a re-type.
+     */
+    networkError:
+      'We couldn’t register your player profile. Your details have not been lost — please check your connection and try again.',
+    serverError:
+      'We couldn’t register your player profile. Your details have not been lost — please try again.',
+    unavailable:
+      'We couldn’t register your player profile. Your details have not been lost — please try again shortly.',
     successAnnouncement: 'Registered. Starting Level 1.',
   },
 
@@ -806,6 +829,15 @@ export const copy = {
     unranked: '—',
     playLabel: 'PLAY AGAIN',
     playHint: 'PLAY AGAIN — start a new game',
+    /** Shown while the server is issuing the seed for this playthrough. */
+    startingLabel: 'Starting…',
+    /**
+     * A recognised player pressed PLAY AGAIN and the server could not issue a session. The
+     * game does not start on a fallback seed — a playthrough that cannot be scored is not the
+     * thing they asked for — so this says what happened and invites another press.
+     */
+    startError:
+      'We couldn’t start a scored game just now. Nothing has been lost — please try again.',
     changeLabel: 'CHANGE PLAYER',
     changeHint: 'CHANGE PLAYER — register as someone else on this browser',
     changeConfirm: 'Register as a different player on this browser?',
@@ -813,8 +845,8 @@ export const copy = {
 
   /** The public board. */
   leaderboard: {
-    openLabel: 'LEADERBOARD',
-    openHint: 'LEADERBOARD — see the top scores',
+    openLabel: 'VIEW LEADERBOARD',
+    openHint: 'VIEW LEADERBOARD — see the top scores',
     heading: 'LEADERBOARD',
     closeLabel: 'Close',
     closeHint: 'Close — return to the game',

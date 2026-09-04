@@ -204,6 +204,23 @@ button {
   pointer-events: auto;
 }
 
+/*
+ * The opening screen's actions sit in the flow, not stuck to the bottom.
+ *
+ * Sticking them there was right when the screen ended in a single START GAME button: the page
+ * was short, and the button was always in reach. It is wrong now. The registration form is the
+ * last thing on the page and its own submit is the primary action, so a sticky bar would float
+ * over the form it is meant to follow — and for a returning player it would be three buttons
+ * and a disclaimer pinned over the level summary. Both were visible in the browser pass.
+ */
+.screen__actions--flow {
+  position: static;
+  margin-top: var(--s5);
+  padding-top: 0;
+  background: none;
+  pointer-events: auto;
+}
+
 /**
  * Bringing something into view — a focused control, an opened disclosure — must clear the
  * sticky bar rather than parking the element underneath it.
@@ -3080,6 +3097,31 @@ button {
 
 .register {
   max-width: 30rem;
+}
+
+/*
+ * REGISTRATION, IN THE PAGE.
+ *
+ * The form is no longer a dialog floating over the opening screen — it is a section of it,
+ * between the three-level summary and the sticky action bar. So it needs the panel treatment
+ * the surrounding blocks have (a bordered card on the ground colour) rather than the modal's,
+ * and it needs to be the widest thing on the screen it sits in, not a 30rem overlay.
+ */
+.register--inline {
+  display: grid;
+  gap: var(--s5);
+  max-width: none;
+  padding: var(--s5);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-lg);
+  background: var(--surface-secondary);
+  /* Marks it as the thing to do next without competing with the neon submit button. */
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 4%);
+}
+
+/* The submit button is the screen's primary action, so it gets the sticky bar's breathing room. */
+.register--inline .btn {
+  margin-top: var(--s2);
 }
 
 .register__heading {

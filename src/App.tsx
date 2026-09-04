@@ -8,7 +8,6 @@ import { GameHeader } from '@/components/GameHeader';
 import { LeaderboardPanel } from '@/components/LeaderboardPanel';
 import { OpeningSequence } from '@/components/OpeningSequence';
 import { PrismBanner } from '@/components/PrismBanner';
-import { RegistrationPanel } from '@/components/RegistrationPanel';
 import { copy } from '@/content/copy';
 import { buildClobRounds, buildDfbaRounds } from '@/data/rounds';
 import { roundsForSeed, type AttemptTranscript } from '@/lib/attempt';
@@ -49,12 +48,24 @@ export interface GeneratedRounds {
 function GameRouter({
   rounds,
   onStart,
+  onRegistered,
+  onChangePlayer,
+  onReplay,
   onOpenLeaderboard,
+  startError,
+  starting,
 }: {
   rounds: GeneratedRounds;
-  /** Opens registration on a first visit, or starts the game for a known player. */
+  /** Starts a game for a player the server has already recognised. */
   onStart: () => void;
+  /** Registration succeeded: open a session, then Level 1. */
+  onRegistered: () => void;
+  onChangePlayer: () => void;
+  /** TRY AGAIN, from the results screen. Opens a fresh session before replaying. */
+  onReplay: () => void;
   onOpenLeaderboard: () => void;
+  startError: string | null;
+  starting: boolean;
 }) {
   const { state, dispatch } = useGame();
   const { play } = useSound();
@@ -62,12 +73,6 @@ function GameRouter({
   const advance = useCallback(() => {
     play('advance');
     dispatch({ type: 'ADVANCE_PHASE' });
-  }, [dispatch, play]);
-
-  // Try Again skips the opening and the tutorials — the player has seen them.
-  const playAgain = useCallback(() => {
-    play('advance');
-    dispatch({ type: 'PLAY_AGAIN' });
   }, [dispatch, play]);
 
   const redraw = useCallback(() => dispatch({ type: 'REDRAW_ROUND' }), [dispatch]);
@@ -102,7 +107,16 @@ function GameRouter({
 
   switch (state.phase) {
     case 'intro':
-      return <IntroScreen onStart={onStart} onOpenLeaderboard={onOpenLeaderboard} />;
+      return (
+        <IntroScreen
+          onStart={onStart}
+          onRegistered={onRegistered}
+          onChangePlayer={onChangePlayer}
+          onOpenLeaderboard={onOpenLeaderboard}
+          startError={startError}
+          starting={starting}
+        />
+      );
 
     case 'clobTutorial':
       return (
@@ -195,7 +209,7 @@ function GameRouter({
 
     case 'results':
       return (
-        <ResultsScreen score={score} onReplay={playAgain} onOpenLeaderboard={onOpenLeaderboard} />
+        <ResultsScreen score={score} onReplay={onReplay} onOpenLeaderboard={onOpenLeaderboard} />
       );
   }
 }
@@ -203,20 +217,24 @@ function GameRouter({
 function GameShell() {
   const { state, dispatch } = useGame();
   const { play, toggleMuted } = useSound();
-  const { status, session, beginAttempt, submitAttempt } = usePlayer();
+  const { status, session, beginAttempt, changePlayer, submitAttempt } = usePlayer();
 
   const [aboutOpen, setAboutOpen] = useState(false);
-  const [registerOpen, setRegisterOpen] = useState(false);
   const [leaderboardOpen, setLeaderboardOpen] = useState(false);
+  /** Set when a session could not be opened, so the intro can say so instead of starting. */
+  const [startError, setStartError] = useState<string | null>(null);
+  const [starting, setStarting] = useState(false);
   const theme = themeForPhase(state.phase);
 
   /**
    * The rounds this playthrough is played on.
    *
-   * With a server session, they are built from the session's seed — which is what lets the
-   * server rebuild the identical rounds and score the player's choices itself. Without one
-   * (leaderboard unreachable, or an unregistered visitor) the game falls back to `Math.random`
-   * exactly as it always did and stays fully playable; only the score is not recorded.
+   * They are built from the session's seed, which is what lets the server rebuild the identical
+   * rounds and score the player's choices itself.
+   *
+   * The `Math.random` branch is a defensive default for the intro phase, where no round is ever
+   * drawn: `enterGame` will not dispatch into a level until a session exists, so a playable
+   * screen always has a seed. It is deliberately not a fallback into unscored gameplay.
    */
   const rounds = useMemo<GeneratedRounds>(
     () =>
@@ -229,34 +247,87 @@ function GameShell() {
     [state.playthrough, state.attempt, session?.sessionId],
   );
 
+  /** Guards a double press while the session request is in flight. */
+  const startingRef = useRef(false);
+
   const closeAbout = useCallback(() => setAboutOpen(false), []);
   const closeLeaderboard = useCallback(() => setLeaderboardOpen(false), []);
   const openLeaderboard = useCallback(() => setLeaderboardOpen(true), []);
 
-  /** Begin the game for a player who is already registered. */
-  const enterGame = useCallback(() => {
-    play('advance');
-    // Fire and forget: a session that cannot be opened must not block play.
-    void beginAttempt();
-    dispatch({ type: 'START_GAME' });
-  }, [beginAttempt, dispatch, play]);
-
   /**
-   * START GAME. A first-time visitor gets the registration panel; a known player goes straight
-   * in. The opening screen itself is unchanged either way — nothing is added above the branding.
+   * THE ONLY WAY INTO LEVEL 1.
+   *
+   * Every path that starts a game funnels through here, and the gate is `beginAttempt()` — a
+   * request the server has to say yes to.
+   *
+   * That is deliberately not a check of the local `status` flag. Two reasons:
+   *
+   *   1. A flag can be stale. `handleRegistered` fires in the same tick as the state update
+   *      that sets it, so a closure reading `status` there still sees 'anonymous' and would
+   *      lock out the player who just registered.
+   *   2. A flag is local. `beginAttempt()` sends the stored credentials to
+   *      `/api/start-attempt`, which authenticates them against the token hash in the database.
+   *      No credentials, credentials the server does not recognise, or a value someone typed
+   *      into localStorage by hand: all three come back without a session, and none of them
+   *      reaches a level.
+   *
+   * The session it returns carries the seed the server will rebuild the rounds from, so a
+   * playthrough without one could not be scored anyway. This used to be fire-and-forget, with
+   * an unscored fallback game when it failed; that fallback is gone.
+   *
+   * `START_GAME` and `PLAY_AGAIN` are dispatched on the last line here and nowhere else.
    */
-  const handleStart = useCallback(() => {
-    if (status === 'registered') {
-      enterGame();
+  const enterGame = useCallback(async ({ replay = false } = {}) => {
+    if (startingRef.current) return;
+
+    startingRef.current = true;
+    setStarting(true);
+    setStartError(null);
+
+    const opened = await beginAttempt();
+
+    startingRef.current = false;
+    setStarting(false);
+
+    if (!opened) {
+      setStartError(copy.player.startError);
       return;
     }
-    setRegisterOpen(true);
-  }, [enterGame, status]);
 
-  const handleRegistered = useCallback(() => {
-    setRegisterOpen(false);
-    enterGame();
+    play('advance');
+    // A replay skips the opening and the tutorials; a first game does not.
+    dispatch(replay ? { type: 'PLAY_AGAIN' } : { type: 'START_GAME' });
+  }, [beginAttempt, dispatch, play]);
+
+  /** PLAY AGAIN, from the intro. Only ever rendered for a recognised player. */
+  const handleStart = useCallback(() => {
+    void enterGame();
   }, [enterGame]);
+
+  /**
+   * TRY AGAIN, from the results screen.
+   *
+   * It used to dispatch `PLAY_AGAIN` on its own, which skipped the tutorials — and skipped
+   * opening a session. The replay then ran on the consumed session's seed and its score could
+   * not be recorded. It goes through the same gate as everything else now.
+   */
+  const handleReplay = useCallback(() => {
+    void enterGame({ replay: true });
+  }, [enterGame]);
+
+  /**
+   * Registration was accepted by the server. `PlayerProvider` has already moved `status` to
+   * 'registered', so the same gate above now lets this through — the two paths into the game
+   * are one function, not two.
+   */
+  const handleRegistered = useCallback(() => {
+    void enterGame();
+  }, [enterGame]);
+
+  const handleChangePlayer = useCallback(() => {
+    setStartError(null);
+    changePlayer();
+  }, [changePlayer]);
 
   /**
    * The game is over. Send the transcript — choices only — and let the server score it.
@@ -296,6 +367,21 @@ function GameShell() {
     submitAttempt,
   ]);
 
+  /**
+   * If the player stops being recognised while a game is running — they pressed CHANGE PLAYER,
+   * or the server rejected the credentials on a later call — the game returns to the opening
+   * screen rather than carrying on unrecorded. `RESTART` lands on the intro phase, which is
+   * where the registration form lives, so the gate is back in front of them.
+   *
+   * 'checking' is not 'anonymous': the first render of a returning visit has neither status,
+   * and this must not fire then.
+   */
+  useEffect(() => {
+    if (status === 'anonymous' && state.phase !== 'intro') {
+      dispatch({ type: 'RESTART' });
+    }
+  }, [dispatch, state.phase, status]);
+
   // Mute is reachable from anywhere on a keyboard, matching the always-visible header control.
   useKeyboard({ m: toggleMuted });
 
@@ -325,7 +411,12 @@ function GameShell() {
                 key={`${state.phase}-${state.roundIndex}-${state.playthrough}-${state.attempt}`}
                 rounds={rounds}
                 onStart={handleStart}
+                onRegistered={handleRegistered}
+                onChangePlayer={handleChangePlayer}
+                onReplay={handleReplay}
                 onOpenLeaderboard={openLeaderboard}
+                startError={startError}
+                starting={starting}
               />
             </AnimatePresence>
           </ErrorBoundary>
@@ -335,15 +426,6 @@ function GameShell() {
       </div>
 
       <AnimatePresence>{aboutOpen ? <AboutPanel onClose={closeAbout} /> : null}</AnimatePresence>
-
-      <AnimatePresence>
-        {registerOpen ? (
-          <RegistrationPanel
-            onRegistered={handleRegistered}
-            onCancel={() => setRegisterOpen(false)}
-          />
-        ) : null}
-      </AnimatePresence>
 
       <AnimatePresence>
         {leaderboardOpen ? <LeaderboardPanel onClose={closeLeaderboard} /> : null}

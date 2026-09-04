@@ -10,7 +10,9 @@ A 90-second, mobile-first educational browser game about how a market decides **
 > not use live Superluminal data, makes no claim about any venue's real performance, and is not
 > financial advice.
 >
-> There is no backend, no database, no wallet connection and no account. Nothing you do here
+> There is **no wallet connection**, no signature request, no transaction and no on-chain call.
+> Registering records a public Fogo address as plain text so a leaderboard row has an owner; a
+> private key or seed phrase is never needed and must never be entered. Nothing you do here
 > touches a real market.
 
 **Level 1 — Beat the Bot: CLOB** — an illustrative BTC signal lands and you pick LONG or SHORT.
@@ -127,7 +129,9 @@ npm run preview       # serve the built dist/ folder, to check the real build
 If you change any user-facing wording, run `npm test` — the accuracy tests read the copy file and
 will fail the build if a sentence drifts into a claim the project is not allowed to make.
 
-No backend, no database, no wallet connection, no API keys, no real money, no real trading data.
+No wallet connection, no signature request, no transaction, no API keys, no real money and no
+real trading data. The leaderboard adds a database and Netlify Functions; the game itself is
+still static files.
 
 ## Deploying to Netlify
 
