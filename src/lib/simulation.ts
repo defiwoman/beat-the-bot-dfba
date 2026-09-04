@@ -6,7 +6,7 @@
  */
 
 import { botReachedFirst, isCorrectDirection } from './reaction';
-import { auctionSideForDirection } from '@/types/game';
+import { auctionSideForDirection } from '../types/game';
 import type {
   ClobRound,
   ClobRoundResult,
@@ -14,7 +14,7 @@ import type {
   DfbaRoundResult,
   Direction,
   Side,
-} from '@/types/game';
+} from '../types/game';
 
 /* ============================================================== LEVEL 1 ==== */
 

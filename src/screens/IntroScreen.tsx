@@ -1,9 +1,12 @@
-import { Play, Timer, Layers, TrendingUp } from 'lucide-react';
+import { Play, RefreshCw, Timer, Layers, TrendingUp, Trophy } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { BigMs } from '@/components/BigMs';
 import { BrandHero } from '@/components/BrandBar';
 import { Button } from '@/components/Button';
+import { RegistrationForm } from '@/components/RegistrationForm';
 import { Screen } from '@/components/Screen';
 import { copy } from '@/content/copy';
+import { usePlayer } from '@/state/usePlayer';
 
 const ACT_ICONS = [Timer, Layers, TrendingUp];
 
@@ -36,16 +39,42 @@ function SplitSubheading() {
  *   2  "Community-built DFBA educational experience"
  *   3  BEAT THE BOT
  *   4  THE 40MS MARKET
- *   5  the 40ms visual
+ *   5  the 40ms visual and the lede
  *   6  the three-level summary
- *   7  Start Game
+ *   7  PLAYER REGISTRATION — the form itself, visible without pressing anything
+ *   8  ENTER THE MARKET
  *
- * The co-branding comes before the game's own title, and the disclaimer is one compact line.
- * The full version — fabricated numbers, no live data, not financial advice — is not removed:
- * it lives in the About panel, the footer and the results screen, so it is always one glance
- * away from a screen that no longer has to carry it beside the title.
+ * The co-branding still comes before the game's own title, and the disclaimer is still one
+ * compact line. What changed is step 7: the form used to be a dialog behind a START GAME
+ * button, which meant a visitor had to press something to discover that registration existed —
+ * and meant START GAME was a door that had to be defended. Now there is no door. An
+ * unregistered visitor is shown the form, and the only way past this screen is through it.
+ *
+ * A player the server has recognised sees the welcome-back panel in the form's place instead.
+ * "Recognised by the server" is the whole test — a value sitting in localStorage is not enough,
+ * because anyone can put one there.
  */
-export function IntroScreen({ onStart }: { onStart: () => void }) {
+export function IntroScreen({
+  onStart,
+  onRegistered,
+  onChangePlayer,
+  onOpenLeaderboard,
+  startError,
+  starting = false,
+}: {
+  /** Start a game for a player the server has already recognised. */
+  onStart: () => void;
+  /** Registration succeeded — the shell opens the session and then Level 1. */
+  onRegistered: () => void;
+  onChangePlayer: () => void;
+  onOpenLeaderboard?: () => void;
+  /** Set when a recognised player pressed PLAY AGAIN and no session could be opened. */
+  startError?: string | null;
+  starting?: boolean;
+}) {
+  const { status, player, rank } = usePlayer();
+  const registered = status === 'registered' && player !== null;
+
   return (
     <Screen label={copy.intro.heading}>
       <BrandHero />
@@ -80,18 +109,90 @@ export function IntroScreen({ onStart }: { onStart: () => void }) {
 
       <p className="faint">{copy.intro.duration}</p>
 
-      <div className="screen__actions">
-        {/* Inside the sticky bar so the line is always readable, never under its own fade. */}
+      {/*
+        The fork. Either the server knows this player, or the form is on screen — there is no
+        third branch, and in particular no branch that leads into the game without one of them.
+        While credentials are still being checked the status is 'checking' and neither shows,
+        which is a deliberate blank rather than a form that might flash and vanish.
+      */}
+      {registered ? (
+        <>
+          <div className="welcome" role="status">
+            <p className="welcome__name">
+              {copy.player.welcomeBack.replace('{name}', player.playerName)}
+            </p>
+            <dl className="welcome__stats">
+              <div>
+                <dt>{copy.player.bestLabel}</dt>
+                <dd className="mono">
+                  {player.bestScore === null ? copy.player.noScoreYet : player.bestScore}
+                </dd>
+              </div>
+              <div>
+                <dt>{copy.player.rankLabel}</dt>
+                <dd className="mono">{rank === null ? copy.player.unranked : `#${rank}`}</dd>
+              </div>
+              <div>
+                <dt>{copy.player.attemptsLabel}</dt>
+                <dd className="mono">{player.attemptsCompleted}</dd>
+              </div>
+            </dl>
+          </div>
+
+          {startError ? (
+            <p className="field__error field__error--form" role="alert">
+              <AlertTriangle size={14} aria-hidden="true" /> {startError}
+            </p>
+          ) : null}
+        </>
+      ) : status === 'anonymous' ? (
+        <RegistrationForm onRegistered={onRegistered} />
+      ) : null}
+
+      <div className="screen__actions screen__actions--flow">
         <p className="disclaimer disclaimer--compact">{copy.meta.compactDisclaimer}</p>
-        <Button
-          block
-          jumbo
-          icon={<Play size={22} />}
-          aria-label={copy.intro.startHint}
-          onClick={onStart}
-        >
-          {copy.intro.startLabel}
-        </Button>
+
+        {/*
+          PLAY AGAIN exists only for a recognised player. For everyone else the primary action
+          is the form's own submit button, so there is deliberately no button here at all —
+          nothing to press that could reach Level 1 without registering.
+        */}
+        {registered ? (
+          <Button
+            block
+            jumbo
+            icon={<Play size={22} />}
+            aria-label={copy.player.playHint}
+            onClick={onStart}
+            disabled={starting}
+          >
+            {starting ? copy.player.startingLabel : copy.player.playLabel}
+          </Button>
+        ) : null}
+
+        {onOpenLeaderboard ? (
+          <Button
+            block
+            variant="secondary"
+            icon={<Trophy size={16} />}
+            aria-label={copy.leaderboard.openHint}
+            onClick={onOpenLeaderboard}
+          >
+            {copy.leaderboard.openLabel}
+          </Button>
+        ) : null}
+
+        {registered ? (
+          <Button
+            block
+            variant="ghost"
+            icon={<RefreshCw size={16} />}
+            aria-label={copy.player.changeHint}
+            onClick={onChangePlayer}
+          >
+            {copy.player.changeLabel}
+          </Button>
+        ) : null}
       </div>
     </Screen>
   );

@@ -10,7 +10,9 @@ A 90-second, mobile-first educational browser game about how a market decides **
 > not use live Superluminal data, makes no claim about any venue's real performance, and is not
 > financial advice.
 >
-> There is no backend, no database, no wallet connection and no account. Nothing you do here
+> There is **no wallet connection**, no signature request, no transaction and no on-chain call.
+> Registering records a public Fogo address as plain text so a leaderboard row has an owner; a
+> private key or seed phrase is never needed and must never be entered. Nothing you do here
 > touches a real market.
 
 **Level 1 — Beat the Bot: CLOB** — an illustrative BTC signal lands and you pick LONG or SHORT.
@@ -127,7 +129,9 @@ npm run preview       # serve the built dist/ folder, to check the real build
 If you change any user-facing wording, run `npm test` — the accuracy tests read the copy file and
 will fail the build if a sentence drifts into a claim the project is not allowed to make.
 
-No backend, no database, no wallet connection, no API keys, no real money, no real trading data.
+No wallet connection, no signature request, no transaction, no API keys, no real money and no
+real trading data. The leaderboard adds a database and Netlify Functions; the game itself is
+still static files.
 
 ## Deploying to Netlify
 
@@ -167,6 +171,365 @@ Then drag the `dist` folder onto Netlify's **Deploys** page.
 
 If you ever host this somewhere that is *not* the root of a domain — a `/games/beat-the-bot/`
 subfolder, say — change `base` to that path and rebuild.
+
+## Player registration and the leaderboard
+
+Registering is how a score becomes permanent. Everything below is a permanent part of the game:
+there is no campaign, no reward, no distribution, and no language about any of those anywhere a
+player can see.
+
+### The flow
+
+1. A visitor sees the normal opening screen. Nothing is added above the branding.
+2. They press **START GAME**.
+3. A **PLAYER REGISTRATION** panel opens asking for four things, all required: a player name,
+   a public Fogo wallet address, a link to their X quote post, and consent.
+4. **ENTER THE MARKET** registers them and Level 1 begins. Nothing starts until all four
+   fields are accepted by the server.
+5. On a later visit the stored credentials are validated and the panel is skipped — the opening
+   screen greets them by name with their personal best, rank and games completed.
+
+### What the wallet address is, and is not
+
+The address is recorded exactly as submitted: trimmed of surrounding whitespace, never
+lower-cased (base58 public keys are case-sensitive), and format-checked against the base58
+alphabet and a sane length.
+
+**Ownership is not verified.** The game never connects a wallet, never requests a signature,
+never reads a balance and never makes an on-chain call — so the address in the database is
+what somebody typed, not something anybody proved. Two consequences worth being explicit about:
+
+- A player could submit an address they do not control.
+- Because the exact address is the unique key, whoever registers an address first holds it. A
+  second registration of the same address is refused rather than attached to the existing
+  profile, so a browser cannot take over someone else's row by guessing their address.
+
+No wallet SDK is installed. `src/lib/dependencies.test.ts` reads the real lockfile and fails the
+build if `@solana/*`, any wallet adapter, `ethers`, `viem`, `wagmi` or similar ever appears.
+
+### What the X quote-post link is, and is not
+
+The fourth field takes a link to a post on X. It is validated on both sides — the browser and
+the function import the same `src/lib/registration.ts` — and it must be an **https** link to a
+**single post** on `x.com`, `www.x.com`, `twitter.com` or `www.twitter.com`. A profile, a
+homepage, a search, a link shortener, another website, a `javascript:` URL, markup, or anything
+that is not a URL is refused.
+
+An accepted link is then canonicalized before it is stored:
+
+| pasted | stored |
+| --- | --- |
+| `https://twitter.com/ada/status/1934…789?s=20&t=abc` | `https://x.com/ada/status/1934…789` |
+| `https://www.x.com/ada/status/1934…789/photo/1` | `https://x.com/ada/status/1934…789` |
+| `https://x.com/ada/statuses/1934…789/` | `https://x.com/ada/status/1934…789` |
+
+The host is rewritten to `x.com`, the query string and fragment are dropped whole (nothing in a
+post's query string identifies the post), any `/photo/1`-style suffix is removed, and the status
+id is extracted and stored in its own column.
+
+**Uniqueness is enforced on the status id, not the URL.** That is the point of canonicalizing:
+the same post pasted five different ways is one id, so the second registration is refused with
+
+> This X post has already been used for a player registration.
+
+**The content of the post is not verified.** There is no X API integration anywhere in this
+project. Nothing fetches the URL, and nothing checks that the post exists, is public, is still
+there, or says anything at all about Beat the Bot. A stored link is a claim, exactly like the
+wallet address above it. The copy audit in `src/content/copy.test.ts` fails the build if any
+user-facing string starts implying otherwise.
+
+The link is **not** on the public leaderboard, and not in the public API's response shape at
+all — see the table below.
+
+### Registration notifications
+
+Every successful registration is posted to a Netlify form named `beat-the-bot-registration`,
+which Netlify stores and emails onward.
+
+- The static form definition lives in `index.html`, hidden, because Netlify discovers forms by
+  parsing deployed HTML at build time and the real form is rendered by React.
+- `/api/register-player` posts the submission itself, **after** the player row is committed. An
+  invalid or rejected submission is never notified, and a notification that fails never rolls a
+  registration back.
+- The submission carries six fields and nothing else: `player_name`, `fogo_wallet_address`,
+  `x_quote_post_url`, `x_quote_post_id`, `player_id`, `registered_at`. No access token, no
+  database credential, no admin token, no session secret.
+- `players.registration_notification_status` makes it exactly-once. A send is attempted only by
+  whoever wins a conditional update from `pending` to `sending`, so a retry that races the
+  original sends nothing. A failure is recorded as `failed`, listed under the administration
+  page's **Notification not sent** filter, and retried from a button there.
+
+**Where the notification goes is not in this repository.** The recipient is configured once in
+the Netlify dashboard and lives only there — it is not a build variable, not a `VITE_` variable,
+not a hidden input, not a form action, and not a function environment variable. No code here
+reads a recipient, so no error raised here can leak one.
+
+To configure it: **Netlify → your project → Forms → `beat-the-bot-registration` → Form
+notifications → Add notification → Email notification**, then set the recipient and the subject
+line `New Beat the Bot player registration (%{submissionId})`. The form only appears in that
+list after the first deploy containing the definition in `index.html`.
+
+### Ranking
+
+One row per player, ordered by:
+
+1. **Highest personal best**, descending.
+2. **Fewest attempts needed to first reach that best**, ascending.
+3. **Earliest moment that best was reached**, ascending.
+
+So a player who scored 92 on their second game outranks one who scored 92 on their fifth, even
+if the second player got there earlier in the day. Attempts are unlimited, and a later weaker
+game never moves anyone down — `best_*` changes only when a strictly higher score arrives. An
+equal score keeps the earlier achievement.
+
+The public board and the private export call the same `rankedPlayers()` function, so they
+cannot disagree about who is in the top ten.
+
+### Public and private data
+
+| | Public `/api/leaderboard` | Private `/admin/leaderboard` |
+| --- | --- | --- |
+| Player name | yes | yes |
+| Wallet | **masked**, `8HvP…9xQa` | **complete** |
+| X quote post URL | **no** | yes, as a clickable link |
+| X post id | **no** | yes |
+| Best score | yes | yes |
+| Attempts to best | yes | yes |
+| Total attempts, timestamps, attempt id | no | yes |
+| Notification status | no | yes |
+| Player id | no | yes |
+
+Masking happens **on the server**, in the query's projection. The complete address is not in
+the JSON that reaches the browser, so there is nothing in the page source, a data attribute, the
+network panel or the share card to un-mask. `netlify/functions/_lib/server.test.ts` and
+`src/components/leaderboard.test.tsx` both assert this, and the browser pass greps the rendered
+DOM and every attribute value for a full address.
+
+## Score integrity — why a browser cannot type in a score
+
+The leaderboard is only worth having if a score cannot be invented, so the client never sends
+one. There is no score field in the submission and no field one could be hidden in.
+
+1. `POST /api/start-attempt` creates a **game session** holding an unpredictable **seed**.
+2. The client builds its rounds from that seed — `buildClobRounds` and `buildDfbaRounds` already
+   took an injectable `Rng`, so this required no change to how the game plays.
+3. The client plays and submits a **transcript**: six directions and six spread choices.
+4. The server rebuilds the identical rounds from the seed it issued, replays those choices
+   through the same `resolveClobRound` / `resolveDfbaRound` / `resolveMakerEvent`, and calls the
+   same `computeScore`.
+5. Only the server's number is stored.
+
+This works because `totalPoints = directionPoints + comboBonus + makerPoints` depends solely on
+which directions were chosen and which spreads were quoted. **Reaction time is not in the
+formula** — it is carried for display, clamped into the round's own decision window, and cannot
+move the total by a point. `src/lib/attempt.test.ts` proves that a 12ms answer and a 3900ms
+answer score identically.
+
+The session is single-use: `attempts.game_session_id` is uniquely indexed, and a repeat
+submission returns the attempt that already exists, so a retry after a dropped response cannot
+double-count a game.
+
+### The one honest limitation
+
+The direction space is small. `drawSignals` forces at least one of each direction per level,
+which leaves six valid patterns per level and thirty-six across the two, so a transcript built
+for the wrong rounds still scores 6/6 about **3.8%** of the time. The seed binds the score for
+the other 96%, but a script could retry.
+
+Wall-clock time closes that gap. The game's own pacing puts a hard floor under any real
+playthrough — six rounds at a 1200ms minimum preparation phase, plus six Level 3 events each
+holding their outcome for 1300ms — so a completion faster than **15 seconds** did not happen.
+Such an attempt is still stored, for the audit trail, but is marked `is_valid = false` and can
+neither move a personal best nor reach the leaderboard. With the 60-completions-per-hour limit,
+brute-forcing the pattern space would take many minutes of real time and produce a table full of
+invalid attempts.
+
+## Environment variables
+
+Both are **server-only**. Neither is prefixed `VITE_`, so neither is compiled into the browser
+bundle — and the client reads no environment variable at all.
+
+| Variable | Scope | Set by | Needed |
+| --- | --- | --- | --- |
+| `NETLIFY_DB_URL` | server-only | Netlify, automatically, once a database is attached | production and local |
+| `LEADERBOARD_ADMIN_TOKEN` | server-only | you, by hand | production and local |
+
+There are **no client-safe variables**. Nothing in `src/` reads `import.meta.env`.
+
+Generate an admin token with:
+
+```bash
+openssl rand -base64 32
+```
+
+Set it in **Netlify → Project configuration → Environment variables**, scoped to Functions.
+Never commit it, never paste it into a URL, and rotate it by replacing the value — which also
+invalidates every outstanding admin session, because the session cookie is signed with it.
+
+## Database
+
+**Netlify Database** (`@netlify/database`, serverless Postgres). The functions call
+`getDatabase()`, which reads `NETLIFY_DB_URL`; every query goes through a tagged template or a
+parameterised statement, so no value is ever concatenated into SQL.
+
+### Attaching the database (a one-time manual step)
+
+This cannot be scripted from a checkout — it needs your Netlify account:
+
+1. Open your project in the Netlify dashboard.
+2. **Data & Storage → Database → Add database** (Netlify DB, powered by Neon).
+3. Accept the default free plan. Netlify injects `NETLIFY_DB_URL` into builds and functions.
+4. Trigger a redeploy so the functions pick the variable up.
+
+### Running the migration
+
+The schema is versioned, one numbered file per change, applied in order:
+
+| | |
+| --- | --- |
+| [`0001_players_attempts_sessions.sql`](./netlify/database/migrations/0001_players_attempts_sessions.sql) | `players`, `game_sessions`, `attempts` |
+| [`0002_x_quote_post_and_notification.sql`](./netlify/database/migrations/0002_x_quote_post_and_notification.sql) | `x_quote_post_url`, `x_quote_post_id`, `registration_notification_status`, `registration_notified_at` |
+
+Every file is idempotent (`IF NOT EXISTS`, `DROP CONSTRAINT IF EXISTS` before `ADD`), so
+re-running one is safe. Apply them against the production branch in order:
+
+```bash
+# Read the connection string out of the dashboard, or:
+netlify env:get NETLIFY_DB_URL
+
+for f in netlify/database/migrations/*.sql; do
+  psql "$NETLIFY_DB_URL" -v ON_ERROR_STOP=1 -f "$f"
+done
+```
+
+Three tables: `players` (one row per registered person, keyed by the exact wallet address),
+`game_sessions` (the server-issued seed and single-use ticket) and `attempts` (every completed
+game, scored on the server).
+
+`0002` adds two unique keys' worth of meaning to `players`: `x_quote_post_id` is uniquely
+indexed, so one post backs one registration. Both post columns are `NOT NULL` — but the
+migration applies that only when no row predates them, because there is no honest backfill for
+a registration made before the field existed. If it finds any, it says so in a `NOTICE`, leaves
+the columns nullable and still succeeds; fill or remove those rows and re-run it.
+
+### Viewing the data
+
+**Method 1 — the Netlify dashboard.** Netlify project → **Data & Storage** → **Database** →
+production branch → **View/edit** → `players`. The `attempts` and `game_sessions` tables are
+listed there too.
+
+**Method 2 — the private admin page.** `https://<your-site>/admin/leaderboard`. Not linked from
+anywhere in the game, `noindex`, never cached. Enter `LEADERBOARD_ADMIN_TOKEN` once and it
+exchanges the token for a one-hour signed `HttpOnly` cookie, so the CSV links work without the
+token ever appearing in a URL or in browser history.
+
+The administration table lists **every registered player**, including those who have not
+finished a game and therefore appear on no leaderboard. Its columns are rank, player name, the
+complete wallet address, the canonical X quote post URL (as a link that opens in a new tab with
+`rel="noopener noreferrer"`, so x.com is never told which page sent the click), the X post id,
+best score, attempts completed, best-on-attempt, both timestamps, and the notification status
+with a **Retry** button where one has not gone out.
+
+Five filters sit above the table: **All players**, **Top 10**, **No completed game**,
+**Notification not sent**, and **Duplicate or rejected post** — that last one being a check on
+the unique index rather than a queue of work, since a duplicate can no longer be created.
+
+### Exporting the top 10
+
+From the admin page: **Download top 10 CSV** or **Download all players CSV**.
+
+From a terminal, without putting the token in shell history — note the leading space, and that
+the token is read from a prompt rather than typed as an argument:
+
+```bash
+ read -rs LEADERBOARD_ADMIN_TOKEN            # leading space keeps this out of history
+ curl -sS -H "Authorization: Bearer $LEADERBOARD_ADMIN_TOKEN" \
+   "https://<your-site>/admin/leaderboard?format=csv&scope=top10" \
+   -o top-10.csv
+ unset LEADERBOARD_ADMIN_TOKEN
+```
+
+Top-10 CSV columns, in order:
+
+```
+rank, player_name, fogo_wallet_address, x_quote_post_url,
+best_score, attempts_completed, best_achieved_attempt_number, best_achieved_at
+```
+
+Add `&scope=all` for every ranked player, which appends `x_quote_post_id` and
+`registration_notification_status`; or `format=json` for JSON. Both exports use the identical
+ranking query as the public board.
+
+Every cell is RFC 4180-quoted and any cell opening with `=`, `+`, `-` or `@` is prefixed with an
+apostrophe, so a player name cannot become a formula in a spreadsheet. Exported addresses and
+post links are never written to a log.
+
+## Netlify Functions
+
+| Path | What it does |
+| --- | --- |
+| `POST /api/register-player` | Validates and creates a player, returns the access token once |
+| `POST /api/player-session` | Validates stored browser credentials on a return visit |
+| `POST /api/start-attempt` | Issues a game session and its seed |
+| `POST /api/complete-attempt` | Scores a transcript on the server and records the attempt |
+| `GET /api/leaderboard` | The public board, wallets masked |
+| `GET\|POST /admin/leaderboard` | The private page, table, CSV and JSON export |
+
+Shared helpers live in `netlify/functions/_lib/`. A player is authenticated by an opaque id plus
+a 32-byte access token whose SHA-256 is what the database stores — neither the wallet address
+nor the player name is ever an authentication secret.
+
+## Local development with the database
+
+```bash
+npm run dev                       # the game alone; the leaderboard is simply unreachable
+netlify dev                       # the game plus the functions
+```
+
+`netlify dev` needs both variables. The game stays fully playable without them — an
+unreachable leaderboard degrades to "your score was not saved", never to a broken game.
+
+To run against a throwaway local Postgres instead of the production database:
+
+```bash
+createdb beatthebot
+psql beatthebot -f netlify/database/migrations/0001_players_attempts_sessions.sql
+NETLIFY_DB_URL="postgresql://localhost/beatthebot" \
+LEADERBOARD_ADMIN_TOKEN="anything-for-local" netlify dev
+```
+
+## Deployment checklist
+
+1. Attach the database (dashboard, above) and confirm `NETLIFY_DB_URL` appears in the project's
+   environment variables.
+2. Set `LEADERBOARD_ADMIN_TOKEN`, scoped to Functions.
+3. Run every migration in `netlify/database/migrations/`, in order, against the production
+   database branch.
+4. Deploy. `netlify.toml` pins `NODE_VERSION = "22"` for `@netlify/database`.
+5. In **Forms**, confirm `beat-the-bot-registration` was detected by that deploy, then add the
+   email notification: recipient, and the subject
+   `New Beat the Bot player registration (%{submissionId})`.
+6. Check `/api/leaderboard` returns `{"ok":true,"entries":[],...}`.
+7. Check `/admin/leaderboard` shows the token form, and that a wrong token is refused.
+8. Register a test player, finish a game, confirm the score appears.
+9. Confirm the registration arrived in **Forms → beat-the-bot-registration** and in the
+   configured inbox, then check the administration page shows its notification as `sent`.
+10. Open the browser network panel on `/api/leaderboard` and confirm neither a complete wallet
+    address nor a post link is in the response.
+
+### Rolling back
+
+The registration gate is the only change a player cannot route around, so a rollback is a
+deploy, not a data operation:
+
+- **Fastest** — in Netlify, **Deploys → an earlier deploy → Publish deploy**. The previous build
+  has no registration gate and the game plays exactly as before. The tables are untouched and
+  the data is still there when you roll forward again.
+- **Keeping this build but disabling the leaderboard** — unset `NETLIFY_DB_URL` and redeploy.
+  Every endpoint answers `503 database_unavailable`, the client falls back to `Math.random`
+  rounds, and the game is fully playable with scores simply not recorded.
+- **The schema** — migration `0001` only creates things, so there is nothing to undo. Dropping
+  the tables would destroy every registration and is not part of a rollback.
 
 ## Visual identity — "the heat and the neon"
 

@@ -27,11 +27,16 @@ export const copy = {
      * About panel, the footer and the results screen, so nothing is removed — only moved off
      * the screen that has to compete with the title and the branding.
      */
+    /**
+     * "no wallet" was ambiguous once the form began asking for a wallet address — it reads as
+     * "we do not deal in wallets at all", which is not true: a public address is recorded.
+     * "no wallet connection" says the accurate thing, which is that nothing is connected.
+     */
     compactDisclaimer:
-      'Illustrative educational game — no wallet, no funds and no live trading.',
+      'Illustrative educational game — no wallet connection, no funds and no live trading.',
     shortDisclaimer: 'Illustrative numbers only. Not live data.',
     noConnection:
-      'No wallet, no funds, no order routing, no backend.',
+      'No wallet connection, no funds, no order routing, no transaction request.',
     instrument: 'BTC-PERP',
     instrumentNote: 'An illustrative BTC market used only for this lesson.',
     /** Stamped next to every price, slippage and latency figure in the game. */
@@ -222,9 +227,14 @@ export const copy = {
       'Level 3 — take the other seat and keep a market alive.',
     ],
     duration: 'About 90 seconds.',
-    startLabel: 'Start Game',
-    /** Accessible names must contain the visible label (WCAG 2.5.3 Label in Name). */
-    startHint: 'Start Game — begin at Level 1',
+    /*
+     * There is no START GAME label here any more.
+     *
+     * The opening screen's primary action is now the registration form's own submit button —
+     * ENTER THE MARKET — for a visitor the server has not seen, and PLAY AGAIN for one it has.
+     * A separate "start" button would be a second way into Level 1, which is exactly what this
+     * screen must not have.
+     */
   },
 
   clobTutorial: {
@@ -743,6 +753,145 @@ export const copy = {
     ticksSuffix: 'ticks',
     msSuffix: 'ms',
     of: 'of',
+  },
+
+  /**
+   * PLAYER REGISTRATION.
+   *
+   * A permanent part of the game: register once, keep a best score, appear on the board. There
+   * is deliberately no mention of rewards, prizes, tokens or distribution anywhere in here —
+   * `copy.test.ts` fails the build if any of that language appears in user-facing copy.
+   */
+  registration: {
+    heading: 'PLAYER REGISTRATION',
+    lede: 'Enter your details to save your best score on the Beat the Bot leaderboard.',
+
+    nameLabel: 'PLAYER NAME',
+    nameHelp: 'This is the name shown on the leaderboard.',
+    namePlaceholder: 'Your leaderboard name',
+
+    walletLabel: 'FOGO WALLET ADDRESS',
+    walletHelp: 'Enter your public Fogo wallet address. Never enter a seed phrase or private key.',
+    walletPlaceholder: 'Public Fogo address',
+    /**
+     * Says the four true things at the moment the field is asking for an address: the public
+     * address is recorded, nothing is connected, nothing is signed, and no key is wanted.
+     */
+    walletNote:
+      'Your public address is recorded with your score. No wallet is connected, no transaction is requested, and no private key or seed phrase is ever needed.',
+
+    xPostLabel: 'X QUOTE POST LINK',
+    xPostHelp: 'Paste the link to your X quote post about Beat the Bot, Superluminal and DFBA.',
+    xPostPlaceholder: 'https://x.com/username/status/…',
+    /**
+     * Said plainly next to the field, because the game cannot check it. Nothing in this
+     * project reads the post, so a submitted link is recorded, not verified.
+     */
+    xPostNote: 'The link is stored with your registration and is not shown on the public leaderboard.',
+
+    /**
+     * Marks each of the four fields. All four must be completed to enter the game, so every
+     * field carries one — a badge on only some of them would read as "the rest are optional".
+     */
+    requiredIndicator: 'REQUIRED',
+
+    consentLabel:
+      'I confirm that the information entered is accurate and consent to my player details, submitted post and game scores being stored.',
+
+    submitLabel: 'ENTER THE MARKET',
+    submitHint: 'ENTER THE MARKET — register and start Level 1',
+    submittingLabel: 'Registering…',
+
+    cancelLabel: 'Back',
+    cancelHint: 'Back — close registration without starting',
+
+    errorHeading: 'Check these fields',
+    /**
+     * All three say the same two things: it failed, and nothing you typed is gone. The form
+     * keeps every value, so "try again" is one click rather than a re-type.
+     */
+    networkError:
+      'We couldn’t register your player profile. Your details have not been lost — please check your connection and try again.',
+    serverError:
+      'We couldn’t register your player profile. Your details have not been lost — please try again.',
+    unavailable:
+      'We couldn’t register your player profile. Your details have not been lost — please try again shortly.',
+    successAnnouncement: 'Registered. Starting Level 1.',
+  },
+
+  /** The returning-player panel, shown instead of the form when credentials still work. */
+  player: {
+    welcomeBack: 'Welcome back, {name}',
+    bestLabel: 'Personal best',
+    rankLabel: 'Leaderboard rank',
+    attemptsLabel: 'Games completed',
+    noScoreYet: 'No completed game yet',
+    unranked: '—',
+    playLabel: 'PLAY AGAIN',
+    playHint: 'PLAY AGAIN — start a new game',
+    /** Shown while the server is issuing the seed for this playthrough. */
+    startingLabel: 'Starting…',
+    /**
+     * A recognised player pressed PLAY AGAIN and the server could not issue a session. The
+     * game does not start on a fallback seed — a playthrough that cannot be scored is not the
+     * thing they asked for — so this says what happened and invites another press.
+     */
+    startError:
+      'We couldn’t start a scored game just now. Nothing has been lost — please try again.',
+    changeLabel: 'CHANGE PLAYER',
+    changeHint: 'CHANGE PLAYER — register as someone else on this browser',
+    changeConfirm: 'Register as a different player on this browser?',
+  },
+
+  /** The public board. */
+  leaderboard: {
+    openLabel: 'VIEW LEADERBOARD',
+    openHint: 'VIEW LEADERBOARD — see the top scores',
+    heading: 'LEADERBOARD',
+    closeLabel: 'Close',
+    closeHint: 'Close — return to the game',
+
+    rankColumn: 'Rank',
+    playerColumn: 'Player',
+    walletColumn: 'Wallet',
+    scoreColumn: 'Best score',
+    attemptsColumn: 'Games to best',
+
+    youTag: 'You',
+    loading: 'Loading the leaderboard…',
+    empty: 'No completed games yet. Be the first player on the board.',
+    failed: 'Could not load the leaderboard.',
+    retryLabel: 'Try again',
+    refreshLabel: 'Refresh',
+    refreshHint: 'Refresh — reload the leaderboard',
+    loadMoreLabel: 'Load more',
+    outsideTop: 'Your position',
+    countLabel: '{shown} of {total} ranked players',
+
+    /** Neutral, mechanical, and the only explanation of ordering anywhere in the game. */
+    rankingNote:
+      'Ranks are based on each player’s highest verified score. Ties are ordered by fewer attempts to reach that score, followed by the earliest achievement.',
+    /** Says plainly why only part of an address is shown. */
+    maskNote: 'Wallet addresses are shown partially masked.',
+  },
+
+  /** What the results screen says about the score that was just saved. */
+  saveScore: {
+    finalScoreLabel: 'FINAL SCORE',
+    personalBestLabel: 'PERSONAL BEST',
+    currentRankLabel: 'CURRENT RANK',
+    newPersonalBest: 'NEW PERSONAL BEST',
+    savingLabel: 'Saving your score…',
+    savedLabel: 'Score saved to the leaderboard.',
+    /** Never claims a save that did not happen. */
+    failedLabel: 'Your score has not been saved yet.',
+    failedBody:
+      'The result below is safe and still on screen. The leaderboard could not be reached, so nothing was recorded.',
+    retryLabel: 'RETRY SAVING SCORE',
+    retryHint: 'RETRY SAVING SCORE — try sending this result to the leaderboard again',
+    retryingLabel: 'Retrying…',
+    notRegistered: 'Register to save your score on the leaderboard.',
+    unranked: 'Unranked',
   },
 
   errors: {

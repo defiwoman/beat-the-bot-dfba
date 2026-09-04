@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { RotateCcw, Trophy } from 'lucide-react';
+import { RotateCcw, Trophy, Users } from 'lucide-react';
 import { BrandLockup } from '@/components/BrandBar';
 import { Button } from '@/components/Button';
+import { ScoreSavePanel } from '@/components/ScoreSavePanel';
 import { HowPrismWorks } from '@/components/HowPrismWorks';
 import { Screen } from '@/components/Screen';
 import { ShareActions } from '@/components/ShareActions';
@@ -133,9 +134,11 @@ function HighScorePanel({ best, delta }: { best: HighScore | null; delta: HighSc
 export function ResultsScreen({
   score,
   onReplay,
+  onOpenLeaderboard,
 }: {
   score: ScoreBreakdown;
   onReplay: () => void;
+  onOpenLeaderboard?: () => void;
 }) {
   const cardRef = useRef<HTMLElement>(null);
   const { sources, ready } = useEmbeddedLogos();
@@ -196,6 +199,8 @@ export function ResultsScreen({
         <p className="eyebrow">{copy.results.eyebrow}</p>
         <h1 className="title">{copy.results.heading}</h1>
       </div>
+
+      <ScoreSavePanel />
 
       <ShareCard ref={cardRef} score={score} logoSources={sources} />
 
@@ -276,6 +281,17 @@ export function ResultsScreen({
         >
           {copy.results.replayLabel}
         </Button>
+        {onOpenLeaderboard ? (
+          <Button
+            block
+            variant="secondary"
+            icon={<Users size={16} />}
+            aria-label={copy.leaderboard.openHint}
+            onClick={onOpenLeaderboard}
+          >
+            {copy.leaderboard.openLabel}
+          </Button>
+        ) : null}
       </div>
     </Screen>
   );

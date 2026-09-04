@@ -10,15 +10,74 @@ import { copy } from '@/content/copy';
  * The opening is a three-second title beat that any tap or key skips, so the tests skip it the
  * same way a player would rather than reaching into state.
  */
+const PLAYER_ID = '11111111-1111-4111-8111-111111111111';
+
+/**
+ * The homepage shows the registration form to a first-time visitor and PLAY AGAIN to a player
+ * the server recognises. There is no START GAME any more, so the phase-machine tests below seed
+ * a valid player and stub the leaderboard API. That keeps them testing what they were written
+ * to test — the game's own flow — rather than the gate in front of it, which has its own suite
+ * in `components/leaderboard.test.tsx`.
+ */
+function stubRegisteredPlayer() {
+  window.localStorage.setItem(
+    'btb.player.v1',
+    JSON.stringify({ playerId: PLAYER_ID, accessToken: 'test-token' }),
+  );
+
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input.toString();
+      const payload = url.startsWith('/api/player-session')
+        ? {
+            ok: true,
+            player: {
+              playerId: PLAYER_ID,
+              playerName: 'Test Player',
+              bestScore: null,
+              attemptsCompleted: 0,
+              bestAchievedAttemptNumber: null,
+            },
+            rank: null,
+          }
+        : url.startsWith('/api/start-attempt')
+          ? {
+              ok: true,
+              session: {
+                sessionId: '22222222-2222-4222-8222-222222222222',
+                seed: 4242,
+                expiresAt: '',
+              },
+            }
+          : { ok: true };
+
+      return new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    }),
+  );
+}
+
 // The mute preference and the high score both persist, so each test starts from a clean slate.
 beforeEach(() => {
   window.localStorage.clear();
 });
 
-async function renderGame() {
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+async function renderGame({ registered = false } = {}) {
+  if (registered) stubRegisteredPlayer();
   const user = userEvent.setup();
   const view = render(<App />);
   await user.click(screen.getByRole('button', { name: copy.opening.skipHint }));
+  if (registered) {
+    // Wait for the stored credentials to be accepted before Start Game is pressed.
+    await screen.findByText(copy.player.welcomeBack.replace('{name}', 'Test Player'));
+  }
   return { user, ...view };
 }
 
@@ -35,7 +94,8 @@ describe('opening sequence', () => {
     await user.click(opening);
 
     expect(screen.queryByRole('button', { name: copy.opening.skipHint })).toBeNull();
-    expect(screen.getByRole('button', { name: copy.intro.startHint })).toBeInTheDocument();
+    // A fresh visitor lands on the registration form, not on a button that hides one.
+    expect(screen.getByText(copy.registration.heading)).toBeInTheDocument();
   });
 
   it('can be skipped from the keyboard', async () => {
@@ -129,12 +189,13 @@ describe('landing screen', () => {
     expect(copy.intro.bullets[2]).toContain('Level 3');
   });
 
-  it('exposes Start Game as a button whose accessible name includes its visible label', async () => {
+  it('exposes ENTER THE MARKET as a button whose accessible name includes its visible label', async () => {
     await renderGame();
 
-    const start = screen.getByRole('button', { name: copy.intro.startHint });
-    expect(start).toHaveAttribute('type', 'button');
-    expect(start).toHaveTextContent(copy.intro.startLabel);
+    const start = screen.getByRole('button', { name: copy.registration.submitHint });
+    // It submits the form it belongs to — that is what makes it the only way past this screen.
+    expect(start).toHaveAttribute('type', 'submit');
+    expect(start).toHaveTextContent(copy.registration.submitLabel);
   });
 
   it('renders both campaign logos, unmodified, in the header and on the opening screen', async () => {
@@ -219,9 +280,9 @@ describe('persistent header controls', () => {
 
 describe('phase machine through the UI', () => {
   it('Start Game advances to the CLOB tutorial, and Got it starts act one', async () => {
-    const { user } = await renderGame();
+    const { user } = await renderGame({ registered: true });
 
-    await user.click(screen.getByRole('button', { name: copy.intro.startHint }));
+    await user.click(screen.getByRole('button', { name: copy.player.playHint }));
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(copy.clobTutorial.heading);
     expect(screen.getByText(copy.clobTutorial.eyebrow)).toHaveTextContent('Level 1 of 3');
     expect(screen.getByText(copy.clobTutorial.lines[0].title)).toBeInTheDocument();
@@ -235,9 +296,9 @@ describe('phase machine through the UI', () => {
   });
 
   it('shows the combo meter during Level 1', async () => {
-    const { user } = await renderGame();
+    const { user } = await renderGame({ registered: true });
 
-    await user.click(screen.getByRole('button', { name: copy.intro.startHint }));
+    await user.click(screen.getByRole('button', { name: copy.player.playHint }));
     await user.click(screen.getByRole('button', { name: copy.clobTutorial.continueLabel }));
 
     const meter = screen.getByRole('progressbar', { name: copy.combo.meterLabel });
@@ -247,9 +308,9 @@ describe('phase machine through the UI', () => {
 
 describe('desktop keyboard controls', () => {
   it('plays a Level 1 round with the arrow keys', async () => {
-    const { user } = await renderGame();
+    const { user } = await renderGame({ registered: true });
 
-    await user.click(screen.getByRole('button', { name: copy.intro.startHint }));
+    await user.click(screen.getByRole('button', { name: copy.player.playHint }));
     await user.click(screen.getByRole('button', { name: copy.clobTutorial.continueLabel }));
 
     // Wait for the signal, then answer without touching a button.
@@ -291,9 +352,9 @@ describe('pause when the tab loses focus', () => {
   });
 
   it('pauses a live round and offers to resume', async () => {
-    const { user } = await renderGame();
+    const { user } = await renderGame({ registered: true });
 
-    await user.click(screen.getByRole('button', { name: copy.intro.startHint }));
+    await user.click(screen.getByRole('button', { name: copy.player.playHint }));
     await user.click(screen.getByRole('button', { name: copy.clobTutorial.continueLabel }));
 
     act(() => setHidden(true));
@@ -304,9 +365,9 @@ describe('pause when the tab loses focus', () => {
   });
 
   it('resumes into a live round again', async () => {
-    const { user } = await renderGame();
+    const { user } = await renderGame({ registered: true });
 
-    await user.click(screen.getByRole('button', { name: copy.intro.startHint }));
+    await user.click(screen.getByRole('button', { name: copy.player.playHint }));
     await user.click(screen.getByRole('button', { name: copy.clobTutorial.continueLabel }));
 
     act(() => setHidden(true));
@@ -322,9 +383,9 @@ describe('pause when the tab loses focus', () => {
 
 describe('in-round meters', () => {
   it('shows BOT EDGE during Level 1', async () => {
-    const { user } = await renderGame();
+    const { user } = await renderGame({ registered: true });
 
-    await user.click(screen.getByRole('button', { name: copy.intro.startHint }));
+    await user.click(screen.getByRole('button', { name: copy.player.playHint }));
     await user.click(screen.getByRole('button', { name: copy.clobTutorial.continueLabel }));
 
     const meter = screen.getByRole('progressbar', { name: copy.edge.bot.label });

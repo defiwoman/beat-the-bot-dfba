@@ -1,16 +1,29 @@
 # Netlify deployment for Beat the Bot: The 40ms Market.
 #
-# The app is a static single-page build with no backend, no database and no runtime services,
-# so there is nothing to configure beyond the build itself. It needs no environment variables
-# and no secrets — if a deploy ever asks you for one, something has gone wrong.
+# A static single-page build, plus Netlify Functions backing the player registration and the
+# leaderboard.
+#
+# Required environment variables, both SERVER-ONLY — neither is prefixed `VITE_`, so neither
+# can reach the browser bundle:
+#
+#   NETLIFY_DB_URL            injected automatically once a database is attached to the project
+#   LEADERBOARD_ADMIN_TOKEN   set by hand; gates /admin/leaderboard
+#
+# See README → "Environment variables". Nothing here is a secret the client needs.
 
 [build]
   command = "npm run build"
   publish = "dist"
 
+[functions]
+  # `@netlify/database` requires Node >= 22.12, and the functions import the game's own pure
+  # scoring modules straight out of `src/`, which esbuild bundles alongside them.
+  node_bundler = "esbuild"
+  directory = "netlify/functions"
+
 [build.environment]
-  # Match the major version the project is developed and tested against.
-  NODE_VERSION = "20"
+  # Bumped from 20 for @netlify/database's engine requirement.
+  NODE_VERSION = "22"
 
 # ─────────────────────────────────────────────────────────────── SPA fallback
 #
@@ -20,6 +33,10 @@
 #
 # force = false so real files (the brand assets, the JS and CSS bundles) are served first and
 # only genuinely missing paths fall through to the app.
+#
+# The functions declare their own paths (`/api/*`, `/admin/leaderboard`) in each file's exported
+# `config`, and Netlify matches those before this catch-all — so a leaderboard request is never
+# answered with the SPA's HTML.
 [[redirects]]
   from = "/*"
   to = "/index.html"
@@ -46,3 +63,17 @@
   for = "/brands/*"
   [headers.values]
     Cache-Control = "public, max-age=86400"
+
+# Player data is per-request and must never sit in a shared cache.
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    Cache-Control = "no-store, no-cache, must-revalidate, private"
+
+# The private administration page: never cached, never indexed, never in a referrer.
+[[headers]]
+  for = "/admin/*"
+  [headers.values]
+    Cache-Control = "no-store, no-cache, must-revalidate, private"
+    X-Robots-Tag = "noindex, nofollow, noarchive"
+    Referrer-Policy = "no-referrer"

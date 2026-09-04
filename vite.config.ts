@@ -24,6 +24,7 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./vitest.setup.ts'],
     css: false,
-    include: ['src/**/*.test.{ts,tsx}'],
+    // The Netlify Functions' shared server rules are unit-tested alongside the app's.
+    include: ['src/**/*.test.{ts,tsx}', 'netlify/**/*.test.{ts,tsx}'],
   },
 });

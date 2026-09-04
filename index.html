@@ -14,6 +14,43 @@
   </head>
   <body>
     <div id="root"></div>
+
+    <!--
+      NETLIFY FORM DEFINITION — beat-the-bot-registration
+
+      Netlify detects forms by parsing the deployed HTML at build time. The real registration
+      form is rendered by React after the bundle boots, so Netlify would never see it; this
+      static twin is what makes the form exist. It is never filled in and never submitted by a
+      person: `/api/register-player` posts the submission from the server once a registration
+      has been validated and written to the database.
+
+      The field names here are the contract with the notification template configured in the
+      Netlify dashboard, and they must stay in step with NOTIFICATION_FIELDS in
+      netlify/functions/_lib/notify.ts.
+
+      WHERE THE NOTIFICATION GOES IS NOT WRITTEN HERE. There is no recipient in this markup: no
+      address, no form action, no hidden address field, no data attribute. The address is typed
+      into Netlify → Forms → Form notifications and lives only there, so it is not in this page,
+      not in the bundle, not in the build output and not in this repository.
+
+      `hidden` keeps it out of the rendered page; `netlify-honeypot` names the decoy field that
+      a bot fills in and a real submission leaves empty.
+    -->
+    <form
+      name="beat-the-bot-registration"
+      data-netlify="true"
+      netlify-honeypot="company-website"
+      hidden
+    >
+      <input type="hidden" name="form-name" value="beat-the-bot-registration" />
+      <input type="text" name="player_name" />
+      <input type="text" name="fogo_wallet_address" />
+      <input type="url" name="x_quote_post_url" />
+      <input type="text" name="x_quote_post_id" />
+      <input type="text" name="player_id" />
+      <input type="text" name="registered_at" />
+      <input type="text" name="company-website" />
+    </form>
     <noscript>Beat the Bot is an interactive game and needs JavaScript enabled.</noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
