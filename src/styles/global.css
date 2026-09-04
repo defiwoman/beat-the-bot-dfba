@@ -3103,11 +3103,40 @@ button {
 }
 
 .field__label {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
   font-size: var(--step--2);
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-secondary);
+}
+
+/*
+ * REQUIRED.
+ *
+ * Every field carries one, because every field is required — a badge that appeared on only
+ * some of them would read as "the others are optional", which is not true of this form.
+ *
+ * Outlined rather than filled: four solid neon chips would out-shout the labels they annotate,
+ * and the submit button is the one thing on this panel allowed to be the brightest.
+ */
+.field__required {
+  flex: none;
+  padding: 0.1em 0.5em;
+  border: 1px solid var(--border-default);
+  border-radius: 999px;
+  font-size: 0.68em;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--text-muted);
+}
+
+/* On the consent row the badge follows a full sentence, so it needs a little air. */
+.field__consent .field__required {
+  margin-left: var(--s2);
+  white-space: nowrap;
 }
 
 .field__input {

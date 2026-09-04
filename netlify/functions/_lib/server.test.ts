@@ -36,6 +36,8 @@ function rankedRow(overrides: Partial<RankedRow> = {}): RankedRow {
     player_id: '11111111-1111-4111-8111-111111111111',
     player_name: 'Ada Lovelace',
     fogo_wallet_address: WALLET,
+    x_quote_post_url: 'https://x.com/ada/status/1934567890123456789',
+    x_quote_post_id: '1934567890123456789',
     best_score: 92,
     attempts_completed: 5,
     best_achieved_attempt_number: 2,

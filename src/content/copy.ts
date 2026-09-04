@@ -764,8 +764,23 @@ export const copy = {
     walletHelp: 'Enter your public Fogo wallet address. Never enter a seed phrase or private key.',
     walletPlaceholder: 'Public Fogo address',
 
+    xPostLabel: 'X QUOTE POST LINK',
+    xPostHelp: 'Paste the link to your X quote post about Beat the Bot, Superluminal and DFBA.',
+    xPostPlaceholder: 'https://x.com/username/status/…',
+    /**
+     * Said plainly next to the field, because the game cannot check it. Nothing in this
+     * project reads the post, so a submitted link is recorded, not verified.
+     */
+    xPostNote: 'The link is stored with your registration and is not shown on the public leaderboard.',
+
+    /**
+     * Marks each of the four fields. All four must be completed to enter the game, so every
+     * field carries one — a badge on only some of them would read as "the rest are optional".
+     */
+    requiredIndicator: 'REQUIRED',
+
     consentLabel:
-      'I confirm that the information entered is accurate and consent to my player details and game scores being stored.',
+      'I confirm that the information entered is accurate and consent to my player details, submitted post and game scores being stored.',
 
     submitLabel: 'ENTER THE MARKET',
     submitHint: 'ENTER THE MARKET — register and start Level 1',

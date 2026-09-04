@@ -178,9 +178,10 @@ player can see.
 
 1. A visitor sees the normal opening screen. Nothing is added above the branding.
 2. They press **START GAME**.
-3. A **PLAYER REGISTRATION** panel opens asking for three things: a player name, a public Fogo
-   wallet address, and consent.
-4. **ENTER THE MARKET** registers them and Level 1 begins.
+3. A **PLAYER REGISTRATION** panel opens asking for four things, all required: a player name,
+   a public Fogo wallet address, a link to their X quote post, and consent.
+4. **ENTER THE MARKET** registers them and Level 1 begins. Nothing starts until all four
+   fields are accepted by the server.
 5. On a later visit the stored credentials are validated and the panel is skipped — the opening
    screen greets them by name with their personal best, rank and games completed.
 
@@ -201,6 +202,68 @@ what somebody typed, not something anybody proved. Two consequences worth being 
 
 No wallet SDK is installed. `src/lib/dependencies.test.ts` reads the real lockfile and fails the
 build if `@solana/*`, any wallet adapter, `ethers`, `viem`, `wagmi` or similar ever appears.
+
+### What the X quote-post link is, and is not
+
+The fourth field takes a link to a post on X. It is validated on both sides — the browser and
+the function import the same `src/lib/registration.ts` — and it must be an **https** link to a
+**single post** on `x.com`, `www.x.com`, `twitter.com` or `www.twitter.com`. A profile, a
+homepage, a search, a link shortener, another website, a `javascript:` URL, markup, or anything
+that is not a URL is refused.
+
+An accepted link is then canonicalized before it is stored:
+
+| pasted | stored |
+| --- | --- |
+| `https://twitter.com/ada/status/1934…789?s=20&t=abc` | `https://x.com/ada/status/1934…789` |
+| `https://www.x.com/ada/status/1934…789/photo/1` | `https://x.com/ada/status/1934…789` |
+| `https://x.com/ada/statuses/1934…789/` | `https://x.com/ada/status/1934…789` |
+
+The host is rewritten to `x.com`, the query string and fragment are dropped whole (nothing in a
+post's query string identifies the post), any `/photo/1`-style suffix is removed, and the status
+id is extracted and stored in its own column.
+
+**Uniqueness is enforced on the status id, not the URL.** That is the point of canonicalizing:
+the same post pasted five different ways is one id, so the second registration is refused with
+
+> This X post has already been used for a player registration.
+
+**The content of the post is not verified.** There is no X API integration anywhere in this
+project. Nothing fetches the URL, and nothing checks that the post exists, is public, is still
+there, or says anything at all about Beat the Bot. A stored link is a claim, exactly like the
+wallet address above it. The copy audit in `src/content/copy.test.ts` fails the build if any
+user-facing string starts implying otherwise.
+
+The link is **not** on the public leaderboard, and not in the public API's response shape at
+all — see the table below.
+
+### Registration notifications
+
+Every successful registration is posted to a Netlify form named `beat-the-bot-registration`,
+which Netlify stores and emails onward.
+
+- The static form definition lives in `index.html`, hidden, because Netlify discovers forms by
+  parsing deployed HTML at build time and the real form is rendered by React.
+- `/api/register-player` posts the submission itself, **after** the player row is committed. An
+  invalid or rejected submission is never notified, and a notification that fails never rolls a
+  registration back.
+- The submission carries six fields and nothing else: `player_name`, `fogo_wallet_address`,
+  `x_quote_post_url`, `x_quote_post_id`, `player_id`, `registered_at`. No access token, no
+  database credential, no admin token, no session secret.
+- `players.registration_notification_status` makes it exactly-once. A send is attempted only by
+  whoever wins a conditional update from `pending` to `sending`, so a retry that races the
+  original sends nothing. A failure is recorded as `failed`, listed under the administration
+  page's **Notification not sent** filter, and retried from a button there.
+
+**Where the notification goes is not in this repository.** The recipient is configured once in
+the Netlify dashboard and lives only there — it is not a build variable, not a `VITE_` variable,
+not a hidden input, not a form action, and not a function environment variable. No code here
+reads a recipient, so no error raised here can leak one.
+
+To configure it: **Netlify → your project → Forms → `beat-the-bot-registration` → Form
+notifications → Add notification → Email notification**, then set the recipient and the subject
+line `New Beat the Bot player registration (%{submissionId})`. The form only appears in that
+list after the first deploy containing the definition in `index.html`.
 
 ### Ranking
 
@@ -224,9 +287,12 @@ cannot disagree about who is in the top ten.
 | --- | --- | --- |
 | Player name | yes | yes |
 | Wallet | **masked**, `8HvP…9xQa` | **complete** |
+| X quote post URL | **no** | yes, as a clickable link |
+| X post id | **no** | yes |
 | Best score | yes | yes |
 | Attempts to best | yes | yes |
 | Total attempts, timestamps, attempt id | no | yes |
+| Notification status | no | yes |
 | Player id | no | yes |
 
 Masking happens **on the server**, in the query's projection. The complete address is not in
@@ -313,21 +379,34 @@ This cannot be scripted from a checkout — it needs your Netlify account:
 
 ### Running the migration
 
-The schema is one versioned file: [`netlify/database/migrations/0001_players_attempts_sessions.sql`](./netlify/database/migrations/0001_players_attempts_sessions.sql).
+The schema is versioned, one numbered file per change, applied in order:
 
-It is idempotent (`CREATE TABLE IF NOT EXISTS`, `CREATE INDEX IF NOT EXISTS`), so re-running it
-is safe. Apply it against the production branch once:
+| | |
+| --- | --- |
+| [`0001_players_attempts_sessions.sql`](./netlify/database/migrations/0001_players_attempts_sessions.sql) | `players`, `game_sessions`, `attempts` |
+| [`0002_x_quote_post_and_notification.sql`](./netlify/database/migrations/0002_x_quote_post_and_notification.sql) | `x_quote_post_url`, `x_quote_post_id`, `registration_notification_status`, `registration_notified_at` |
+
+Every file is idempotent (`IF NOT EXISTS`, `DROP CONSTRAINT IF EXISTS` before `ADD`), so
+re-running one is safe. Apply them against the production branch in order:
 
 ```bash
 # Read the connection string out of the dashboard, or:
 netlify env:get NETLIFY_DB_URL
 
-psql "$NETLIFY_DB_URL" -v ON_ERROR_STOP=1   -f netlify/database/migrations/0001_players_attempts_sessions.sql
+for f in netlify/database/migrations/*.sql; do
+  psql "$NETLIFY_DB_URL" -v ON_ERROR_STOP=1 -f "$f"
+done
 ```
 
 Three tables: `players` (one row per registered person, keyed by the exact wallet address),
 `game_sessions` (the server-issued seed and single-use ticket) and `attempts` (every completed
 game, scored on the server).
+
+`0002` adds two unique keys' worth of meaning to `players`: `x_quote_post_id` is uniquely
+indexed, so one post backs one registration. Both post columns are `NOT NULL` — but the
+migration applies that only when no row predates them, because there is no honest backfill for
+a registration made before the field existed. If it finds any, it says so in a `NOTICE`, leaves
+the columns nullable and still succeeds; fill or remove those rows and re-run it.
 
 ### Viewing the data
 
@@ -339,6 +418,17 @@ listed there too.
 anywhere in the game, `noindex`, never cached. Enter `LEADERBOARD_ADMIN_TOKEN` once and it
 exchanges the token for a one-hour signed `HttpOnly` cookie, so the CSV links work without the
 token ever appearing in a URL or in browser history.
+
+The administration table lists **every registered player**, including those who have not
+finished a game and therefore appear on no leaderboard. Its columns are rank, player name, the
+complete wallet address, the canonical X quote post URL (as a link that opens in a new tab with
+`rel="noopener noreferrer"`, so x.com is never told which page sent the click), the X post id,
+best score, attempts completed, best-on-attempt, both timestamps, and the notification status
+with a **Retry** button where one has not gone out.
+
+Five filters sit above the table: **All players**, **Top 10**, **No completed game**,
+**Notification not sent**, and **Duplicate or rejected post** — that last one being a check on
+the unique index rather than a queue of work, since a duplicate can no longer be created.
 
 ### Exporting the top 10
 
@@ -355,11 +445,20 @@ the token is read from a prompt rather than typed as an argument:
  unset LEADERBOARD_ADMIN_TOKEN
 ```
 
-CSV columns: `rank`, `player_name`, `fogo_wallet_address`, `best_score`, `attempts_completed`,
-`best_achieved_attempt_number`, `best_achieved_at`. Add `&scope=all` for every ranked player, or
-`format=json` for JSON. The top-10 export uses the identical ranking query as the public board.
+Top-10 CSV columns, in order:
 
-Exported addresses are never written to a log.
+```
+rank, player_name, fogo_wallet_address, x_quote_post_url,
+best_score, attempts_completed, best_achieved_attempt_number, best_achieved_at
+```
+
+Add `&scope=all` for every ranked player, which appends `x_quote_post_id` and
+`registration_notification_status`; or `format=json` for JSON. Both exports use the identical
+ranking query as the public board.
+
+Every cell is RFC 4180-quoted and any cell opening with `=`, `+`, `-` or `@` is prefixed with an
+apostrophe, so a player name cannot become a formula in a spreadsheet. Exported addresses and
+post links are never written to a log.
 
 ## Netlify Functions
 
@@ -400,13 +499,19 @@ LEADERBOARD_ADMIN_TOKEN="anything-for-local" netlify dev
 1. Attach the database (dashboard, above) and confirm `NETLIFY_DB_URL` appears in the project's
    environment variables.
 2. Set `LEADERBOARD_ADMIN_TOKEN`, scoped to Functions.
-3. Run migration `0001` against the production database branch.
+3. Run every migration in `netlify/database/migrations/`, in order, against the production
+   database branch.
 4. Deploy. `netlify.toml` pins `NODE_VERSION = "22"` for `@netlify/database`.
-5. Check `/api/leaderboard` returns `{"ok":true,"entries":[],...}`.
-6. Check `/admin/leaderboard` shows the token form, and that a wrong token is refused.
-7. Register a test player, finish a game, confirm the score appears.
-8. Open the browser network panel on `/api/leaderboard` and confirm no complete wallet address
-   is in the response.
+5. In **Forms**, confirm `beat-the-bot-registration` was detected by that deploy, then add the
+   email notification: recipient, and the subject
+   `New Beat the Bot player registration (%{submissionId})`.
+6. Check `/api/leaderboard` returns `{"ok":true,"entries":[],...}`.
+7. Check `/admin/leaderboard` shows the token form, and that a wrong token is refused.
+8. Register a test player, finish a game, confirm the score appears.
+9. Confirm the registration arrived in **Forms → beat-the-bot-registration** and in the
+   configured inbox, then check the administration page shows its notification as `sent`.
+10. Open the browser network panel on `/api/leaderboard` and confirm neither a complete wallet
+    address nor a post link is in the response.
 
 ### Rolling back
 

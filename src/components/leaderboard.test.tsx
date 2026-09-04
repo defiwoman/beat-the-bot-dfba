@@ -15,12 +15,22 @@ import { LeaderboardPanel } from './LeaderboardPanel';
 import { RegistrationPanel } from './RegistrationPanel';
 import { copy } from '@/content/copy';
 import { PLAYER_CREDENTIALS_KEY } from '@/lib/playerCredentials';
-import { maskWalletAddress } from '@/lib/registration';
+import { REGISTRATION_MESSAGES, maskWalletAddress } from '@/lib/registration';
 import { PlayerProvider } from '@/state/PlayerProvider';
 
 const WALLET = '8HvPq3nFbKcT9wRzYtA6sJ2mXeD4uL7gQ1vNhZxK9xQa';
 const OTHER_WALLET = '3KpQr7mNbVcX9wTzYuA6sJ2mXeD4uL7gQ1vNhZxK9zRt';
 const PLAYER_ID = '11111111-1111-4111-8111-111111111111';
+const POST_URL = 'https://x.com/adalovelace/status/1934567890123456789';
+
+/**
+ * Every field label now ends with the REQUIRED badge, so the labels are matched by prefix.
+ * The badge itself is `aria-hidden`: what a screen reader announces is the input's own
+ * `required`, which is asserted separately below.
+ */
+function field(scope: HTMLElement, label: string): HTMLElement {
+  return within(scope).getByLabelText(new RegExp(`^\\s*${label}`));
+}
 
 /** Route stubbed responses by URL, so a test only describes the calls it cares about. */
 function stubApi(routes: Record<string, unknown>) {
@@ -90,15 +100,16 @@ describe('registration is required before gameplay', () => {
     expect(screen.queryByText(copy.clobTutorial.lines[0].title)).toBeNull();
   });
 
-  it('asks for exactly three things — and never for a wallet connection', async () => {
+  it('asks for exactly four things — and never for a wallet connection', async () => {
     stubApi({});
     const user = await openGame();
     await user.click(screen.getByRole('button', { name: copy.intro.startHint }));
 
     const dialog = await screen.findByRole('dialog');
-    expect(within(dialog).getByLabelText(copy.registration.nameLabel)).toBeInTheDocument();
-    expect(within(dialog).getByLabelText(copy.registration.walletLabel)).toBeInTheDocument();
-    expect(within(dialog).getByLabelText(copy.registration.consentLabel)).toBeInTheDocument();
+    expect(field(dialog, copy.registration.nameLabel)).toBeInTheDocument();
+    expect(field(dialog, copy.registration.walletLabel)).toBeInTheDocument();
+    expect(field(dialog, copy.registration.xPostLabel)).toBeInTheDocument();
+    expect(field(dialog, copy.registration.consentLabel)).toBeInTheDocument();
 
     // Nothing that would imply a wallet integration exists anywhere in the panel.
     for (const forbidden of [/connect wallet/i, /sign(ature)?\b/i, /approve/i, /seed phrase\b(?! or)/i]) {
@@ -106,10 +117,44 @@ describe('registration is required before gameplay', () => {
     }
     expect(within(dialog).queryByRole('button', { name: /connect/i })).toBeNull();
 
-    // And nothing beyond the three fields.
-    const inputs = within(dialog).getAllByRole('textbox');
-    expect(inputs).toHaveLength(2);
+    // And nothing beyond the four fields: two text inputs, one url input, one checkbox.
+    expect(within(dialog).getAllByRole('textbox')).toHaveLength(3);
+    expect(within(dialog).getAllByRole('checkbox')).toHaveLength(1);
     expect(within(dialog).queryByRole('textbox', { name: /email/i })).toBeNull();
+    expect(within(dialog).queryByRole('textbox', { name: /handle|phone/i })).toBeNull();
+  });
+
+  /** All four are required, and every one of them says so — visibly and to a screen reader. */
+  it('marks all four fields required', async () => {
+    stubApi({});
+    const user = await openGame();
+    await user.click(screen.getByRole('button', { name: copy.intro.startHint }));
+
+    const dialog = await screen.findByRole('dialog');
+    for (const label of [
+      copy.registration.nameLabel,
+      copy.registration.walletLabel,
+      copy.registration.xPostLabel,
+      copy.registration.consentLabel,
+    ]) {
+      expect(field(dialog, label)).toBeRequired();
+    }
+
+    expect(within(dialog).getAllByText(copy.registration.requiredIndicator)).toHaveLength(4);
+  });
+
+  it('explains the X post field without claiming the post was checked', async () => {
+    stubApi({});
+    const user = await openGame();
+    await user.click(screen.getByRole('button', { name: copy.intro.startHint }));
+
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText(copy.registration.xPostHelp)).toBeInTheDocument();
+    expect(field(dialog, copy.registration.xPostLabel)).toHaveAttribute(
+      'placeholder',
+      copy.registration.xPostPlaceholder,
+    );
+    expect(within(dialog).queryByText(/verified|we checked|confirmed your post/i)).toBeNull();
   });
 
   it('shows accessible inline errors and moves focus to the first invalid field', async () => {
@@ -120,13 +165,65 @@ describe('registration is required before gameplay', () => {
     const dialog = await screen.findByRole('dialog');
     await user.click(within(dialog).getByRole('button', { name: copy.registration.submitHint }));
 
-    const name = within(dialog).getByLabelText(copy.registration.nameLabel);
+    const name = field(dialog, copy.registration.nameLabel);
     expect(name).toHaveAttribute('aria-invalid', 'true');
     expect(name).toHaveFocus();
-    expect(within(dialog).getByLabelText(copy.registration.walletLabel)).toHaveAttribute(
-      'aria-invalid',
-      'true',
+    expect(field(dialog, copy.registration.walletLabel)).toHaveAttribute('aria-invalid', 'true');
+    // The empty fourth field is reported in the same pass, not one submit later.
+    expect(field(dialog, copy.registration.xPostLabel)).toHaveAttribute('aria-invalid', 'true');
+    expect(within(dialog).getByText(REGISTRATION_MESSAGES.xPostRequired)).toBeInTheDocument();
+  });
+
+  it('refuses to open the game while the X post link is missing or wrong', async () => {
+    const fetchMock = stubApi({});
+    const user = await openGame();
+    await user.click(screen.getByRole('button', { name: copy.intro.startHint }));
+
+    const dialog = await screen.findByRole('dialog');
+    await user.type(field(dialog, copy.registration.nameLabel), 'Ada');
+    await user.type(field(dialog, copy.registration.walletLabel), WALLET);
+    await user.click(field(dialog, copy.registration.consentLabel));
+
+    // A profile link is not a post link.
+    await user.type(field(dialog, copy.registration.xPostLabel), 'https://x.com/adalovelace');
+    await user.click(within(dialog).getByRole('button', { name: copy.registration.submitHint }));
+
+    const post = field(dialog, copy.registration.xPostLabel);
+    expect(post).toHaveAttribute('aria-invalid', 'true');
+    expect(post).toHaveFocus();
+    // Rejected in the browser: the server was never asked.
+    expect(fetchMock).not.toHaveBeenCalledWith('/api/register-player', expect.anything());
+    // And the game did not start.
+    expect(screen.queryByText(copy.clobTutorial.lines[0].title)).toBeNull();
+  });
+
+  /** The server's duplicate answer is shown on the field it belongs to, in its exact words. */
+  it('shows the server’s duplicate-post message against the X post field', async () => {
+    stubApi({
+      '/api/register-player': {
+        ok: false,
+        code: 'x_post_already_registered',
+        fields: { xQuotePostUrl: REGISTRATION_MESSAGES.xPostDuplicate },
+      },
+    });
+
+    const user = await openGame();
+    await user.click(screen.getByRole('button', { name: copy.intro.startHint }));
+
+    const dialog = await screen.findByRole('dialog');
+    await user.type(field(dialog, copy.registration.nameLabel), 'Ada');
+    await user.type(field(dialog, copy.registration.walletLabel), WALLET);
+    await user.type(field(dialog, copy.registration.xPostLabel), POST_URL);
+    await user.click(field(dialog, copy.registration.consentLabel));
+    await user.click(within(dialog).getByRole('button', { name: copy.registration.submitHint }));
+
+    await waitFor(() =>
+      expect(
+        within(dialog).getByText('This X post has already been used for a player registration.'),
+      ).toBeInTheDocument(),
     );
+    expect(field(dialog, copy.registration.xPostLabel)).toHaveFocus();
+    expect(screen.queryByText(copy.clobTutorial.lines[0].title)).toBeNull();
   });
 
   it('rejects an invalid wallet format without contacting the server', async () => {
@@ -135,15 +232,13 @@ describe('registration is required before gameplay', () => {
     await user.click(screen.getByRole('button', { name: copy.intro.startHint }));
 
     const dialog = await screen.findByRole('dialog');
-    await user.type(within(dialog).getByLabelText(copy.registration.nameLabel), 'Ada');
-    await user.type(within(dialog).getByLabelText(copy.registration.walletLabel), 'not-a-wallet');
-    await user.click(within(dialog).getByLabelText(copy.registration.consentLabel));
+    await user.type(field(dialog, copy.registration.nameLabel), 'Ada');
+    await user.type(field(dialog, copy.registration.walletLabel), 'not-a-wallet');
+    await user.type(field(dialog, copy.registration.xPostLabel), POST_URL);
+    await user.click(field(dialog, copy.registration.consentLabel));
     await user.click(within(dialog).getByRole('button', { name: copy.registration.submitHint }));
 
-    expect(within(dialog).getByLabelText(copy.registration.walletLabel)).toHaveAttribute(
-      'aria-invalid',
-      'true',
-    );
+    expect(field(dialog, copy.registration.walletLabel)).toHaveAttribute('aria-invalid', 'true');
     expect(fetchMock).not.toHaveBeenCalledWith(
       '/api/register-player',
       expect.anything(),
@@ -173,10 +268,28 @@ describe('registration is required before gameplay', () => {
     await user.click(screen.getByRole('button', { name: copy.intro.startHint }));
 
     const dialog = await screen.findByRole('dialog');
-    await user.type(within(dialog).getByLabelText(copy.registration.nameLabel), 'Ada');
-    await user.type(within(dialog).getByLabelText(copy.registration.walletLabel), WALLET);
-    await user.click(within(dialog).getByLabelText(copy.registration.consentLabel));
+    const fetchMock = vi.mocked(globalThis.fetch);
+    await user.type(field(dialog, copy.registration.nameLabel), 'Ada');
+    await user.type(field(dialog, copy.registration.walletLabel), WALLET);
+    // Pasted the way the share sheet hands it over, tracking parameters and all.
+    await user.type(field(dialog, copy.registration.xPostLabel), `${POST_URL}?s=20&t=abcd`);
+    await user.click(field(dialog, copy.registration.consentLabel));
     await user.click(within(dialog).getByRole('button', { name: copy.registration.submitHint }));
+
+    // The link is sent as typed; canonicalizing it is the server's job, not the browser's.
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith('/api/register-player', expect.anything()),
+    );
+    const call = fetchMock.mock.calls.find(([url]) => url === '/api/register-player')!;
+    const sent = JSON.parse(String((call[1] as RequestInit).body));
+    expect(sent.xQuotePostUrl).toBe(`${POST_URL}?s=20&t=abcd`);
+    // Nothing else rides along: no score, no token, no address beyond the one field.
+    expect(Object.keys(sent).sort()).toEqual([
+      'consent',
+      'fogoWalletAddress',
+      'playerName',
+      'xQuotePostUrl',
+    ]);
 
     // The gate opens onto the game.
     await waitFor(() =>
@@ -185,8 +298,12 @@ describe('registration is required before gameplay', () => {
 
     const stored = JSON.parse(window.localStorage.getItem(PLAYER_CREDENTIALS_KEY) ?? '{}');
     expect(stored).toEqual({ playerId: PLAYER_ID, accessToken: 'raw-token-value' });
-    // The wallet is not part of the credential and is not kept in the browser.
-    expect(window.localStorage.getItem(PLAYER_CREDENTIALS_KEY)).not.toContain(WALLET);
+    // Neither the wallet nor the post link is part of the credential, and neither is kept
+    // in the browser.
+    const raw = window.localStorage.getItem(PLAYER_CREDENTIALS_KEY);
+    expect(raw).not.toContain(WALLET);
+    expect(raw).not.toContain(POST_URL);
+    expect(raw).not.toContain('1934567890123456789');
   });
 
   it('does not ask a returning player to register again', async () => {

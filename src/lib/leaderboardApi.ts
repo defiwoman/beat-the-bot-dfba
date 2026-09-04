@@ -87,6 +87,8 @@ async function request<T>(
 export function registerPlayer(input: {
   playerName: string;
   fogoWalletAddress: string;
+  /** Sent as typed. The server canonicalizes it and stores its own version. */
+  xQuotePostUrl: string;
   consent: boolean;
 }): Promise<ApiResult<{ player: ApiPlayer; accessToken: string }>> {
   return request('/api/register-player', { method: 'POST', body: JSON.stringify(input) });

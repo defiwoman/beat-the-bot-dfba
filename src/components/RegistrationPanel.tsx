@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { AlertTriangle, ArrowRight, ShieldAlert, X } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Link2, ShieldAlert, X } from 'lucide-react';
 import { Button } from './Button';
 import { copy } from '@/content/copy';
 import {
   PLAYER_NAME_MAX,
   WALLET_MAX,
+  X_POST_URL_MAX,
   firstInvalidField,
   validateRegistration,
   type RegistrationErrors,
@@ -19,16 +20,40 @@ import { usePlayer } from '@/state/usePlayer';
  * Opens when START GAME is pressed, so the opening screen's hierarchy — co-branding, title,
  * 40ms visual, level summary, CTA — is untouched. Nothing is added above the branding.
  *
- * Three fields and nothing else. No email, no handle, no phone, and no wallet connection: this
- * form types an address into a text input and that is the entire interaction. Nothing here
- * touches a wallet, requests a signature or makes an on-chain call.
+ * Four required fields and nothing else. No email, no handle, no phone, and no wallet
+ * connection: this form types text into inputs and that is the entire interaction. Nothing here
+ * touches a wallet, requests a signature or makes an on-chain call — and nothing fetches the
+ * submitted post or asks X about it, so the link is recorded rather than verified.
+ *
+ * All four are required, and the game does not start until every one of them is accepted by
+ * the server.
  *
  * Accessibility: a labelled modal dialog with focus moved in on open and returned on close,
  * Escape to dismiss, every input tied to its own label, help text and error through
  * aria-describedby, and focus moved to the first invalid field on a rejected submit.
  */
 
-const EMPTY: RegistrationInput = { playerName: '', fogoWalletAddress: '', consent: false };
+const EMPTY: RegistrationInput = {
+  playerName: '',
+  fogoWalletAddress: '',
+  xQuotePostUrl: '',
+  consent: false,
+};
+
+/**
+ * The badge every field carries. Four fields, four of these, no optional field to confuse it.
+ *
+ * `aria-hidden` because it is the visual half of the signal only: the inputs carry `required`,
+ * which is what a screen reader announces. Without it the badge would be read as part of each
+ * field's name — "player name required" — and then announced again from the input.
+ */
+function Required() {
+  return (
+    <span className="field__required" aria-hidden="true">
+      {copy.registration.requiredIndicator}
+    </span>
+  );
+}
 
 export function RegistrationPanel({
   onRegistered,
@@ -43,6 +68,7 @@ export function RegistrationPanel({
   const headingId = useId();
   const nameId = useId();
   const walletId = useId();
+  const xPostId = useId();
   const consentId = useId();
 
   const [values, setValues] = useState<RegistrationInput>(EMPTY);
@@ -51,24 +77,55 @@ export function RegistrationPanel({
   const [submitting, setSubmitting] = useState(false);
   /** Errors only appear after a submit, so the form does not shout while someone is typing. */
   const [submitted, setSubmitted] = useState(false);
+  /**
+   * Which field to move focus to once the render carrying the new errors has landed.
+   *
+   * Focus cannot be moved from the submit handler directly: while a submission is in flight
+   * every input is `disabled`, and a disabled input silently refuses focus. By the time the
+   * server's answer arrives the inputs are still disabled in the DOM — React has not
+   * re-rendered yet — so the request is recorded here and carried out in the effect below,
+   * after the fields are interactive again.
+   */
+  const [focusField, setFocusField] = useState<keyof RegistrationInput | null>(null);
 
   const nameRef = useRef<HTMLInputElement>(null);
   const walletRef = useRef<HTMLInputElement>(null);
+  const xPostRef = useRef<HTMLInputElement>(null);
   const consentRef = useRef<HTMLInputElement>(null);
   const restoreRef = useRef<Element | null>(null);
+  /** Same reason: the Escape handler must see the latest callback without re-binding. */
+  const onCancelRef = useRef(onCancel);
+  onCancelRef.current = onCancel;
 
   const fieldRefs = {
     playerName: nameRef,
     fogoWalletAddress: walletRef,
+    xQuotePostUrl: xPostRef,
     consent: consentRef,
   } as const;
 
+  /**
+   * Whether a submission is in flight, readable from the key handler without making it a
+   * dependency of the effect below.
+   */
+  const submittingRef = useRef(false);
+  submittingRef.current = submitting;
+
+  /**
+   * Runs once, on open.
+   *
+   * Deliberately depends on nothing that changes while the panel is up. An earlier version
+   * listed `submitting`, which meant every submission tore the effect down and set it up again
+   * — moving focus back to the name field just as the handler was moving it to whichever field
+   * the server rejected, and running the "restore focus to whatever opened this" cleanup in the
+   * middle of an open dialog.
+   */
   useEffect(() => {
     restoreRef.current = document.activeElement;
     nameRef.current?.focus();
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !submitting) onCancel();
+      if (event.key === 'Escape' && !submittingRef.current) onCancelRef.current();
     };
     document.addEventListener('keydown', onKeyDown);
 
@@ -76,7 +133,7 @@ export function RegistrationPanel({
       document.removeEventListener('keydown', onKeyDown);
       if (restoreRef.current instanceof HTMLElement) restoreRef.current.focus();
     };
-  }, [onCancel, submitting]);
+  }, []);
 
   const update = useCallback(
     <K extends keyof RegistrationInput>(field: K, value: RegistrationInput[K]) => {
@@ -99,8 +156,7 @@ export function RegistrationPanel({
       const found = validateRegistration(values);
       if (Object.keys(found).length > 0) {
         setErrors(found);
-        const first = firstInvalidField(found);
-        if (first) fieldRefs[first].current?.focus();
+        setFocusField(firstInvalidField(found));
         return;
       }
 
@@ -114,9 +170,10 @@ export function RegistrationPanel({
       }
 
       if (result.fields) {
+        // The server can reject a field the browser accepted — a wallet or a post already
+        // registered — so its answer lands on the same field and takes focus the same way.
         setErrors(result.fields as RegistrationErrors);
-        const first = firstInvalidField(result.fields as RegistrationErrors);
-        if (first) fieldRefs[first].current?.focus();
+        setFocusField(firstInvalidField(result.fields as RegistrationErrors));
         return;
       }
 
@@ -128,10 +185,16 @@ export function RegistrationPanel({
             : copy.registration.serverError,
       );
     },
-    // fieldRefs is a stable object of refs; listing it would re-create the callback every render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [onRegistered, register, submitting, values],
   );
+
+  useEffect(() => {
+    if (!focusField) return;
+    fieldRefs[focusField].current?.focus();
+    setFocusField(null);
+    // fieldRefs is a stable object of refs; listing it would re-run this every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusField]);
 
   const errorFor = (field: keyof RegistrationInput) => (submitted ? errors[field] : undefined);
 
@@ -169,6 +232,7 @@ export function RegistrationPanel({
           <div className="field">
             <label className="field__label" htmlFor={nameId}>
               {copy.registration.nameLabel}
+              <Required />
             </label>
             <input
               id={nameId}
@@ -176,6 +240,7 @@ export function RegistrationPanel({
               className={errorFor('playerName') ? 'field__input field__input--bad' : 'field__input'}
               type="text"
               name="playerName"
+              required
               value={values.playerName}
               maxLength={PLAYER_NAME_MAX}
               autoComplete="nickname"
@@ -199,6 +264,7 @@ export function RegistrationPanel({
           <div className="field">
             <label className="field__label" htmlFor={walletId}>
               {copy.registration.walletLabel}
+              <Required />
             </label>
             <input
               id={walletId}
@@ -210,6 +276,7 @@ export function RegistrationPanel({
               }
               type="text"
               name="fogoWalletAddress"
+              required
               value={values.fogoWalletAddress}
               maxLength={WALLET_MAX}
               /* Off for all four: an address is not a word, a name or a saved credential. */
@@ -233,6 +300,50 @@ export function RegistrationPanel({
             ) : null}
           </div>
 
+          {/* ── X quote post link ── */}
+          <div className="field">
+            <label className="field__label" htmlFor={xPostId}>
+              {copy.registration.xPostLabel}
+              <Required />
+            </label>
+            <input
+              id={xPostId}
+              ref={xPostRef}
+              className={
+                errorFor('xQuotePostUrl')
+                  ? 'field__input field__input--mono field__input--bad'
+                  : 'field__input field__input--mono'
+              }
+              type="url"
+              name="xQuotePostUrl"
+              required
+              value={values.xQuotePostUrl}
+              maxLength={X_POST_URL_MAX}
+              inputMode="url"
+              /* A URL is not a word and not a saved credential. */
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
+              placeholder={copy.registration.xPostPlaceholder}
+              aria-describedby={`${xPostId}-help ${xPostId}-note${errorFor('xQuotePostUrl') ? ` ${xPostId}-error` : ''}`}
+              aria-invalid={errorFor('xQuotePostUrl') ? true : undefined}
+              onChange={(event) => update('xQuotePostUrl', event.target.value)}
+              disabled={submitting}
+            />
+            <p id={`${xPostId}-help`} className="field__help">
+              <Link2 size={13} aria-hidden="true" /> {copy.registration.xPostHelp}
+            </p>
+            <p id={`${xPostId}-note`} className="field__help">
+              {copy.registration.xPostNote}
+            </p>
+            {errorFor('xQuotePostUrl') ? (
+              <p id={`${xPostId}-error`} className="field__error">
+                <AlertTriangle size={13} aria-hidden="true" /> {errorFor('xQuotePostUrl')}
+              </p>
+            ) : null}
+          </div>
+
           {/* ── Consent ── */}
           <div className="field">
             <label className="field__consent" htmlFor={consentId}>
@@ -241,13 +352,17 @@ export function RegistrationPanel({
                 ref={consentRef}
                 type="checkbox"
                 name="consent"
+                required
                 checked={values.consent}
                 aria-describedby={errorFor('consent') ? `${consentId}-error` : undefined}
                 aria-invalid={errorFor('consent') ? true : undefined}
                 onChange={(event) => update('consent', event.target.checked)}
                 disabled={submitting}
               />
-              <span>{copy.registration.consentLabel}</span>
+              <span>
+                {copy.registration.consentLabel}
+                <Required />
+              </span>
             </label>
             {errorFor('consent') ? (
               <p id={`${consentId}-error`} className="field__error">

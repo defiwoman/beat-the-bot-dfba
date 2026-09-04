@@ -1,5 +1,6 @@
 import { createContext } from 'react';
 import type { ApiPlayer, CompletionResult } from '@/lib/leaderboardApi';
+import type { RegistrationInput } from '@/lib/registration';
 import type { AttemptTranscript } from '@/lib/attempt';
 
 /** Where the registration gate currently stands. */
@@ -32,11 +33,9 @@ export interface PlayerContextValue {
   session: ActiveSession | null;
   save: SaveState;
 
-  register: (input: {
-    playerName: string;
-    fogoWalletAddress: string;
-    consent: boolean;
-  }) => Promise<{ ok: true } | { ok: false; code: string; fields?: Record<string, string> }>;
+  register: (
+    input: RegistrationInput,
+  ) => Promise<{ ok: true } | { ok: false; code: string; fields?: Record<string, string> }>;
 
   /** Ask the server for a fresh seed. Resolves false when no session could be opened. */
   beginAttempt: () => Promise<boolean>;

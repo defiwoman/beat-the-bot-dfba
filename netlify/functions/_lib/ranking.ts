@@ -37,6 +37,9 @@ export interface RankedRow {
   player_id: string;
   player_name: string;
   fogo_wallet_address: string;
+  /** Canonical `https://x.com/<handle>/status/<id>`. Administrative surfaces only. */
+  x_quote_post_url: string | null;
+  x_quote_post_id: string | null;
   best_score: number;
   attempts_completed: number;
   best_achieved_attempt_number: number;
@@ -44,6 +47,22 @@ export interface RankedRow {
   best_attempt_id: string | null;
   created_at: string;
   is_valid: boolean;
+}
+
+/**
+ * A player as the administration page sees them — including those who have registered but not
+ * finished a game, who are absent from every ranked query by design.
+ *
+ * `rank` is null for exactly those players. It is the same rank the board shows for everyone
+ * else, computed by the same ordering.
+ */
+export interface AdminRow extends Omit<RankedRow, 'rank' | 'best_score' | 'best_achieved_attempt_number' | 'best_achieved_at'> {
+  rank: number | null;
+  best_score: number | null;
+  best_achieved_attempt_number: number | null;
+  best_achieved_at: string | null;
+  registration_notification_status: string;
+  registration_notified_at: string | null;
 }
 
 /** What the public is allowed to see. Note there is no full address in this shape at all. */
@@ -83,6 +102,8 @@ export async function rankedPlayers(
       p.id::text                             AS player_id,
       p.player_name,
       p.fogo_wallet_address,
+      p.x_quote_post_url,
+      p.x_quote_post_id,
       p.best_score::int,
       p.attempts_completed::int,
       p.best_achieved_attempt_number::int,
@@ -99,6 +120,96 @@ export async function rankedPlayers(
     [limit, offset],
     { rowMode: 'object' },
   )) as unknown as RankedRow[];
+}
+
+/**
+ * Every player, ranked where a rank exists.
+ *
+ * The public board and the CSV exports are lists of scores, so they leave out anyone who has
+ * not finished a game. The administration page is a list of registrations, and a player who
+ * registered and never played is exactly the kind of row its owner needs to see — so this is a
+ * separate query rather than a looser `rankedPlayers`.
+ *
+ * The rank comes from the same window function over the same ordering, computed on the ranked
+ * subset and joined back on, so a player's number here is by construction the number the public
+ * board shows them.
+ */
+export async function adminPlayers(
+  sql: DatabaseConnection['sql'],
+  options: { limit?: number } = {},
+): Promise<AdminRow[]> {
+  const limit = Math.min(Math.max(Math.trunc(options.limit ?? MAX_PAGE_SIZE), 1), MAX_PAGE_SIZE);
+
+  return (await sql.unsafe(
+    `
+    SELECT
+      r.rank,
+      p.id::text                             AS player_id,
+      p.player_name,
+      p.fogo_wallet_address,
+      p.x_quote_post_url,
+      p.x_quote_post_id,
+      p.best_score::int,
+      p.attempts_completed::int,
+      p.best_achieved_attempt_number::int,
+      p.best_achieved_at,
+      p.best_attempt_id::text,
+      p.created_at,
+      p.registration_notification_status,
+      p.registration_notified_at,
+      COALESCE(a.is_valid, true)             AS is_valid
+    FROM players p
+    LEFT JOIN attempts a ON a.id = p.best_attempt_id
+    LEFT JOIN (
+      SELECT p.id, ROW_NUMBER() OVER (${RANK_ORDER})::int AS rank
+      FROM players p
+      WHERE p.best_score IS NOT NULL
+    ) r ON r.id = p.id
+    -- Ranked players first in board order, then unranked registrations newest first.
+    ORDER BY (r.rank IS NULL), r.rank ASC, p.created_at DESC
+    LIMIT $1
+  `,
+    [limit],
+    { rowMode: 'object' },
+  )) as unknown as AdminRow[];
+}
+
+/**
+ * Just enough of one player to re-send their registration notification.
+ *
+ * Deliberately narrow: the retry needs the six notified fields and nothing else, so the access
+ * token hash and the rest of the row are never read into a variable that could be logged.
+ */
+export async function notifiablePlayer(
+  sql: DatabaseConnection['sql'],
+  playerId: string,
+): Promise<{
+  player_id: string;
+  player_name: string;
+  fogo_wallet_address: string;
+  x_quote_post_url: string | null;
+  x_quote_post_id: string | null;
+  created_at: string;
+  registration_notification_status: string;
+} | null> {
+  const rows = (await sql.unsafe(
+    `SELECT id::text AS player_id, player_name, fogo_wallet_address,
+            x_quote_post_url, x_quote_post_id, created_at,
+            registration_notification_status
+     FROM players WHERE id = $1`,
+    [playerId],
+    { rowMode: 'object' },
+  )) as unknown as {
+    player_id: string;
+    player_name: string;
+    fogo_wallet_address: string;
+    x_quote_post_url: string | null;
+    x_quote_post_id: string | null;
+    created_at: string;
+    registration_notification_status: string;
+  }[];
+
+  return rows[0] ?? null;
 }
 
 /** One player's rank, without reading the whole board. */

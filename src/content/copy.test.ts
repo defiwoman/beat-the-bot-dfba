@@ -419,7 +419,35 @@ describe('registration copy', () => {
     );
     expect(copy.registration.nameLabel).toBe('PLAYER NAME');
     expect(copy.registration.walletLabel).toBe('FOGO WALLET ADDRESS');
+    expect(copy.registration.xPostLabel).toBe('X QUOTE POST LINK');
     expect(copy.registration.submitLabel).toBe('ENTER THE MARKET');
+  });
+
+  it('uses the exact X quote-post wording', () => {
+    expect(copy.registration.xPostHelp).toBe(
+      'Paste the link to your X quote post about Beat the Bot, Superluminal and DFBA.',
+    );
+    expect(copy.registration.xPostPlaceholder).toBe('https://x.com/username/status/…');
+    expect(copy.registration.requiredIndicator).toBe('REQUIRED');
+  });
+
+  /**
+   * The X API is never called and the post is never fetched, so no string may imply otherwise.
+   * "Paste the link" is a request; "we will check your post" would be a promise this project
+   * has no way to keep.
+   */
+  it('never claims the submitted post has been checked or verified', () => {
+    const registrationText = flatten(copy.registration)
+      .map((entry) => entry.text)
+      .join(' ');
+    for (const pattern of [
+      /verif(y|ied|ication)/i,
+      /we (will )?(check|read|review|fetch)/i,
+      /automatically (check|confirm|verif)/i,
+      /post (has been|was) (found|confirmed|approved)/i,
+    ]) {
+      expect(pattern.test(registrationText)).toBe(false);
+    }
   });
 
   it('warns against entering a seed phrase or private key', () => {
@@ -428,10 +456,31 @@ describe('registration copy', () => {
     );
   });
 
-  it('states what consent is being given for', () => {
+  it('states what consent is being given for, including the submitted post', () => {
     expect(copy.registration.consentLabel).toBe(
-      'I confirm that the information entered is accurate and consent to my player details and game scores being stored.',
+      'I confirm that the information entered is accurate and consent to my player details, submitted post and game scores being stored.',
     );
+  });
+
+  /**
+   * The form asks for a post about a campaign, so this is where reward language would creep in
+   * if it were going to. Nothing on this panel offers anything in return for registering.
+   */
+  it('never promises a reward, a prize or a token distribution for posting', () => {
+    const registrationText = flatten(copy.registration)
+      .map((entry) => entry.text)
+      .join(' ');
+    for (const pattern of [
+      /airdrop/i,
+      /\bprize\b/i,
+      /\bwinner/i,
+      /claim your/i,
+      /token distribution/i,
+      /\beligib/i,
+      /\d[\d,]*\s*FOGO\b/i,
+    ]) {
+      expect(pattern.test(registrationText)).toBe(false);
+    }
   });
 
   /**
@@ -469,6 +518,19 @@ describe('registration copy', () => {
       .toLowerCase();
     for (const field of ['email', 'x handle', '@handle', 'phone', 'seed phrase you']) {
       expect(registrationText).not.toContain(field);
+    }
+    // The X field asks for a link to a post, never for the account behind it.
+    expect(registrationText).not.toMatch(/your (x|twitter) (username|handle|account)/);
+  });
+
+  /**
+   * The registration notification's recipient is configured in the Netlify dashboard and
+   * exists nowhere in this repository. Copy is the surface most likely to leak it by accident
+   * — an "we'll email …" line — so the whole vocabulary is checked for an address.
+   */
+  it('contains no email address anywhere in the game’s vocabulary', () => {
+    for (const { path: where, text } of STRINGS) {
+      expect(text, where).not.toMatch(/[\w.+-]+@[\w-]+\.[\w.]+/);
     }
   });
 });

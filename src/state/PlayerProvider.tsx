@@ -94,7 +94,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   /* ── Registration ─────────────────────────────────────────────────────────────── */
 
   const register = useCallback(
-    async (input: { playerName: string; fogoWalletAddress: string; consent: boolean }) => {
+    async (input: {
+      playerName: string;
+      fogoWalletAddress: string;
+      xQuotePostUrl: string;
+      consent: boolean;
+    }) => {
       const result = await registerPlayer(input);
 
       if (!result.ok) {
