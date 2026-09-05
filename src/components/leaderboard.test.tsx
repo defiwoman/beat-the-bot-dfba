@@ -1,10 +1,10 @@
 /**
- * The registration gate and the public leaderboard, from the player's side.
+ * The player's journey, and the public leaderboard.
  *
  * `fetch` is stubbed so these exercise the real components against the real API shapes without
- * a server. What is being proved here is what a person actually experiences: the form appears
- * before Level 1, a returning player is not asked again, and no complete wallet address is ever
- * rendered into the page.
+ * a server. What is being proved is what a person actually experiences: the homepage asks for
+ * nothing, the game is playable straight away, the result card comes first, the leaderboard
+ * form sits below it, and no complete wallet address is ever rendered into the page.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -14,13 +14,20 @@ import App from '../App';
 import { LeaderboardPanel } from './LeaderboardPanel';
 import { copy } from '@/content/copy';
 import { PLAYER_CREDENTIALS_KEY } from '@/lib/playerCredentials';
+import { PENDING_RESULT_KEY, readPendingResult } from '@/lib/pendingResult';
 import { REGISTRATION_MESSAGES, maskWalletAddress } from '@/lib/registration';
+import { ResultsScreen } from '@/screens/ResultsScreen';
 import { PlayerProvider } from '@/state/PlayerProvider';
+import { PlayerContext, type PlayerContextValue } from '@/state/playerContext';
+import { computeScore } from '@/lib/scoring';
 
 const WALLET = '8HvPq3nFbKcT9wRzYtA6sJ2mXeD4uL7gQ1vNhZxK9xQa';
 const OTHER_WALLET = '3KpQr7mNbVcX9wTzYuA6sJ2mXeD4uL7gQ1vNhZxK9zRt';
 const PLAYER_ID = '11111111-1111-4111-8111-111111111111';
 const POST_URL = 'https://x.com/adalovelace/status/1934567890123456789';
+
+const SESSION_ID = '22222222-2222-4222-8222-222222222222';
+const CLAIM_TOKEN = 'claim-token-value-issued-once';
 
 const REGISTERED_PLAYER = {
   playerId: PLAYER_ID,
@@ -29,6 +36,119 @@ const REGISTERED_PLAYER = {
   attemptsCompleted: 0,
   bestAchievedAttemptNumber: null,
 };
+
+const SESSION_OK = { ok: true, player: REGISTERED_PLAYER, rank: null };
+const SESSION_REJECTED = { ok: false, code: 'credentials_invalid' };
+
+/** What the provider's claim state looks like while a result is waiting to be submitted. */
+const UNCLAIMED = { status: 'unclaimed' as const, result: null, errorCode: null, fields: null };
+
+/** A successful claim, in the shape `/api/claim-score` returns. */
+const CLAIMED = {
+  ok: true,
+  alreadyClaimed: false,
+  playerName: 'Ada Lovelace',
+  maskedWallet: '8HvP…9xQa',
+  finalScore: 78,
+  personalBest: 78,
+  isNewPersonalBest: true,
+  attemptNumber: 1,
+  rank: 2,
+  accessToken: 'raw-token-value',
+  player: { ...REGISTERED_PLAYER, bestScore: 78, attemptsCompleted: 1 },
+};
+
+/**
+ * A real finished game, scored by the game's own function rather than hand-written.
+ *
+ * `computeScore` over an empty playthrough gives a complete, internally consistent breakdown —
+ * which is all the results screen needs, and cannot drift out of step with the type.
+ */
+const SCORE = computeScore([], [], []);
+
+/**
+ * The results screen, with the provider in a chosen state.
+ *
+ * The unclaimed case is arranged the way it really arises — a pending result in storage, which
+ * the provider reads on mount — so the token flows through the real code. The registered case
+ * supplies the context directly, because "a replay that saved itself" is a state the provider
+ * only reaches after a full game.
+ */
+function renderResults({
+  claim,
+  routes = {},
+  status,
+  save,
+}: {
+  claim: PlayerContextValue['claim'];
+  routes?: Record<string, unknown>;
+  status?: PlayerContextValue['status'];
+  save?: PlayerContextValue['save'];
+}) {
+  const fetchMock = stubApi({ '/api/player-session': SESSION_REJECTED, ...routes });
+  const user = userEvent.setup();
+
+  if (status === 'registered') {
+    const value: PlayerContextValue = {
+      status: 'registered',
+      player: REGISTERED_PLAYER,
+      rank: 3,
+      session: null,
+      save: save ?? { status: 'idle', result: null, errorCode: null },
+      claim,
+      beginAttempt: async () => true,
+      submitAttempt: async () => {},
+      retrySubmit: async () => {},
+      claimScore: async () => ({ ok: true }),
+      changePlayer: () => {},
+      resetSave: () => {},
+    };
+    render(
+      <PlayerContext.Provider value={value}>
+        <ResultsScreen score={SCORE} onReplay={vi.fn()} onOpenLeaderboard={vi.fn()} />
+      </PlayerContext.Provider>,
+    );
+    return { user, fetchMock };
+  }
+
+  if (claim.status === 'unclaimed') {
+    window.localStorage.setItem(
+      PENDING_RESULT_KEY,
+      JSON.stringify({
+        sessionId: SESSION_ID,
+        claimToken: CLAIM_TOKEN,
+        expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+      }),
+    );
+  }
+
+  render(
+    <PlayerProvider>
+      <ResultsScreen score={SCORE} onReplay={vi.fn()} onOpenLeaderboard={vi.fn()} />
+    </PlayerProvider>,
+  );
+
+  return { user, fetchMock };
+}
+
+/** Fill all four fields and submit. Any field can be overridden to make it fail. */
+async function fillForm(
+  user: ReturnType<typeof userEvent.setup>,
+  scope: HTMLElement,
+  overrides: Partial<Record<'playerName' | 'fogoWalletAddress' | 'xQuotePostUrl', string>> = {},
+) {
+  const values = {
+    playerName: 'Ada Lovelace',
+    fogoWalletAddress: WALLET,
+    xQuotePostUrl: POST_URL,
+    ...overrides,
+  };
+  for (const [name, value] of Object.entries(values)) {
+    await user.type(scope.querySelector(`input[name="${name}"]`)!, value);
+  }
+  await user.click(scope.querySelector('input[name="consent"]')!);
+  await user.click(screen.getByRole('button', { name: copy.registration.submitHint }));
+}
 
 /**
  * Every field label now ends with the REQUIRED badge, so the labels are matched by prefix.
@@ -39,19 +159,10 @@ function field(scope: HTMLElement, label: string): HTMLElement {
   return within(scope).getByLabelText(new RegExp(`^\\s*${label}`));
 }
 
-/** Fill all four fields with values that pass, then submit. */
-async function fill(user: ReturnType<typeof userEvent.setup>) {
-  const scope = screen.getByRole('region', { name: copy.registration.heading });
-  await user.type(scope.querySelector('input[name="playerName"]')!, 'Ada Lovelace');
-  await user.type(scope.querySelector('input[name="fogoWalletAddress"]')!, WALLET);
-  await user.type(scope.querySelector('input[name="xQuotePostUrl"]')!, POST_URL);
-  await user.click(scope.querySelector('input[name="consent"]')!);
-  await user.click(screen.getByRole('button', { name: copy.registration.submitHint }));
-}
-
 /** Route stubbed responses by URL, so a test only describes the calls it cares about. */
 function stubApi(routes: Record<string, unknown>) {
-  const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+  const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    void init;
     const url = typeof input === 'string' ? input : input.toString();
     const match = Object.keys(routes).find((path) => url.startsWith(path));
     const payload = match ? routes[match] : { ok: false, code: 'not_stubbed' };
@@ -94,82 +205,100 @@ afterEach(() => {
 
 /* ═════════════════════════════════════════════════ the registration gate ══ */
 
-describe('registration is on the homepage, and it is the only way in', () => {
+describe('the journey: play first, submit afterwards', () => {
   /** A fresh visitor: cleared storage, opening sequence skipped, nothing else pressed. */
-  async function openHome() {
+  async function openHome(routes: Record<string, unknown> = {}) {
+    const fetchMock = stubApi({
+      '/api/player-session': SESSION_REJECTED,
+      '/api/start-attempt': {
+        ok: true,
+        attributed: false,
+        session: { sessionId: SESSION_ID, seed: 4242, expiresAt: '' },
+      },
+      ...routes,
+    });
     const user = userEvent.setup();
     render(<App />);
     await user.click(screen.getByRole('button', { name: copy.opening.skipHint }));
-    return user;
+    return { user, fetchMock };
   }
 
-  /** The form, found the way a person finds it: by its heading, on the page. */
-  function form(): HTMLElement {
-    return screen.getByRole('region', { name: copy.registration.heading });
-  }
-
+  const heading = () => screen.queryByText(copy.registration.heading);
   const LEVEL_1 = () => screen.queryByText(copy.clobTutorial.lines[0].title);
 
-  /* ── it is visible without pressing anything ─────────────────────────────── */
+  /* ── the homepage asks for nothing ───────────────────────────────────────── */
 
-  it('shows PLAYER REGISTRATION to a fresh visitor with no clicks at all', async () => {
-    stubApi({});
+  it('shows no registration form on the homepage', async () => {
     await openHome();
 
-    await waitFor(() => expect(screen.getByText(copy.registration.heading)).toBeVisible());
-    expect(screen.getByText(copy.registration.lede)).toBeVisible();
-    expect(field(form(), copy.registration.nameLabel)).toBeVisible();
-    expect(field(form(), copy.registration.walletLabel)).toBeVisible();
-    expect(field(form(), copy.registration.xPostLabel)).toBeVisible();
-    expect(field(form(), copy.registration.consentLabel)).toBeVisible();
-    expect(
-      screen.getByRole('button', { name: copy.registration.submitHint }),
-    ).toBeVisible();
+    expect(heading()).toBeNull();
+    expect(screen.queryByRole('textbox')).toBeNull();
+    expect(screen.queryByRole('checkbox')).toBeNull();
+    expect(screen.getByRole('button', { name: copy.intro.startHint })).toBeVisible();
+    expect(screen.getByRole('button', { name: copy.leaderboard.openHint })).toBeVisible();
   });
 
-  it('is not a dialog and has nothing to open it', async () => {
-    stubApi({});
-    await openHome();
-    await waitFor(() => expect(screen.getByText(copy.registration.heading)).toBeVisible());
+  it('starts the game for a visitor who has submitted nothing', async () => {
+    const { user, fetchMock } = await openHome();
 
-    // The regression this whole change exists for: the form used to be behind a button.
+    await user.click(screen.getByRole('button', { name: copy.intro.startHint }));
+    await waitFor(() => expect(LEVEL_1()).toBeInTheDocument());
+
+    // An anonymous session: the request carried no credentials at all.
+    const call = fetchMock.mock.calls.find(([url]) => url === '/api/start-attempt')!;
+    expect(JSON.parse(String((call[1] as RequestInit).body))).toEqual({});
+  });
+
+  it('does not start a game the server cannot seed', async () => {
+    const { user } = await openHome({
+      '/api/start-attempt': { ok: false, code: 'database_unavailable' },
+    });
+
+    await user.click(screen.getByRole('button', { name: copy.intro.startHint }));
+
+    await waitFor(() => expect(screen.getByText(copy.intro.startError)).toBeInTheDocument());
+    expect(LEVEL_1()).toBeNull();
+  });
+
+  /* ── the result card comes first ─────────────────────────────────────────── */
+
+  it('shows the result card, and the form below it', async () => {
+    renderResults({ claim: UNCLAIMED });
+
+    const card = screen.getByRole('region', { name: copy.share.heading });
+    const form = screen.getByRole('region', { name: copy.registration.heading });
+
+    expect(card).toBeInTheDocument();
+    expect(form).toBeInTheDocument();
+    // Node.DOCUMENT_POSITION_FOLLOWING — the form comes after the card, never over it.
+    expect(card.compareDocumentPosition(form) & 4).toBeTruthy();
+    // And it is a section of the page, not something laid over the result.
     expect(screen.queryByRole('dialog')).toBeNull();
-    expect(screen.queryByRole('button', { name: /start game/i })).toBeNull();
-    expect(screen.queryByText(/^start game$/i)).toBeNull();
   });
 
-  it('keeps the homepage in the required order', async () => {
-    stubApi({});
-    await openHome();
-    await waitFor(() => expect(screen.getByText(copy.registration.heading)).toBeVisible());
+  it('keeps the download and share controls above the form', async () => {
+    renderResults({ claim: UNCLAIMED });
 
-    const order = [
-      screen.getByText(copy.brands.heroKicker),
-      screen.getByText(copy.intro.heading),
-      screen.getByText(copy.intro.bullets[0]),
-      screen.getByText(copy.registration.heading),
-      screen.getByRole('button', { name: copy.registration.submitHint }),
-    ];
-
-    for (let i = 1; i < order.length; i += 1) {
-      // Node.DOCUMENT_POSITION_FOLLOWING — each element comes after the one before it.
-      expect(order[i - 1].compareDocumentPosition(order[i]) & 4).toBeTruthy();
-    }
+    const share = screen.getByRole('button', { name: copy.share.downloadHint });
+    const form = screen.getByRole('region', { name: copy.registration.heading });
+    // The player needs the card in hand before they can make the post the form asks for.
+    expect(share.compareDocumentPosition(form) & 4).toBeTruthy();
+    expect(screen.getByText(copy.registration.scrollHint)).toBeInTheDocument();
   });
 
-  it('does not steal focus on load — the page is readable before it is fillable', async () => {
-    stubApi({});
-    await openHome();
-    await waitFor(() => expect(screen.getByText(copy.registration.heading)).toBeVisible());
-    expect(document.activeElement).not.toBe(field(form(), copy.registration.nameLabel));
+  it('shows the score, the breakdown and the reaction times with the card', async () => {
+    renderResults({ claim: UNCLAIMED });
+
+    expect(screen.getAllByText(copy.results.stats.knowledge).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(copy.results.stats.knowledge).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(copy.results.stats.fastestReaction).length).toBeGreaterThan(0);
   });
 
   /* ── every field is required ─────────────────────────────────────────────── */
 
-  it('marks all four fields required, and reports all four at once', async () => {
-    stubApi({});
-    const user = await openHome();
-    await waitFor(() => expect(screen.getByText(copy.registration.heading)).toBeVisible());
+  it('asks for exactly four things, all of them required', async () => {
+    renderResults({ claim: UNCLAIMED });
+    const form = screen.getByRole('region', { name: copy.registration.heading });
 
     for (const label of [
       copy.registration.nameLabel,
@@ -177,9 +306,16 @@ describe('registration is on the homepage, and it is the only way in', () => {
       copy.registration.xPostLabel,
       copy.registration.consentLabel,
     ]) {
-      expect(field(form(), label)).toBeRequired();
+      expect(field(form, label)).toBeRequired();
     }
-    expect(within(form()).getAllByText(copy.registration.requiredIndicator)).toHaveLength(4);
+    expect(within(form).getAllByText(copy.registration.requiredIndicator)).toHaveLength(4);
+    expect(within(form).getAllByRole('textbox')).toHaveLength(3);
+    expect(within(form).getAllByRole('checkbox')).toHaveLength(1);
+  });
+
+  it('reports all four at once and sends nothing', async () => {
+    const { user, fetchMock } = renderResults({ claim: UNCLAIMED });
+    const form = screen.getByRole('region', { name: copy.registration.heading });
 
     await user.click(screen.getByRole('button', { name: copy.registration.submitHint }));
 
@@ -189,296 +325,256 @@ describe('registration is on the homepage, and it is the only way in', () => {
       copy.registration.xPostLabel,
       copy.registration.consentLabel,
     ]) {
-      expect(field(form(), label)).toHaveAttribute('aria-invalid', 'true');
+      expect(field(form, label)).toHaveAttribute('aria-invalid', 'true');
     }
-    expect(field(form(), copy.registration.nameLabel)).toHaveFocus();
-    expect(LEVEL_1()).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalledWith('/api/claim-score', expect.anything());
   });
 
   it.each([
     ['player name', 'playerName'],
     ['wallet address', 'fogoWalletAddress'],
     ['X quote post link', 'xQuotePostUrl'],
-  ] as const)('refuses to start the game with no %s', async (_label, omit) => {
-    const fetchMock = stubApi({});
-    const user = await openHome();
-    await waitFor(() => expect(screen.getByText(copy.registration.heading)).toBeVisible());
+  ] as const)('refuses to submit with no %s', async (_label, omit) => {
+    const { user, fetchMock } = renderResults({ claim: UNCLAIMED });
+    const form = screen.getByRole('region', { name: copy.registration.heading });
 
-    const values = {
-      playerName: 'Ada',
+    const values: Record<string, string> = {
+      playerName: 'Ada Lovelace',
       fogoWalletAddress: WALLET,
       xQuotePostUrl: POST_URL,
     };
     for (const [name, value] of Object.entries(values)) {
       if (name === omit) continue;
-      await user.type(form().querySelector(`input[name="${name}"]`)!, value);
+      await user.type(form.querySelector(`input[name="${name}"]`)!, value);
     }
-    await user.click(field(form(), copy.registration.consentLabel));
+    await user.click(field(form, copy.registration.consentLabel));
     await user.click(screen.getByRole('button', { name: copy.registration.submitHint }));
 
-    expect(form().querySelector(`input[name="${omit}"]`)).toHaveAttribute('aria-invalid', 'true');
-    expect(fetchMock).not.toHaveBeenCalledWith('/api/register-player', expect.anything());
-    expect(LEVEL_1()).toBeNull();
+    expect(form.querySelector(`input[name="${omit}"]`)).toHaveAttribute('aria-invalid', 'true');
+    expect(fetchMock).not.toHaveBeenCalledWith('/api/claim-score', expect.anything());
   });
 
-  it('refuses to start the game without consent', async () => {
-    const fetchMock = stubApi({});
-    const user = await openHome();
-    await waitFor(() => expect(screen.getByText(copy.registration.heading)).toBeVisible());
+  it('keeps the X quote post link mandatory, and refuses a profile link', async () => {
+    const { user, fetchMock } = renderResults({ claim: UNCLAIMED });
+    const form = screen.getByRole('region', { name: copy.registration.heading });
 
-    await user.type(field(form(), copy.registration.nameLabel), 'Ada');
-    await user.type(field(form(), copy.registration.walletLabel), WALLET);
-    await user.type(field(form(), copy.registration.xPostLabel), POST_URL);
-    await user.click(screen.getByRole('button', { name: copy.registration.submitHint }));
+    await fillForm(user, form, { xQuotePostUrl: 'https://x.com/adalovelace' });
 
-    expect(field(form(), copy.registration.consentLabel)).toHaveAttribute('aria-invalid', 'true');
-    expect(fetchMock).not.toHaveBeenCalledWith('/api/register-player', expect.anything());
-    expect(LEVEL_1()).toBeNull();
-  });
-
-  it('refuses a profile link in place of a post link', async () => {
-    const fetchMock = stubApi({});
-    const user = await openHome();
-    await waitFor(() => expect(screen.getByText(copy.registration.heading)).toBeVisible());
-
-    await user.type(field(form(), copy.registration.nameLabel), 'Ada');
-    await user.type(field(form(), copy.registration.walletLabel), WALLET);
-    await user.type(field(form(), copy.registration.xPostLabel), 'https://x.com/adalovelace');
-    await user.click(field(form(), copy.registration.consentLabel));
-    await user.click(screen.getByRole('button', { name: copy.registration.submitHint }));
-
-    const post = field(form(), copy.registration.xPostLabel);
+    const post = field(form, copy.registration.xPostLabel);
     expect(post).toHaveAttribute('aria-invalid', 'true');
     expect(post).toHaveFocus();
-    expect(fetchMock).not.toHaveBeenCalledWith('/api/register-player', expect.anything());
-    expect(LEVEL_1()).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalledWith('/api/claim-score', expect.anything());
   });
 
-  it('refuses an invalid wallet without contacting the server', async () => {
-    const fetchMock = stubApi({});
-    const user = await openHome();
-    await waitFor(() => expect(screen.getByText(copy.registration.heading)).toBeVisible());
+  /* ── the claim itself ────────────────────────────────────────────────────── */
 
-    await user.type(field(form(), copy.registration.nameLabel), 'Ada');
-    await user.type(field(form(), copy.registration.walletLabel), 'not-a-wallet');
-    await user.type(field(form(), copy.registration.xPostLabel), POST_URL);
-    await user.click(field(form(), copy.registration.consentLabel));
-    await user.click(screen.getByRole('button', { name: copy.registration.submitHint }));
+  it('sends the token and the details — and no score', async () => {
+    const { user, fetchMock } = renderResults({ claim: UNCLAIMED, routes: { '/api/claim-score': CLAIMED } });
+    const form = screen.getByRole('region', { name: copy.registration.heading });
 
-    expect(field(form(), copy.registration.walletLabel)).toHaveAttribute('aria-invalid', 'true');
-    expect(fetchMock).not.toHaveBeenCalledWith('/api/register-player', expect.anything());
-    expect(LEVEL_1()).toBeNull();
+    await fillForm(user, form);
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith('/api/claim-score', expect.anything()),
+    );
+    const call = fetchMock.mock.calls.find(([url]) => url === '/api/claim-score')!;
+    const sent = JSON.parse(String((call[1] as RequestInit).body));
+
+    expect(sent.claimToken).toBe(CLAIM_TOKEN);
+    expect(sent.sessionId).toBe(SESSION_ID);
+    expect(Object.keys(sent).sort()).toEqual([
+      'claimToken',
+      'consent',
+      'fogoWalletAddress',
+      'playerName',
+      'sessionId',
+      'xQuotePostUrl',
+    ]);
+    // The property this whole design rests on: no score leaves the browser.
+    for (const forbidden of ['score', 'points', 'total', 'rank', 'best']) {
+      expect(JSON.stringify(sent).toLowerCase()).not.toContain(forbidden);
+    }
   });
 
-  /* ── the server can refuse too ───────────────────────────────────────────── */
+  it('shows SCORE ADDED with the score, best, rank and masked wallet', async () => {
+    const { user } = renderResults({ claim: UNCLAIMED, routes: { '/api/claim-score': CLAIMED } });
+    const form = screen.getByRole('region', { name: copy.registration.heading });
 
-  it('shows the duplicate-post message on its own field and does not start', async () => {
-    stubApi({
-      '/api/register-player': {
-        ok: false,
-        code: 'x_post_already_registered',
-        fields: { xQuotePostUrl: REGISTRATION_MESSAGES.xPostDuplicate },
+    await fillForm(user, form);
+
+    await waitFor(() => expect(screen.getByText(copy.scoreAdded.heading)).toBeVisible());
+    expect(screen.queryByRole('region', { name: copy.registration.heading })).toBeNull();
+
+    const panel = screen.getByRole('region', { name: copy.scoreAdded.heading });
+    // Final score and personal best are both 78 on a first claim, which is the expected pair.
+    expect(within(panel).getAllByText('78')).toHaveLength(2);
+    expect(within(panel).getByText('#2')).toBeVisible();
+    expect(within(panel).getByText('8HvP…9xQa')).toBeVisible();
+    // The result card is still on screen.
+    expect(screen.getByRole('region', { name: copy.share.heading })).toBeInTheDocument();
+  });
+
+  it('never renders the complete wallet after a successful claim', async () => {
+    const { user } = renderResults({ claim: UNCLAIMED, routes: { '/api/claim-score': CLAIMED } });
+    await fillForm(user, screen.getByRole('region', { name: copy.registration.heading }));
+
+    await waitFor(() => expect(screen.getByText(copy.scoreAdded.heading)).toBeVisible());
+    expect(document.body.innerHTML).not.toContain(WALLET);
+  });
+
+  /* ── failure keeps everything ────────────────────────────────────────────── */
+
+  it('keeps the result and every typed value when the claim fails', async () => {
+    const { user } = renderResults({
+      claim: UNCLAIMED,
+      routes: { '/api/claim-score': { ok: false, code: 'database_unavailable' } },
+    });
+    const form = screen.getByRole('region', { name: copy.registration.heading });
+
+    await fillForm(user, form);
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(copy.registration.saveFailed),
+    );
+    expect(field(form, copy.registration.nameLabel)).toHaveValue('Ada Lovelace');
+    expect(field(form, copy.registration.walletLabel)).toHaveValue(WALLET);
+    expect(field(form, copy.registration.xPostLabel)).toHaveValue(POST_URL);
+    expect(field(form, copy.registration.consentLabel)).toBeChecked();
+    // The result card is untouched, and nothing claims the score was saved.
+    expect(screen.getByRole('region', { name: copy.share.heading })).toBeInTheDocument();
+    expect(screen.queryByText(copy.scoreAdded.heading)).toBeNull();
+  });
+
+  it('shows a duplicate post on its own field, in the required words', async () => {
+    const { user } = renderResults({
+      claim: UNCLAIMED,
+      routes: {
+        '/api/claim-score': {
+          ok: false,
+          code: 'x_post_already_registered',
+          fields: { xQuotePostUrl: REGISTRATION_MESSAGES.xPostDuplicate },
+        },
       },
     });
-    const user = await openHome();
-    await waitFor(() => expect(screen.getByText(copy.registration.heading)).toBeVisible());
-    await fill(user);
+    const form = screen.getByRole('region', { name: copy.registration.heading });
+
+    await fillForm(user, form);
 
     await waitFor(() =>
       expect(
-        within(form()).getByText('This X post has already been used for a player registration.'),
+        within(form).getByText('This X post has already been used for a leaderboard entry.'),
       ).toBeInTheDocument(),
     );
-    expect(field(form(), copy.registration.xPostLabel)).toHaveFocus();
-    expect(LEVEL_1()).toBeNull();
+    expect(field(form, copy.registration.xPostLabel)).toHaveFocus();
   });
 
-  /* ── a database failure shows the form and keeps what was typed ──────────── */
-
-  it('still shows the form when the database is unavailable', async () => {
-    stubApi({ '/api/player-session': { ok: false, code: 'database_unavailable' } });
-    await openHome();
-
-    await waitFor(() => expect(screen.getByText(copy.registration.heading)).toBeVisible());
-    expect(field(form(), copy.registration.nameLabel)).toBeVisible();
-  });
-
-  it('keeps every typed value when registration fails, and never enters Level 1', async () => {
-    stubApi({ '/api/register-player': { ok: false, code: 'database_unavailable' } });
-    const user = await openHome();
-    await waitFor(() => expect(screen.getByText(copy.registration.heading)).toBeVisible());
-    await fill(user);
-
-    await waitFor(() =>
-      expect(screen.getByRole('alert')).toHaveTextContent(copy.registration.unavailable),
-    );
-
-    // Nothing was lost.
-    expect(field(form(), copy.registration.nameLabel)).toHaveValue('Ada Lovelace');
-    expect(field(form(), copy.registration.walletLabel)).toHaveValue(WALLET);
-    expect(field(form(), copy.registration.xPostLabel)).toHaveValue(POST_URL);
-    expect(field(form(), copy.registration.consentLabel)).toBeChecked();
-
-    // And no silent fallback into an unrecorded game.
-    expect(LEVEL_1()).toBeNull();
-    expect(screen.getByRole('alert').textContent).not.toMatch(/postgres|netlify_db|sql|token/i);
-  });
-
-  it('does not enter Level 1 when the session cannot be opened after registering', async () => {
-    stubApi({
-      '/api/register-player': {
-        ok: true,
-        player: REGISTERED_PLAYER,
-        accessToken: 'raw-token-value',
-      },
-      '/api/start-attempt': { ok: false, code: 'database_unavailable' },
+  it('explains an expired result instead of pretending it can still be saved', async () => {
+    const { user } = renderResults({
+      claim: UNCLAIMED,
+      routes: { '/api/claim-score': { ok: false, code: 'result_expired' } },
     });
-    const user = await openHome();
-    await waitFor(() => expect(screen.getByText(copy.registration.heading)).toBeVisible());
-    await fill(user);
 
-    // Registration succeeded, so the welcome panel replaces the form — but the game did not
-    // start, because a playthrough with no seed cannot be scored.
-    await waitFor(() => expect(screen.getByText(copy.player.startError)).toBeInTheDocument());
-    expect(LEVEL_1()).toBeNull();
+    await fillForm(user, screen.getByRole('region', { name: copy.registration.heading }));
+
+    await waitFor(() => expect(screen.getByText(copy.registration.expired)).toBeVisible());
+    expect(screen.queryByRole('region', { name: copy.registration.heading })).toBeNull();
+    expect(screen.getByRole('region', { name: copy.share.heading })).toBeInTheDocument();
   });
 
-  /* ── the happy path ──────────────────────────────────────────────────────── */
+  /* ── the recovery token ──────────────────────────────────────────────────── */
 
-  it('registers, opens a session, and only then enters Level 1', async () => {
-    const fetchMock = stubApi({
-      '/api/register-player': {
-        ok: true,
-        player: REGISTERED_PLAYER,
-        accessToken: 'raw-token-value',
-      },
-      '/api/start-attempt': {
-        ok: true,
-        session: { sessionId: '22222222-2222-4222-8222-222222222222', seed: 4242, expiresAt: '' },
-      },
-    });
-    const user = await openHome();
-    await waitFor(() => expect(screen.getByText(copy.registration.heading)).toBeVisible());
-    await fill(user);
-
-    await waitFor(() => expect(LEVEL_1()).toBeInTheDocument());
-
-    const called = fetchMock.mock.calls.map(([url]) => String(url));
-    // In that order: register, then session, then the level.
-    expect(called.indexOf('/api/register-player')).toBeGreaterThanOrEqual(0);
-    expect(called.indexOf('/api/start-attempt')).toBeGreaterThan(
-      called.indexOf('/api/register-player'),
-    );
-
-    const stored = JSON.parse(window.localStorage.getItem(PLAYER_CREDENTIALS_KEY) ?? '{}');
-    expect(stored).toEqual({ playerId: PLAYER_ID, accessToken: 'raw-token-value' });
-    // Neither the wallet nor the post link is part of the credential.
-    const raw = window.localStorage.getItem(PLAYER_CREDENTIALS_KEY);
-    expect(raw).not.toContain(WALLET);
-    expect(raw).not.toContain(POST_URL);
-  });
-
-  /* ── a stored value is not a session ─────────────────────────────────────── */
-
-  it('shows the form when localStorage holds a value the server rejects', async () => {
+  it('stores only opaque values, and no score, for the unclaimed result', () => {
     window.localStorage.setItem(
-      PLAYER_CREDENTIALS_KEY,
-      JSON.stringify({ playerId: PLAYER_ID, accessToken: 'forged' }),
+      PENDING_RESULT_KEY,
+      JSON.stringify({
+        sessionId: SESSION_ID,
+        claimToken: CLAIM_TOKEN,
+        expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+      }),
     );
-    stubApi({ '/api/player-session': { ok: false, code: 'credentials_invalid' } });
-    await openHome();
 
-    await waitFor(() => expect(screen.getByText(copy.registration.heading)).toBeVisible());
-    // The rejected credentials are gone rather than left to fail again.
-    expect(window.localStorage.getItem(PLAYER_CREDENTIALS_KEY)).toBeNull();
-    expect(LEVEL_1()).toBeNull();
+    const stored = readPendingResult()!;
+    expect(Object.keys(stored).sort()).toEqual(['claimToken', 'expiresAt', 'sessionId']);
+
+    const raw = window.localStorage.getItem(PENDING_RESULT_KEY)!;
+    expect(raw).not.toContain(WALLET);
+    expect(raw).not.toMatch(/score|rank|best/i);
   });
 
-  it.each([
-    ['corrupted JSON', 'not json at all'],
-    ['a value of the wrong shape', '{"playerId":42}'],
-    ['an empty token', '{"playerId":"x","accessToken":""}'],
-  ])('shows the form when localStorage holds %s', async (_label, stored) => {
-    window.localStorage.setItem(PLAYER_CREDENTIALS_KEY, stored);
-    stubApi({});
-    await openHome();
+  it('forgets a result whose token has run out', () => {
+    window.localStorage.setItem(
+      PENDING_RESULT_KEY,
+      JSON.stringify({
+        sessionId: SESSION_ID,
+        claimToken: CLAIM_TOKEN,
+        expiresAt: new Date(Date.now() - 1_000).toISOString(),
+      }),
+    );
 
-    await waitFor(() => expect(screen.getByText(copy.registration.heading)).toBeVisible());
-    expect(LEVEL_1()).toBeNull();
+    expect(readPendingResult()).toBeNull();
+    expect(window.localStorage.getItem(PENDING_RESULT_KEY)).toBeNull();
   });
 
   /* ── the returning player ────────────────────────────────────────────────── */
 
-  it('greets a player the server recognises, in place of the form', async () => {
+  it('names a recognised player on the homepage without asking anything', async () => {
     window.localStorage.setItem(
       PLAYER_CREDENTIALS_KEY,
       JSON.stringify({ playerId: PLAYER_ID, accessToken: 'raw-token-value' }),
     );
-    stubApi({
-      '/api/player-session': {
-        ok: true,
-        player: { ...REGISTERED_PLAYER, bestScore: 78, attemptsCompleted: 3 },
-        rank: 2,
-      },
-    });
-    await openHome();
+    await openHome({ '/api/player-session': SESSION_OK });
 
     await waitFor(() =>
-      expect(screen.getByText('Welcome back, Ada Lovelace')).toBeInTheDocument(),
+      expect(screen.getByText('Playing as Ada Lovelace')).toBeInTheDocument(),
     );
-    expect(screen.getByText('78')).toBeInTheDocument();
-    expect(screen.getByText('#2')).toBeInTheDocument();
-
-    // The form is not on screen, and the three buttons are.
-    expect(screen.queryByText(copy.registration.heading)).toBeNull();
-    expect(screen.getByRole('button', { name: copy.player.playHint })).toBeVisible();
-    expect(screen.getByRole('button', { name: copy.leaderboard.openHint })).toBeVisible();
+    expect(heading()).toBeNull();
+    expect(screen.getByRole('button', { name: copy.intro.startHint })).toBeVisible();
     expect(screen.getByRole('button', { name: copy.player.changeHint })).toBeVisible();
-    expect(LEVEL_1()).toBeNull();
   });
 
-  it('brings the form back when the player changes', async () => {
+  it('saves a recognised player’s replay without showing the form again', async () => {
+    renderResults({
+      claim: { status: 'none', result: null, errorCode: null, fields: null },
+      status: 'registered',
+      save: {
+        status: 'saved',
+        errorCode: null,
+        result: {
+          finalScore: 78,
+          attemptNumber: 4,
+          personalBest: 92,
+          isNewPersonalBest: false,
+          rank: 3,
+          alreadyRecorded: false,
+        },
+      },
+    });
+
+    // Saved without a form: the session already belonged to them.
+    expect(screen.getByText(copy.scoreAdded.autoSaved)).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: copy.registration.heading })).toBeNull();
+    expect(screen.getByText('92')).toBeInTheDocument();
+    expect(screen.getByText('#3')).toBeInTheDocument();
+  });
+
+  it('starts the next game anonymously after CHANGE PLAYER', async () => {
     window.localStorage.setItem(
       PLAYER_CREDENTIALS_KEY,
       JSON.stringify({ playerId: PLAYER_ID, accessToken: 'raw-token-value' }),
     );
-    stubApi({ '/api/player-session': { ok: true, player: REGISTERED_PLAYER, rank: null } });
-    const user = await openHome();
+    const { user } = await openHome({ '/api/player-session': SESSION_OK });
 
     await waitFor(() =>
-      expect(screen.getByText('Welcome back, Ada Lovelace')).toBeInTheDocument(),
+      expect(screen.getByText('Playing as Ada Lovelace')).toBeInTheDocument(),
     );
     await user.click(screen.getByRole('button', { name: copy.player.changeHint }));
 
-    await waitFor(() => expect(screen.getByText(copy.registration.heading)).toBeVisible());
-    expect(screen.queryByText('Welcome back, Ada Lovelace')).toBeNull();
-    expect(window.localStorage.getItem(PLAYER_CREDENTIALS_KEY)).toBeNull();
-    expect(LEVEL_1()).toBeNull();
-  });
-
-  it('opens a fresh session before a recognised player replays', async () => {
-    window.localStorage.setItem(
-      PLAYER_CREDENTIALS_KEY,
-      JSON.stringify({ playerId: PLAYER_ID, accessToken: 'raw-token-value' }),
-    );
-    const fetchMock = stubApi({
-      '/api/player-session': { ok: true, player: REGISTERED_PLAYER, rank: null },
-      '/api/start-attempt': {
-        ok: true,
-        session: { sessionId: '22222222-2222-4222-8222-222222222222', seed: 4242, expiresAt: '' },
-      },
-    });
-    const user = await openHome();
-
     await waitFor(() =>
-      expect(screen.getByText('Welcome back, Ada Lovelace')).toBeInTheDocument(),
+      expect(screen.queryByText('Playing as Ada Lovelace')).toBeNull(),
     );
-    expect(fetchMock.mock.calls.filter(([u]) => u === '/api/start-attempt')).toHaveLength(0);
-
-    await user.click(screen.getByRole('button', { name: copy.player.playHint }));
-
-    await waitFor(() => expect(LEVEL_1()).toBeInTheDocument());
-    expect(fetchMock.mock.calls.filter(([u]) => u === '/api/start-attempt')).toHaveLength(1);
+    expect(window.localStorage.getItem(PLAYER_CREDENTIALS_KEY)).toBeNull();
+    expect(heading()).toBeNull();
+    expect(screen.getByRole('button', { name: copy.intro.startHint })).toBeVisible();
   });
 });
 

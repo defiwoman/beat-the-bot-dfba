@@ -40,6 +40,8 @@ const POST_ID = '1934567890123456789';
 const POST_URL = `https://x.com/adalovelace/status/${POST_ID}`;
 const PLAYER_ID = '11111111-1111-4111-8111-111111111111';
 
+const ATTEMPT_ID = '33333333-3333-4333-8333-333333333333';
+
 const NOTIFICATION = {
   playerId: PLAYER_ID,
   playerName: 'Ada Lovelace',
@@ -47,6 +49,10 @@ const NOTIFICATION = {
   xQuotePostUrl: POST_URL,
   xQuotePostId: POST_ID,
   registeredAt: '2026-09-04T10:00:00.000Z',
+  finalScore: 78,
+  personalBest: 78,
+  leaderboardRank: 2,
+  attemptId: ATTEMPT_ID,
 };
 
 /**
@@ -103,7 +109,7 @@ describe('the notification payload', () => {
     expect(notificationBody(NOTIFICATION).get('form-name')).toBe('beat-the-bot-registration');
   });
 
-  it('carries exactly the six required fields, under the required names', () => {
+  it('carries exactly the ten required fields, under the required names', () => {
     const body = notificationBody(NOTIFICATION);
 
     expect([...NOTIFICATION_FIELDS]).toEqual([
@@ -111,7 +117,11 @@ describe('the notification payload', () => {
       'fogo_wallet_address',
       'x_quote_post_url',
       'x_quote_post_id',
+      'final_score',
+      'personal_best',
+      'leaderboard_rank',
       'player_id',
+      'attempt_id',
       'registered_at',
     ]);
 
@@ -119,8 +129,21 @@ describe('the notification payload', () => {
     expect(body.get('fogo_wallet_address')).toBe(WALLET);
     expect(body.get('x_quote_post_url')).toBe(POST_URL);
     expect(body.get('x_quote_post_id')).toBe(POST_ID);
+    expect(body.get('final_score')).toBe('78');
+    expect(body.get('personal_best')).toBe('78');
+    expect(body.get('leaderboard_rank')).toBe('2');
     expect(body.get('player_id')).toBe(PLAYER_ID);
+    expect(body.get('attempt_id')).toBe(ATTEMPT_ID);
     expect(body.get('registered_at')).toBe('2026-09-04T10:00:00.000Z');
+  });
+
+  /**
+   * The score in the notification is the server's, not the browser's. Nothing in the claim
+   * request carries a score, so there is no number here a player could have chosen.
+   */
+  it('carries the verified score, and says so plainly when there is no rank', () => {
+    expect(notificationBody({ ...NOTIFICATION, leaderboardRank: null }).get('leaderboard_rank'))
+      .toBe('unranked');
   });
 
   /** The wallet is the one thing sent unmasked, because the owner's copy is the full record. */

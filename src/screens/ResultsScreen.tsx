@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { RotateCcw, Trophy, Users } from 'lucide-react';
+import { ArrowDown, RotateCcw, Trophy, Users } from 'lucide-react';
 import { BrandLockup } from '@/components/BrandBar';
 import { Button } from '@/components/Button';
-import { ScoreSavePanel } from '@/components/ScoreSavePanel';
+import { LeaderboardSubmission } from '@/components/LeaderboardSubmission';
 import { HowPrismWorks } from '@/components/HowPrismWorks';
 import { Screen } from '@/components/Screen';
 import { ShareActions } from '@/components/ShareActions';
 import { ShareCard } from '@/components/ShareCard';
 import { copy } from '@/content/copy';
+import { usePlayer } from '@/state/usePlayer';
 import { formatMs } from '@/lib/format';
 import { marketQuality } from '@/lib/marketMaker';
 import { isNewRecord, NO_RECORDS, recordScore } from '@/lib/highScore';
@@ -193,6 +194,10 @@ export function ResultsScreen({
     [makerHealth, satisfaction, score, stats],
   );
 
+  /** The hint is only honest when the form below it is going to render. */
+  const { claim: claimState } = usePlayer();
+  const showSubmission = claimState.status === 'unclaimed' || claimState.status === 'claiming';
+
   return (
     <Screen label={copy.results.heading}>
       <div>
@@ -200,11 +205,24 @@ export function ResultsScreen({
         <h1 className="title">{copy.results.heading}</h1>
       </div>
 
-      <ScoreSavePanel />
+      {/*
+        The card comes first, and nothing covers it.
 
+        The leaderboard form used to be a gate before the game; it is now a section at the
+        bottom of this screen. The order matters for a practical reason as well as a courteous
+        one: the form asks for a link to an X post about this result, so the download and share
+        controls have to come before it — the player needs the card in hand to make the post.
+      */}
       <ShareCard ref={cardRef} score={score} logoSources={sources} />
 
       <ShareActions score={score} cardRef={cardRef} logosReady={ready} />
+
+      {/* A quiet pointer, so the form is discoverable without scrolling the card away. */}
+      {showSubmission ? (
+        <p className="faint result__savehint">
+          <ArrowDown size={13} aria-hidden="true" /> {copy.registration.scrollHint}
+        </p>
+      ) : null}
 
       <section className="panel panel--accent" aria-label={stats.knowledge}>
         <div className="knowledge">
@@ -271,6 +289,14 @@ export function ResultsScreen({
       <p className="tiny" style={{ textAlign: 'center' }}>
         {copy.meta.campaign}
       </p>
+
+      {/*
+        A deliberate separator and a full block of space: this is the next step, not part of
+        the scorecard.
+      */}
+      <div className="divider divider--section" />
+
+      <LeaderboardSubmission />
 
       <div className="screen__actions">
         <Button

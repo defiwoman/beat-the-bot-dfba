@@ -191,12 +191,19 @@ export async function notifiablePlayer(
   x_quote_post_id: string | null;
   created_at: string;
   registration_notification_status: string;
+  best_score: number | null;
+  best_attempt_id: string | null;
+  attempt_score: number | null;
 } | null> {
   const rows = (await sql.unsafe(
-    `SELECT id::text AS player_id, player_name, fogo_wallet_address,
-            x_quote_post_url, x_quote_post_id, created_at,
-            registration_notification_status
-     FROM players WHERE id = $1`,
+    `SELECT p.id::text AS player_id, p.player_name, p.fogo_wallet_address,
+            p.x_quote_post_url, p.x_quote_post_id, p.created_at,
+            p.registration_notification_status,
+            p.best_score::int, p.best_attempt_id::text,
+            COALESCE(a.final_score, p.best_score)::int AS attempt_score
+     FROM players p
+     LEFT JOIN attempts a ON a.id = p.best_attempt_id
+     WHERE p.id = $1`,
     [playerId],
     { rowMode: 'object' },
   )) as unknown as {
@@ -207,6 +214,9 @@ export async function notifiablePlayer(
     x_quote_post_id: string | null;
     created_at: string;
     registration_notification_status: string;
+    best_score: number | null;
+    best_attempt_id: string | null;
+    attempt_score: number | null;
   }[];
 
   return rows[0] ?? null;

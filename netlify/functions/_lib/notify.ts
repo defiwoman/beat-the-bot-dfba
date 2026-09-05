@@ -19,8 +19,14 @@
  *
  * ── What is sent ──────────────────────────────────────────────────────────────
  *
- * Six fields: the player's name, their complete wallet address, the canonical post URL, the
- * post id, the internal player id and the registration timestamp.
+ * Ten fields: the player's name, their complete wallet address, the canonical post URL, the
+ * post id, the verified final score, the personal best, the leaderboard rank, the internal
+ * player id, the attempt id and the registration timestamp.
+ *
+ * The score is in there because registration now happens *after* the game — a new player and
+ * their first ranked result arrive together, so the notification can carry both. Every number
+ * in it is the server's own: the score was computed by replaying the player's choices, and the
+ * rank by the same query the public board uses.
  *
  * What is deliberately not sent: the access token, its hash, the database URL, the admin
  * token, the session seed, or anything else that would be a credential in someone's inbox.
@@ -51,7 +57,11 @@ export const NOTIFICATION_FIELDS = [
   'fogo_wallet_address',
   'x_quote_post_url',
   'x_quote_post_id',
+  'final_score',
+  'personal_best',
+  'leaderboard_rank',
   'player_id',
+  'attempt_id',
   'registered_at',
 ] as const;
 
@@ -64,6 +74,12 @@ export interface RegistrationNotification {
   xQuotePostUrl: string;
   xQuotePostId: string;
   registeredAt: string;
+  /** The server's own score for the game this registration claimed. */
+  finalScore: number;
+  personalBest: number;
+  /** Null when the attempt was recorded but is not eligible to rank. */
+  leaderboardRank: number | null;
+  attemptId: string;
 }
 
 /** A form post is small and the caller is already holding a player's HTTP request open. */
@@ -99,7 +115,15 @@ export function notificationBody(notification: RegistrationNotification): URLSea
   body.set('fogo_wallet_address', notification.fogoWalletAddress);
   body.set('x_quote_post_url', notification.xQuotePostUrl);
   body.set('x_quote_post_id', notification.xQuotePostId);
+  body.set('final_score', String(notification.finalScore));
+  body.set('personal_best', String(notification.personalBest));
+  // An unranked attempt says so in words rather than sending an empty cell.
+  body.set(
+    'leaderboard_rank',
+    notification.leaderboardRank === null ? 'unranked' : String(notification.leaderboardRank),
+  );
   body.set('player_id', notification.playerId);
+  body.set('attempt_id', notification.attemptId);
   body.set('registered_at', notification.registeredAt);
   // Sent empty on purpose: a real submission leaves the honeypot alone, and Netlify needs the
   // field present to compare against.

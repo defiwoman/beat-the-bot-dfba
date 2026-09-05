@@ -33,11 +33,35 @@ export interface LeaderboardEntry {
 
 export interface CompletionResult {
   finalScore: number;
-  attemptNumber: number;
-  personalBest: number;
+  /** Null on an anonymous result: it is not an attempt until somebody claims it. */
+  attemptNumber: number | null;
+  personalBest: number | null;
   isNewPersonalBest: boolean;
   rank: number | null;
   alreadyRecorded: boolean;
+  /**
+   * Present only for an anonymous result, and only once.
+   *
+   * Holding it is what lets this browser turn the score into a leaderboard entry later. The
+   * score itself is not in here and never travels from the browser — the server keeps its own.
+   */
+  claim?: { claimToken: string; expiresAt: string };
+}
+
+/** What a successful claim returns: who the score now belongs to, and where it ranks. */
+export interface ClaimResult {
+  playerName: string;
+  /** Already masked by the server, `8HvP…9xQa`. The full address is not in this payload. */
+  maskedWallet: string;
+  finalScore: number;
+  personalBest: number;
+  isNewPersonalBest: boolean;
+  attemptNumber: number;
+  rank: number | null;
+  alreadyClaimed: boolean;
+  /** Returned only when this claim created the player. Stored as the browser's credential. */
+  accessToken?: string;
+  player?: ApiPlayer;
 }
 
 export type ApiResult<T> =
@@ -84,14 +108,32 @@ async function request<T>(
   }
 }
 
-export function registerPlayer(input: {
+/**
+ * Claim a finished anonymous game, registering the player in the same request.
+ *
+ * Note what is and is not sent. The registration details and the claim token go up; **no score
+ * does**, and there is no field one could be hidden in. The server reads the number it computed
+ * when the game ended.
+ *
+ * Credentials are included when this browser already has them, so a returning player's replay
+ * attaches to the player they already are instead of creating a second row.
+ */
+export function claimScore(input: {
+  sessionId: string;
+  claimToken: string;
   playerName: string;
   fogoWalletAddress: string;
   /** Sent as typed. The server canonicalizes it and stores its own version. */
   xQuotePostUrl: string;
   consent: boolean;
-}): Promise<ApiResult<{ player: ApiPlayer; accessToken: string }>> {
-  return request('/api/register-player', { method: 'POST', body: JSON.stringify(input) });
+  playerId?: string;
+  accessToken?: string;
+}): Promise<ApiResult<ClaimResult>> {
+  return request('/api/claim-score', {
+    method: 'POST',
+    body: JSON.stringify(input),
+    timeoutMs: 15_000,
+  });
 }
 
 export function validateSession(credentials: {
@@ -101,11 +143,25 @@ export function validateSession(credentials: {
   return request('/api/player-session', { method: 'POST', body: JSON.stringify(credentials) });
 }
 
-export function startAttempt(credentials: {
-  playerId: string;
-  accessToken: string;
-}): Promise<ApiResult<{ session: { sessionId: string; seed: number; expiresAt: string } }>> {
-  return request('/api/start-attempt', { method: 'POST', body: JSON.stringify(credentials) });
+/**
+ * Open a game session.
+ *
+ * Credentials are optional: a first-time visitor has none, and gets an anonymous session whose
+ * result they can claim afterwards. The seed comes back either way, because scoring does not
+ * depend on knowing who is playing.
+ */
+export function startAttempt(
+  credentials: { playerId: string; accessToken: string } | null,
+): Promise<
+  ApiResult<{
+    session: { sessionId: string; seed: number; expiresAt: string };
+    attributed: boolean;
+  }>
+> {
+  return request('/api/start-attempt', {
+    method: 'POST',
+    body: JSON.stringify(credentials ?? {}),
+  });
 }
 
 /**
@@ -115,8 +171,8 @@ export function startAttempt(credentials: {
  * score field — the server derives the score and sends it back.
  */
 export function completeAttempt(input: {
-  playerId: string;
-  accessToken: string;
+  playerId?: string;
+  accessToken?: string;
   sessionId: string;
   transcript: AttemptTranscript;
 }): Promise<ApiResult<CompletionResult>> {

@@ -11,6 +11,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   accessTokenMatches,
+  claimTokenMatches,
+  generateClaimToken,
+  hashClaimToken,
   adminSessionValid,
   adminTokenConfigured,
   adminTokenMatches,
@@ -345,5 +348,50 @@ describe('rate limiting', () => {
       if (rateLimit('player', 60, 60 * 60 * 1000).allowed) allowed += 1;
     }
     expect(allowed).toBe(60);
+  });
+});
+
+/* ══════════════════════════════════════════ the one-time score-claim token ══ */
+
+/**
+ * The token that turns an anonymous finished game into a leaderboard entry.
+ *
+ * It is the same primitive as a player's access token — 32 random bytes, stored only as a
+ * SHA-256, compared in constant time — used for a different subject. A player's token says
+ * "I am this person"; a claim token says "I am the person who finished this game", which is
+ * the only claim available to somebody who has not registered yet.
+ */
+describe('score-claim tokens', () => {
+  it('issues a long, unguessable token every time', () => {
+    const tokens = new Set(Array.from({ length: 200 }, () => generateClaimToken()));
+    expect(tokens.size).toBe(200);
+    for (const token of tokens) expect(token.length).toBeGreaterThanOrEqual(43);
+  });
+
+  it('stores only a hash, never the token', () => {
+    const token = generateClaimToken();
+    const hash = hashClaimToken(token);
+
+    expect(hash).toMatch(/^[0-9a-f]{64}$/);
+    expect(hash).not.toContain(token);
+    // Same token, same hash — otherwise a legitimate claim could never be recognised.
+    expect(hashClaimToken(token)).toBe(hash);
+  });
+
+  it('accepts the right token and refuses every other', () => {
+    const token = generateClaimToken();
+    const hash = hashClaimToken(token);
+
+    expect(claimTokenMatches(token, hash)).toBe(true);
+    expect(claimTokenMatches(generateClaimToken(), hash)).toBe(false);
+    expect(claimTokenMatches('', hash)).toBe(false);
+    expect(claimTokenMatches(`${token}x`, hash)).toBe(false);
+    expect(claimTokenMatches(token.slice(0, -1), hash)).toBe(false);
+  });
+
+  /** A claim token and a player's access token are not interchangeable. */
+  it('does not accept a hash of something else', () => {
+    const token = generateClaimToken();
+    expect(claimTokenMatches(token, hashClaimToken(generateClaimToken()))).toBe(false);
   });
 });

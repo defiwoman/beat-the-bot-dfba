@@ -9,6 +9,20 @@
  * same `resolveClobRound` / `resolveDfbaRound` / `resolveMakerEvent` the game runs, calls the
  * same `computeScore`, and stores its own answer.
  *
+ * ── Two endings ───────────────────────────────────────────────────────────────
+ *
+ * ATTRIBUTED — the session already belongs to a player, because the browser presented
+ * credentials when the game started. The attempt is written and the personal best moves, all
+ * in one transaction, exactly as it always did.
+ *
+ * ANONYMOUS — nobody has said who they are. The verified score is stored on the session, a
+ * one-time claim token is minted and returned once, and that is all: no player row, no attempt
+ * row, nothing on the leaderboard. `/api/claim-score` turns it into an attempt if and when
+ * somebody registers for it.
+ *
+ * The score is the server's own in both endings. Which ending applies changes who it belongs
+ * to, never what it is.
+ *
  * Personal-best rules, applied in one transaction with the insert:
  *
  *   higher  → save the attempt, move the personal best and its timestamp
@@ -23,6 +37,7 @@
 import type { Config } from '@netlify/functions';
 import { db, DatabaseUnavailableError, isDatabaseConfigured, withTransaction } from './_lib/db';
 import { errors, guard, json, readJson } from './_lib/http';
+import { generateClaimToken, hashClaimToken } from './_lib/auth';
 import { authenticatePlayer } from './_lib/players';
 import { isUuid } from './_lib/players';
 import { rankForPlayer } from './_lib/ranking';
@@ -53,13 +68,24 @@ const WINDOW_MS = 60 * 60 * 1000;
  */
 const MIN_PLAUSIBLE_DURATION_MS = 15_000;
 
+/**
+ * How long an unclaimed result stays claimable.
+ *
+ * The player has to leave the page to write their X post, so this has to survive a real detour
+ * — and a refresh, and a phone going to sleep. A day is generous without letting abandoned
+ * results accumulate forever.
+ */
+const CLAIM_TTL_MS = 24 * 60 * 60 * 1000;
+
 interface SessionRow {
   id: string;
-  player_id: string;
+  /** Null on an anonymous session — the ordinary case for a first-time visitor. */
+  player_id: string | null;
   seed: string | number;
   started_at: string;
   expires_at: string;
   status: string;
+  final_score: number | null;
 }
 
 interface ExistingAttempt {
@@ -80,16 +106,11 @@ export default guard('POST', async (request: Request) => {
   try {
     const { sql } = db();
 
-    const auth = await authenticatePlayer(sql, input?.playerId, input?.accessToken);
-    if (auth.error) return errors.unauthorized();
-
-    const limit = rateLimit(`complete:${auth.player.id}`, COMPLETIONS_PER_WINDOW, WINDOW_MS);
-    if (!limit.allowed) return errors.rateLimited(limit.retryAfterSeconds);
-
-    /* ── The session must exist, belong to this player, and still be open ───────────── */
+    /* ── The session first: it decides whether credentials are even relevant ────────── */
 
     const sessionRows = (await sql.unsafe(
-      `SELECT id::text, player_id::text, seed::bigint, started_at, expires_at, status
+      `SELECT id::text, player_id::text, seed::bigint, started_at, expires_at, status,
+              final_score::int
        FROM game_sessions WHERE id = $1`,
       [input.sessionId],
       { rowMode: 'object' },
@@ -98,7 +119,55 @@ export default guard('POST', async (request: Request) => {
     if (sessionRows.length === 0) return errors.badRequest('session_unknown');
     const session = sessionRows[0];
 
-    if (session.player_id !== auth.player.id) return errors.unauthorized();
+    /* ── Already finished? Answer with what exists rather than scoring twice ────────── */
+
+    if (session.status === 'completed' || session.status === 'claimed') {
+      /**
+       * An anonymous result that has already been scored. The retry path: the first response
+       * may simply have been lost.
+       *
+       * Checked before credentials are asked for, and deliberately so. A session that has
+       * since been claimed has an owner — but the browser retrying is the anonymous one that
+       * finished the game and has no credentials yet, so demanding them here would answer a
+       * dropped response with a 401.
+       *
+       * The claim token is NOT reissued. It was handed over once; a client that lost it has
+       * lost its chance to claim, which is the price of the token being single-use and
+       * unguessable. `alreadyRecorded` tells the UI to show the score without pretending it
+       * can still be submitted.
+       */
+      return json({
+        ok: true,
+        alreadyRecorded: true,
+        finalScore: Number(session.final_score ?? 0),
+        attemptNumber: null,
+        personalBest: null,
+        isNewPersonalBest: false,
+        rank: null,
+        claimed: session.status === 'claimed',
+      });
+    }
+
+    /**
+     * An attributed session must be completed by the player it belongs to. An anonymous one
+     * has no owner to check against — holding its id is the whole claim, and the id is a v4
+     * uuid the server chose, so guessing one is not a practical attack.
+     */
+    let player: Awaited<ReturnType<typeof authenticatePlayer>>['player'] = null;
+
+    if (session.player_id !== null) {
+      const auth = await authenticatePlayer(sql, input?.playerId, input?.accessToken);
+      if (auth.error) return errors.unauthorized();
+      if (session.player_id !== auth.player.id) return errors.unauthorized();
+      player = auth.player;
+    }
+
+    const limit = rateLimit(
+      player ? `complete:${player.id}` : `complete-anon:${session.id}`,
+      COMPLETIONS_PER_WINDOW,
+      WINDOW_MS,
+    );
+    if (!limit.allowed) return errors.rateLimited(limit.retryAfterSeconds);
 
     if (session.status === 'consumed') {
       /**
@@ -115,13 +184,13 @@ export default guard('POST', async (request: Request) => {
 
       if (existing.length === 0) return errors.badRequest('session_already_used');
 
-      const rank = await rankForPlayer(sql, auth.player.id);
+      const rank = player ? await rankForPlayer(sql, player.id) : null;
       return json({
         ok: true,
         alreadyRecorded: true,
         finalScore: Number(existing[0].final_score),
         attemptNumber: Number(existing[0].attempt_number),
-        personalBest: auth.player.best_score,
+        personalBest: player?.best_score ?? null,
         isNewPersonalBest: false,
         rank,
       });
@@ -151,7 +220,60 @@ export default guard('POST', async (request: Request) => {
     const isValid = durationMs >= MIN_PLAUSIBLE_DURATION_MS;
     const invalidReason = isValid ? null : 'implausible_duration';
 
-    /* ── One transaction: consume the ticket, store the attempt, maybe move the best ── */
+    /* ── Anonymous: park the verified score and hand back a claim token ─────────────── */
+
+    if (!player) {
+      const claimToken = generateClaimToken();
+      const claimExpiresAt = new Date(Date.now() + CLAIM_TTL_MS).toISOString();
+
+      /**
+       * `WHERE status = 'open'` is the whole guard against scoring one game twice: a second
+       * request finds nothing to update and is answered by the already-finished branch above.
+       */
+      const stored = (await sql.unsafe(
+        `UPDATE game_sessions
+         SET status = 'completed', consumed_at = now(), completed_at = now(),
+             final_score = $2, score_breakdown = $3::jsonb, completion_duration_ms = $4,
+             is_valid = $5, invalid_reason = $6,
+             claim_token_hash = $7, claim_expires_at = $8
+         WHERE id = $1 AND status = 'open'
+         RETURNING id::text`,
+        [
+          session.id,
+          finalScore,
+          JSON.stringify(score),
+          durationMs,
+          isValid,
+          invalidReason,
+          hashClaimToken(claimToken),
+          claimExpiresAt,
+        ],
+        { rowMode: 'object' },
+      )) as unknown as { id: string }[];
+
+      if (stored.length === 0) return errors.badRequest('session_already_used');
+
+      return json({
+        ok: true,
+        alreadyRecorded: false,
+        finalScore,
+        attemptNumber: null,
+        personalBest: null,
+        isNewPersonalBest: false,
+        rank: null,
+        counted: isValid,
+        scoreBreakdown: score,
+        /**
+         * Returned exactly once, like a player's access token. Whoever holds it can turn this
+         * result into a leaderboard entry; nobody else can, and neither can they twice.
+         */
+        claim: { claimToken, expiresAt: claimExpiresAt },
+      });
+    }
+
+    /* ── Attributed: one transaction — consume, store, maybe move the best ──────────── */
+
+    const knownPlayer = player;
 
     const result = await withTransaction(async (tx) => {
       const consumed = (await tx.unsafe(
@@ -166,7 +288,7 @@ export default guard('POST', async (request: Request) => {
       // Lost a race with a concurrent submission of the same session. The other one wins.
       if (consumed.length === 0) throw new Error('session_race');
 
-      const attemptNumber = Number(auth.player.attempts_completed) + 1;
+      const attemptNumber = Number(knownPlayer.attempts_completed) + 1;
 
       const inserted = (await tx.unsafe(
         `INSERT INTO attempts (player_id, game_session_id, final_score, score_breakdown,
@@ -175,7 +297,7 @@ export default guard('POST', async (request: Request) => {
          VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7, $8, $9, $10)
          RETURNING id::text, completed_at`,
         [
-          auth.player.id,
+          knownPlayer.id,
           session.id,
           finalScore,
           JSON.stringify(score),
@@ -207,7 +329,7 @@ export default guard('POST', async (request: Request) => {
          WHERE id = $1
          RETURNING best_score::int, attempts_completed::int, best_achieved_attempt_number::int`,
         [
-          auth.player.id,
+          knownPlayer.id,
           finalScore,
           attempt.id,
           attempt.completed_at,
@@ -226,11 +348,11 @@ export default guard('POST', async (request: Request) => {
         attemptNumber,
         personalBest: updated[0].best_score === null ? 0 : Number(updated[0].best_score),
         isNewPersonalBest:
-          isValid && (auth.player.best_score === null || finalScore > Number(auth.player.best_score)),
+          isValid && (knownPlayer.best_score === null || finalScore > Number(knownPlayer.best_score)),
       };
     });
 
-    const rank = await rankForPlayer(sql, auth.player.id);
+    const rank = await rankForPlayer(sql, knownPlayer.id);
 
     return json({
       ok: true,

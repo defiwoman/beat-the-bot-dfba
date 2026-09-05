@@ -1,7 +1,17 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
-import { AlertTriangle, ArrowRight, Link2, ShieldAlert } from 'lucide-react';
+import {
+  AlertTriangle,
+  ArrowUpRight,
+  Check,
+  ExternalLink,
+  Link2,
+  RefreshCw,
+  ShieldAlert,
+  Trophy,
+} from 'lucide-react';
 import { Button } from './Button';
 import { copy } from '@/content/copy';
+import { campaignPostUrl } from '@/lib/campaignPost';
 import {
   PLAYER_NAME_MAX,
   WALLET_MAX,
@@ -14,26 +24,27 @@ import {
 import { usePlayer } from '@/state/usePlayer';
 
 /**
- * PLAYER REGISTRATION — rendered directly on the opening screen.
+ * SAVE YOUR SCORE TO THE LEADERBOARD — the section below the result card.
  *
- * It is not a dialog and it is not behind a button. A first-time visitor sees it as part of the
- * homepage, below the three-level summary, and its submit button IS the primary call to action:
- * there is no separate START GAME for someone who has not registered, because there is nothing
- * for that button to do.
+ * Registration happens here now, after the game rather than before it. That ordering is the
+ * point: a first-time visitor plays without handing over anything, sees what they scored, and
+ * only then decides whether to put a name to it.
  *
- * That is the whole point of the change. When registration lived behind START GAME, a visitor
- * had to press one button to discover a form; worse, the button was the only thing standing
- * between them and Level 1, so any path that reached `START_GAME` without going through the
- * form was a bypass. Now the form is the path.
+ * It never covers the result. It is a section further down the same page, after the card and
+ * after the download and share controls — which is deliberate, because the form asks for a link
+ * to a post the player has to make from that shared card.
  *
- * Four fields, all required. No email, no handle, no phone, and no wallet connection: this form
- * types text into inputs and that is the entire interaction. Nothing here touches a wallet,
- * requests a signature or makes an on-chain call — and nothing fetches the submitted post or
- * asks X about it, so the link is recorded rather than verified.
+ * Five states, one component:
  *
- * What the player typed is never thrown away. A rejected submission — invalid field, duplicate
- * wallet, duplicate post, database unreachable — leaves every value in place so the retry is
- * one click, not a re-type.
+ *   unclaimed   the form (the ordinary first-time ending)
+ *   claiming    the same form, disabled, while the claim is in flight
+ *   claimed     SCORE ADDED, with the score, best, rank and masked wallet
+ *   expired     the token has run out; only a new game can produce a new one
+ *   attributed  a recognised player's replay, which saved itself and needs no form
+ *
+ * Nothing here sends a score. The form posts a name, a wallet, a post link, consent and a
+ * one-time token; the number that comes back is the one the server computed when the game
+ * ended, and there is no field in the request it could have been substituted through.
  */
 
 const EMPTY: RegistrationInput = {
@@ -43,13 +54,7 @@ const EMPTY: RegistrationInput = {
   consent: false,
 };
 
-/**
- * The badge every field carries. Four fields, four of these, no optional field to confuse it.
- *
- * `aria-hidden` because it is the visual half of the signal only: the inputs carry `required`,
- * which is what a screen reader announces. Without it the badge would be read as part of each
- * field's name — "player name required" — and then announced again from the input.
- */
+/** The badge every field carries. Four fields, four of these, no optional field to confuse it. */
 function Required() {
   return (
     <span className="field__required" aria-hidden="true">
@@ -58,8 +63,54 @@ function Required() {
   );
 }
 
-export function RegistrationForm({ onRegistered }: { onRegistered: () => void }) {
-  const { register } = usePlayer();
+/** SCORE ADDED. What the leaderboard now holds, said back to the player. */
+function ScoreAdded() {
+  const { claim } = usePlayer();
+  const result = claim.result;
+  if (!result) return null;
+
+  return (
+    <section className="panel savescore savescore--saved" aria-label={copy.scoreAdded.heading}>
+      <p className="savescore__saved" role="status">
+        <Check size={16} aria-hidden="true" /> {copy.scoreAdded.heading}
+      </p>
+
+      <dl className="savescore__stats">
+        <div>
+          <dt>{copy.scoreAdded.finalScoreLabel}</dt>
+          <dd className="mono">{result.finalScore}</dd>
+        </div>
+        <div>
+          <dt>{copy.scoreAdded.personalBestLabel}</dt>
+          <dd className="mono">{result.personalBest}</dd>
+        </div>
+        <div>
+          <dt>{copy.scoreAdded.rankLabel}</dt>
+          <dd className="mono">
+            {result.rank === null ? copy.scoreAdded.unranked : `#${result.rank}`}
+          </dd>
+        </div>
+        <div>
+          <dt>{copy.scoreAdded.walletLabel}</dt>
+          {/*
+            Masked by the server before it was ever sent here. The complete address is not in
+            this payload, so there is nothing on this screen to un-mask.
+          */}
+          <dd className="mono">{result.maskedWallet}</dd>
+        </div>
+      </dl>
+
+      {result.isNewPersonalBest ? (
+        <p className="savescore__best">
+          <Trophy size={14} aria-hidden="true" /> {copy.scoreAdded.newPersonalBest}
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+export function LeaderboardSubmission() {
+  const { status, save, claim, claimScore, retrySubmit } = usePlayer();
 
   const headingId = useId();
   const nameId = useId();
@@ -70,17 +121,15 @@ export function RegistrationForm({ onRegistered }: { onRegistered: () => void })
   const [values, setValues] = useState<RegistrationInput>(EMPTY);
   const [errors, setErrors] = useState<RegistrationErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
   /** Errors only appear after a submit, so the form does not shout while someone is typing. */
   const [submitted, setSubmitted] = useState(false);
   /**
-   * Which field to move focus to once the render carrying the new errors has landed.
+   * Which field to focus once the render carrying the new errors has landed.
    *
    * Focus cannot be moved from the submit handler directly: while a submission is in flight
    * every input is `disabled`, and a disabled input silently refuses focus. By the time the
-   * server's answer arrives the inputs are still disabled in the DOM — React has not
-   * re-rendered yet — so the request is recorded here and carried out in the effect below,
-   * after the fields are interactive again.
+   * server answers, the inputs are still disabled in the DOM — React has not re-rendered — so
+   * the request is recorded here and carried out in the effect below.
    */
   const [focusField, setFocusField] = useState<keyof RegistrationInput | null>(null);
 
@@ -95,6 +144,8 @@ export function RegistrationForm({ onRegistered }: { onRegistered: () => void })
     xQuotePostUrl: xPostRef,
     consent: consentRef,
   } as const;
+
+  const submitting = claim.status === 'claiming';
 
   const update = useCallback(
     <K extends keyof RegistrationInput>(field: K, value: RegistrationInput[K]) => {
@@ -121,39 +172,25 @@ export function RegistrationForm({ onRegistered }: { onRegistered: () => void })
         return;
       }
 
-      setSubmitting(true);
-      const result = await register(values);
-      setSubmitting(false);
-
-      if (result.ok) {
-        onRegistered();
-        return;
-      }
+      const result = await claimScore(values);
+      if (result.ok) return;
 
       if (result.fields) {
         // The server can reject a field the browser accepted — a wallet or a post already
-        // registered — so its answer lands on the same field and takes focus the same way.
+        // used — so its answer lands on the same field and takes focus the same way.
         setErrors(result.fields as RegistrationErrors);
         setFocusField(firstInvalidField(result.fields as RegistrationErrors));
         return;
       }
 
       /**
-       * Something below the form failed: the network, the function, or the database.
-       *
-       * The values stay exactly as typed, the player stays on this screen, and the game does
-       * not start. There is no unregistered fallback to slip into — an unreachable database
-       * means the score could not be recorded, which is the whole reason to register.
+       * The claim did not go through. The token was not consumed, every typed value is still
+       * on screen, and the result is still there — so this says exactly that and invites
+       * another press rather than pretending anything was saved.
        */
-      setFormError(
-        result.code === 'network_error' || result.code === 'timeout'
-          ? copy.registration.networkError
-          : result.code === 'database_unavailable'
-            ? copy.registration.unavailable
-            : copy.registration.serverError,
-      );
+      setFormError(copy.registration.saveFailed);
     },
-    [onRegistered, register, submitting, values],
+    [claimScore, submitting, values],
   );
 
   useEffect(() => {
@@ -166,14 +203,127 @@ export function RegistrationForm({ onRegistered }: { onRegistered: () => void })
 
   const errorFor = (field: keyof RegistrationInput) => (submitted ? errors[field] : undefined);
 
+  /* ── The states that are not a form ─────────────────────────────────────────── */
+
+  if (claim.status === 'claimed') return <ScoreAdded />;
+
+  if (claim.status === 'expired') {
+    return (
+      <section className="panel savescore savescore--failed" aria-label={copy.registration.expired}>
+        <p className="savescore__failed" role="status">
+          <AlertTriangle size={16} aria-hidden="true" /> {copy.registration.expired}
+        </p>
+      </section>
+    );
+  }
+
+  /**
+   * A recognised player's replay. The session already belonged to them, so completing it saved
+   * the attempt outright — there is nothing to fill in.
+   */
+  if (claim.status === 'none' && status === 'registered') {
+    if (save.status === 'failed') {
+      return (
+        <section
+          className="panel savescore savescore--failed"
+          aria-label={copy.saveScore.failedLabel}
+        >
+          {/* `alert` because a score the player believes is saved, and is not, matters. */}
+          <p className="savescore__failed" role="alert">
+            <AlertTriangle size={16} aria-hidden="true" /> {copy.saveScore.failedLabel}
+          </p>
+          <p className="panel__body">{copy.saveScore.failedBody}</p>
+          <Button
+            variant="secondary"
+            icon={<RefreshCw size={16} />}
+            aria-label={copy.saveScore.retryHint}
+            onClick={() => void retrySubmit()}
+          >
+            {copy.saveScore.retryLabel}
+          </Button>
+        </section>
+      );
+    }
+
+    if (save.status === 'saving') {
+      return (
+        <section className="panel savescore" aria-label={copy.saveScore.savingLabel}>
+          <p className="panel__body" role="status">
+            {copy.saveScore.savingLabel}
+          </p>
+        </section>
+      );
+    }
+
+    if (save.status === 'saved' && save.result) {
+      return (
+        <section className="panel savescore savescore--saved" aria-label={copy.scoreAdded.heading}>
+          <p className="savescore__saved" role="status">
+            <Check size={16} aria-hidden="true" /> {copy.scoreAdded.autoSaved}
+          </p>
+          <dl className="savescore__stats">
+            <div>
+              <dt>{copy.scoreAdded.finalScoreLabel}</dt>
+              <dd className="mono">{save.result.finalScore}</dd>
+            </div>
+            <div>
+              <dt>{copy.scoreAdded.personalBestLabel}</dt>
+              <dd className="mono">{save.result.personalBest ?? save.result.finalScore}</dd>
+            </div>
+            <div>
+              <dt>{copy.scoreAdded.rankLabel}</dt>
+              <dd className="mono">
+                {save.result.rank === null ? copy.scoreAdded.unranked : `#${save.result.rank}`}
+              </dd>
+            </div>
+          </dl>
+          {save.result.isNewPersonalBest ? (
+            <p className="savescore__best">
+              <Trophy size={14} aria-hidden="true" /> {copy.scoreAdded.newPersonalBest}
+            </p>
+          ) : null}
+        </section>
+      );
+    }
+
+    return null;
+  }
+
+  // Nothing to claim and nobody to save for: the game was played without a server session.
+  if (claim.status === 'none') return null;
+
+  /* ── The form ───────────────────────────────────────────────────────────────── */
+
+  const campaign = campaignPostUrl();
+
   return (
-    <section className="register register--inline" aria-labelledby={headingId}>
+    <section className="register register--result" aria-labelledby={headingId}>
       <div>
         <h2 id={headingId} className="register__heading">
           {copy.registration.heading}
         </h2>
         <p className="lede lede--sub">{copy.registration.lede}</p>
       </div>
+
+      {/*
+        Only rendered when a campaign post has actually been configured. Nothing is invented:
+        an unset or malformed value produces no button at all.
+      */}
+      {campaign ? (
+        <a
+          className="btn btn--secondary btn--block"
+          href={campaign}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={copy.registration.campaignHint}
+        >
+          <span className="btn__icon" aria-hidden="true">
+            <ExternalLink size={16} />
+          </span>
+          <span>{copy.registration.campaignLabel}</span>
+          <ArrowUpRight size={14} aria-hidden="true" />
+        </a>
+      ) : null}
 
       <form className="register__form" onSubmit={handleSubmit} noValidate>
         {/* ── Player name ── */}
@@ -332,7 +482,7 @@ export function RegistrationForm({ onRegistered }: { onRegistered: () => void })
           block
           jumbo
           type="submit"
-          icon={<ArrowRight size={20} />}
+          icon={<Trophy size={18} />}
           aria-label={copy.registration.submitHint}
           disabled={submitting}
         >

@@ -14,10 +14,11 @@ const DETACHED: PlayerContextValue = {
   rank: null,
   session: null,
   save: { status: 'idle', result: null, errorCode: null },
-  register: async () => ({ ok: false, code: 'unavailable' }),
+  claim: { status: 'none', result: null, errorCode: null, fields: null },
   beginAttempt: async () => false,
   submitAttempt: async () => {},
   retrySubmit: async () => {},
+  claimScore: async () => ({ ok: false, code: 'unavailable' }),
   changePlayer: () => {},
   resetSave: () => {},
 };

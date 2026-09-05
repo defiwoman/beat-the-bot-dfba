@@ -180,14 +180,27 @@ player can see.
 
 ### The flow
 
-1. A visitor sees the normal opening screen. Nothing is added above the branding.
-2. They press **START GAME**.
-3. A **PLAYER REGISTRATION** panel opens asking for four things, all required: a player name,
-   a public Fogo wallet address, a link to their X quote post, and consent.
-4. **ENTER THE MARKET** registers them and Level 1 begins. Nothing starts until all four
-   fields are accepted by the server.
-5. On a later visit the stored credentials are validated and the panel is skipped — the opening
-   screen greets them by name with their personal best, rank and games completed.
+Play first. Decide about the leaderboard afterwards, with a score in hand.
+
+1. A visitor presses **START GAME**. They have submitted nothing, and are asked for nothing.
+2. The server opens an **anonymous session** — a seed, an expiry, no player.
+3. They play all three levels.
+4. The client submits its choices; the server rebuilds the rounds, scores them, stores the
+   result **on the session**, and returns a **one-time claim token**.
+5. The result card appears, in full, with the download and share controls.
+6. Below it, after a separator: **SAVE YOUR SCORE TO THE LEADERBOARD** — name, wallet, X quote
+   post link, consent.
+7. **SUBMIT SCORE** sends those four things and the token. The server creates the player,
+   attaches the attempt, moves the personal best and returns the rank.
+8. The form is replaced by **SCORE ADDED**, showing the score, the personal best, the rank and
+   the masked wallet. The result card stays.
+
+A player who never submits keeps their result and can download and share it. They do not appear
+on the leaderboard, no player record is created for them, and no notification is sent.
+
+On a later visit the stored credentials are validated and the session is opened under that
+player, so a replay saves itself and the form does not appear again. The opening screen names
+them on one line — *Playing as …* — with **CHANGE PLAYER** beside the actions.
 
 ### What the wallet address is, and is not
 
@@ -241,19 +254,55 @@ user-facing string starts implying otherwise.
 The link is **not** on the public leaderboard, and not in the public API's response shape at
 all — see the table below.
 
+### The score-claim token
+
+The token is what connects an anonymous finished game to the person who finished it, and it is
+the only claim available: nobody has registered yet when it is issued.
+
+It is the same primitive as a player's access token — 32 random bytes, returned once, stored
+only as a SHA-256, compared in constant time — used for a different subject. A player's token
+says "I am this person"; a claim token says "I am the person who finished this game".
+
+Four things stop one game being claimed twice:
+
+| | |
+| --- | --- |
+| `WHERE status = 'completed'` on the claiming UPDATE | one caller wins, the rest find nothing to update |
+| the unique index on `attempts.game_session_id` | one attempt per session, at the database level |
+| `game_sessions.claimed_attempt_id` | a repeat of a *successful* claim returns the original answer |
+| the unique index on `claim_token_hash` | one token addresses exactly one session |
+
+All of it runs in one transaction. A claim either produces a player, an attempt, a moved best
+and a consumed token, or none of those. Two simultaneous claims of one result were run against
+a real database: one wins, the other is answered with the winner's result, and exactly one
+attempt and one player exist afterwards.
+
+**No score is in the claim request.** The score written to the attempt is read out of
+`game_sessions.final_score`, which the server computed by replaying the player's choices. A
+client can choose which finished game to claim; it cannot choose what that game was worth.
+
+The browser keeps `{ sessionId, claimToken, expiresAt }` under `btb.result.v1` — three opaque
+server-issued values, no name, no wallet and no score — so leaving the page to write the X post
+does not lose the result. It expires after 24 hours, on both sides.
+
 ### Registration notifications
 
 Every successful registration is posted to a Netlify form named `beat-the-bot-registration`,
-which Netlify stores and emails onward.
+which Netlify stores and emails onward. Registration now happens with a finished game, so the
+notification carries the verified score, the personal best, the rank and the attempt id
+alongside the player's details.
 
 - The static form definition lives in `index.html`, hidden, because Netlify discovers forms by
   parsing deployed HTML at build time and the real form is rendered by React.
-- `/api/register-player` posts the submission itself, **after** the player row is committed. An
+- `/api/claim-score` posts the submission itself, **after** the player row is committed. An
   invalid or rejected submission is never notified, and a notification that fails never rolls a
   registration back.
-- The submission carries six fields and nothing else: `player_name`, `fogo_wallet_address`,
-  `x_quote_post_url`, `x_quote_post_id`, `player_id`, `registered_at`. No access token, no
-  database credential, no admin token, no session secret.
+- The submission carries ten fields and nothing else: `player_name`, `fogo_wallet_address`,
+  `x_quote_post_url`, `x_quote_post_id`, `final_score`, `personal_best`, `leaderboard_rank`,
+  `player_id`, `attempt_id`, `registered_at`. No access token, no database credential, no admin
+  token, no session secret.
+- One new player, one notification. A returning player's replay does not send another — they
+  were registered once, and that is the event this notification is about.
 - `players.registration_notification_status` makes it exactly-once. A send is attempted only by
   whoever wins a conditional update from `pending` to `sending`, so a retry that races the
   original sends nothing. A failure is recorded as `failed`, listed under the administration
@@ -389,6 +438,7 @@ The schema is versioned, one numbered file per change, applied in order:
 | --- | --- |
 | [`0001_players_attempts_sessions.sql`](./netlify/database/migrations/0001_players_attempts_sessions.sql) | `players`, `game_sessions`, `attempts` |
 | [`0002_x_quote_post_and_notification.sql`](./netlify/database/migrations/0002_x_quote_post_and_notification.sql) | `x_quote_post_url`, `x_quote_post_id`, `registration_notification_status`, `registration_notified_at` |
+| [`0003_anonymous_sessions_and_score_claims.sql`](./netlify/database/migrations/0003_anonymous_sessions_and_score_claims.sql) | nullable `player_id`, the verified score on the session, and the one-time claim token |
 
 Every file is idempotent (`IF NOT EXISTS`, `DROP CONSTRAINT IF EXISTS` before `ADD`), so
 re-running one is safe. Apply them against the production branch in order:
@@ -468,7 +518,7 @@ post links are never written to a log.
 
 | Path | What it does |
 | --- | --- |
-| `POST /api/register-player` | Validates and creates a player, returns the access token once |
+| `POST /api/claim-score` | Attaches a finished anonymous game to a player, registering them |
 | `POST /api/player-session` | Validates stored browser credentials on a return visit |
 | `POST /api/start-attempt` | Issues a game session and its seed |
 | `POST /api/complete-attempt` | Scores a transcript on the server and records the attempt |

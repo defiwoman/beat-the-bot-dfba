@@ -380,7 +380,7 @@ describe('X quote post link — what the wording promises', () => {
   /** Fixed wording, so the server's 409 and this module can never drift apart. */
   it('has exactly one duplicate message', () => {
     expect(REGISTRATION_MESSAGES.xPostDuplicate).toBe(
-      'This X post has already been used for a player registration.',
+      'This X post has already been used for a leaderboard entry.',
     );
   });
 
