@@ -89,10 +89,17 @@ export const REGISTRATION_MESSAGES = {
     'That link does not point to a single post. Copy the link to the quote post itself, not to a profile, a search or a homepage.',
   xPostInvalid: 'Enter a link like https://x.com/username/status/1234567890123456789.',
   /**
-   * Returned by the server when the status id is already on another registration. The wording
-   * is fixed: it names the post, never the player who used it first.
+   * Returned by the server when the status id is already on another entry. The wording is
+   * fixed: it names the post, never the player who used it first.
    */
-  xPostDuplicate: 'This X post has already been used for a player registration.',
+  xPostDuplicate: 'This X post has already been used for a leaderboard entry.',
+  /**
+   * Same shape of answer for a wallet already on the board. It deliberately does not say who
+   * holds it, when, or what they scored — ownership is never verified, so an endpoint that
+   * confirmed "this address is registered" would be a lookup for anyone with a list.
+   */
+  walletDuplicate:
+    'That wallet address is already registered. Use a different address, or continue on the browser where you registered it.',
   consentRequired: 'Please confirm to continue.',
 } as const;
 

@@ -284,13 +284,12 @@ describe('numeric level labels', () => {
   });
 
   /**
-   * The opening screen has exactly one way forward, and it is the form's submit button. A
-   * "start" label here would be a second one.
+   * The opening screen asks for nothing and starts the game. The leaderboard form lives below
+   * the result card, where the player already has a score worth submitting.
    */
-  it('offers no start-the-game label of its own', () => {
-    expect(Object.keys(copy.intro)).not.toContain('startLabel');
-    expect(Object.keys(copy.intro)).not.toContain('startHint');
-    expect(copy.registration.submitLabel).toBe('ENTER THE MARKET');
+  it('starts the game at Level 1 in its accessible hint', () => {
+    expect(copy.intro.startLabel).toBe('START GAME');
+    expect(copy.intro.startHint).toBe('START GAME — begin at Level 1');
   });
 });
 
@@ -422,19 +421,19 @@ describe('no reward or airdrop content reaches the player', () => {
  */
 describe('registration copy', () => {
   it('uses the exact heading, supporting line and button label', () => {
-    expect(copy.registration.heading).toBe('PLAYER REGISTRATION');
+    expect(copy.registration.heading).toBe('SAVE YOUR SCORE TO THE LEADERBOARD');
     expect(copy.registration.lede).toBe(
-      'Enter your details to save your best score on the Beat the Bot leaderboard.',
+      'Complete the details below to add your verified score to the Beat the Bot leaderboard.',
     );
     expect(copy.registration.nameLabel).toBe('PLAYER NAME');
     expect(copy.registration.walletLabel).toBe('FOGO WALLET ADDRESS');
     expect(copy.registration.xPostLabel).toBe('X QUOTE POST LINK');
-    expect(copy.registration.submitLabel).toBe('ENTER THE MARKET');
+    expect(copy.registration.submitLabel).toBe('SUBMIT SCORE');
   });
 
   it('uses the exact X quote-post wording', () => {
     expect(copy.registration.xPostHelp).toBe(
-      'Paste the link to your X quote post about Beat the Bot, Superluminal and DFBA.',
+      'Share your result, create an X quote post about Beat the Bot, Superluminal and DFBA, then paste the post link here.',
     );
     expect(copy.registration.xPostPlaceholder).toBe('https://x.com/username/status/…');
     expect(copy.registration.requiredIndicator).toBe('REQUIRED');
@@ -449,13 +448,21 @@ describe('registration copy', () => {
     const registrationText = flatten(copy.registration)
       .map((entry) => entry.text)
       .join(' ');
+
+    /**
+     * These target claims about the POST. "Verified score" is not one of them and is allowed:
+     * the score genuinely is verified — the server computed it by replaying the player's
+     * choices — and saying so is the point of the form. What must never appear is a suggestion
+     * that anything looked at the post, because nothing does.
+     */
     for (const pattern of [
-      /verif(y|ied|ication)/i,
+      /verif\w*\s+(x\s+)?(quote\s+)?post/i,
+      /post[^.]*\bverif/i,
       /we (will )?(check|read|review|fetch)/i,
       /automatically (check|confirm|verif)/i,
       /post (has been|was) (found|confirmed|approved)/i,
     ]) {
-      expect(pattern.test(registrationText)).toBe(false);
+      expect(pattern.test(registrationText), String(pattern)).toBe(false);
     }
   });
 
@@ -467,7 +474,24 @@ describe('registration copy', () => {
 
   it('states what consent is being given for, including the submitted post', () => {
     expect(copy.registration.consentLabel).toBe(
-      'I confirm that the information entered is accurate and consent to my player details, submitted post and game scores being stored.',
+      'I confirm that the information entered is accurate and consent to my submitted details and game score being stored.',
+    );
+  });
+
+  /** The form is a leaderboard submission now, and says so rather than saying "register". */
+  it('reads as a score submission, not as a gate before the game', () => {
+    expect(copy.registration.heading).toMatch(/leaderboard/i);
+    expect(copy.registration.submitLabel).not.toMatch(/enter the market|start/i);
+    expect(copy.scoreAdded.heading).toBe('SCORE ADDED');
+  });
+
+  /** A failure never reads as a success, and never loses what the player typed. */
+  it('says a failed submission kept the result', () => {
+    expect(copy.registration.saveFailed).toBe(
+      'We couldn’t save your leaderboard entry. Your result is still available — please try again.',
+    );
+    expect(copy.registration.expired).toBe(
+      'This result session has expired. Play again to submit a leaderboard score.',
     );
   });
 

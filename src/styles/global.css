@@ -1963,6 +1963,16 @@ button {
   background: var(--line);
 }
 
+/*
+ * The break between the result and the leaderboard form.
+ *
+ * A plain rule would read as another row of the scorecard. The space either side is what says
+ * "this is the next thing", which is the whole brief for this separator.
+ */
+.divider--section {
+  margin: var(--s6) 0 var(--s2);
+}
+
 /* ══════════════════════════════════════════════════════════════════ footer */
 
 .footer {
@@ -3318,6 +3328,69 @@ button {
   gap: var(--s3);
 }
 
+/*
+ * SAVE YOUR SCORE TO THE LEADERBOARD, below the result card.
+ *
+ * Given the panel treatment so it reads as its own step rather than more scorecard, and full
+ * width because it is the last thing on a page the player is already scrolling.
+ */
+.register--result {
+  display: grid;
+  gap: var(--s5);
+  max-width: none;
+  padding: var(--s5);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-lg);
+  background: var(--surface-secondary);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 4%);
+}
+
+.register--result .btn {
+  margin-top: var(--s2);
+}
+
+/* The quiet pointer under the share controls. Never loud enough to pull the eye off the card. */
+.result__savehint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0;
+}
+
+/* One line naming a recognised player on the opening screen. Not a panel, not a greeting. */
+.playing-as {
+  margin: 0;
+}
+
+.savescore__stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s3);
+  margin: 0;
+}
+
+@media (min-width: 30rem) {
+  .savescore__stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.savescore__stats dt {
+  font-size: var(--step--2);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.savescore__stats dd {
+  margin: 2px 0 0;
+  font-weight: 800;
+  /* The masked wallet is the longest of the four and must not push the grid sideways. */
+  overflow-wrap: anywhere;
+  color: var(--text-primary);
+}
+
 .savescore__best {
   display: flex;
   align-items: center;
@@ -3352,6 +3425,23 @@ button {
 
 .savescore--failed {
   border-color: rgb(255 92 112 / 45%);
+}
+
+/* SCORE ADDED. The one panel on this screen allowed to wear the brand border. */
+.savescore--saved {
+  border-color: var(--primary-border);
+  background: var(--surface-soft);
+}
+
+.savescore__saved {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-size: var(--step-0);
+  letter-spacing: 0.1em;
+  font-weight: 800;
+  color: var(--primary);
 }
 
 .savescore__failed {

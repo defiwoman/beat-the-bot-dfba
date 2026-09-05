@@ -227,14 +227,22 @@ export const copy = {
       'Level 3 — take the other seat and keep a market alive.',
     ],
     duration: 'About 90 seconds.',
-    /*
-     * There is no START GAME label here any more.
-     *
-     * The opening screen's primary action is now the registration form's own submit button —
-     * ENTER THE MARKET — for a visitor the server has not seen, and PLAY AGAIN for one it has.
-     * A separate "start" button would be a second way into Level 1, which is exactly what this
-     * screen must not have.
+    /**
+     * The opening screen asks for nothing. Play first, decide about the leaderboard after —
+     * so START GAME is the only thing between a visitor and Level 1, as it was originally.
      */
+    startLabel: 'START GAME',
+    /** Accessible names must contain the visible label (WCAG 2.5.3 Label in Name). */
+    startHint: 'START GAME — begin at Level 1',
+    /** Shown while the server is issuing the seed for this playthrough. */
+    startingLabel: 'Starting…',
+    /**
+     * A recognised player, named discreetly rather than greeted with a panel. The result
+     * screen is where their standing belongs now.
+     */
+    playingAs: 'Playing as {name}',
+    startError:
+      'We couldn’t start a scored game just now. Nothing has been lost — please try again.',
   },
 
   clobTutorial: {
@@ -762,9 +770,17 @@ export const copy = {
    * is deliberately no mention of rewards, prizes, tokens or distribution anywhere in here —
    * `copy.test.ts` fails the build if any of that language appears in user-facing copy.
    */
+  /**
+   * The form below the result card.
+   *
+   * It is a leaderboard submission now, not a gate. The player has already played and already
+   * has a score; this asks whether they want it on the board, and under what name.
+   */
   registration: {
-    heading: 'PLAYER REGISTRATION',
-    lede: 'Enter your details to save your best score on the Beat the Bot leaderboard.',
+    heading: 'SAVE YOUR SCORE TO THE LEADERBOARD',
+    lede: 'Complete the details below to add your verified score to the Beat the Bot leaderboard.',
+    /** The quiet cue above the separator, so the form is discoverable without a scroll jump. */
+    scrollHint: 'Save your score below',
 
     nameLabel: 'PLAYER NAME',
     nameHelp: 'This is the name shown on the leaderboard.',
@@ -781,7 +797,8 @@ export const copy = {
       'Your public address is recorded with your score. No wallet is connected, no transaction is requested, and no private key or seed phrase is ever needed.',
 
     xPostLabel: 'X QUOTE POST LINK',
-    xPostHelp: 'Paste the link to your X quote post about Beat the Bot, Superluminal and DFBA.',
+    xPostHelp:
+      'Share your result, create an X quote post about Beat the Bot, Superluminal and DFBA, then paste the post link here.',
     xPostPlaceholder: 'https://x.com/username/status/…',
     /**
      * Said plainly next to the field, because the game cannot check it. Nothing in this
@@ -796,16 +813,28 @@ export const copy = {
     requiredIndicator: 'REQUIRED',
 
     consentLabel:
-      'I confirm that the information entered is accurate and consent to my player details, submitted post and game scores being stored.',
+      'I confirm that the information entered is accurate and consent to my submitted details and game score being stored.',
 
-    submitLabel: 'ENTER THE MARKET',
-    submitHint: 'ENTER THE MARKET — register and start Level 1',
-    submittingLabel: 'Registering…',
+    submitLabel: 'SUBMIT SCORE',
+    submitHint: 'SUBMIT SCORE — add your verified score to the leaderboard',
+    submittingLabel: 'Saving…',
+
+    /** Only rendered when a campaign post has actually been configured. */
+    campaignLabel: 'OPEN THE BEAT THE BOT POST ON X',
+    campaignHint: 'OPEN THE BEAT THE BOT POST ON X — opens in a new tab',
 
     cancelLabel: 'Back',
     cancelHint: 'Back — close registration without starting',
 
     errorHeading: 'Check these fields',
+    /**
+     * Says the two things that matter: it failed, and the result is not gone. The form keeps
+     * every value and the claim token is untouched, so trying again costs one click.
+     */
+    saveFailed:
+      'We couldn’t save your leaderboard entry. Your result is still available — please try again.',
+    /** The token has run out or the game was already claimed. Only a new game can fix it. */
+    expired: 'This result session has expired. Play again to submit a leaderboard score.',
     /**
      * All three say the same two things: it failed, and nothing you typed is gone. The form
      * keeps every value, so "try again" is one click rather than a re-type.
@@ -816,7 +845,20 @@ export const copy = {
       'We couldn’t register your player profile. Your details have not been lost — please try again.',
     unavailable:
       'We couldn’t register your player profile. Your details have not been lost — please try again shortly.',
-    successAnnouncement: 'Registered. Starting Level 1.',
+    successAnnouncement: 'Score added to the leaderboard.',
+  },
+
+  /** The panel that replaces the form once the score is on the board. */
+  scoreAdded: {
+    heading: 'SCORE ADDED',
+    finalScoreLabel: 'Final score',
+    personalBestLabel: 'Personal best',
+    rankLabel: 'Current rank',
+    walletLabel: 'Fogo wallet',
+    unranked: '—',
+    newPersonalBest: 'NEW PERSONAL BEST',
+    /** Shown to a recognised player whose replay saved itself without a form. */
+    autoSaved: 'Saved to the leaderboard automatically.',
   },
 
   /** The returning-player panel, shown instead of the form when credentials still work. */

@@ -46,6 +46,26 @@ export function accessTokenMatches(presented: string, storedHash: string): boole
 }
 
 /** A session seed the client cannot predict. Postgres `bigint`, kept inside 2^31 for safety. */
+/**
+ * The one-time token that lets whoever finished a game claim its score.
+ *
+ * Same shape and same handling as a player's access token: 32 random bytes, handed to the
+ * browser once, stored only as a SHA-256. It is not a credential for a person — nobody has
+ * registered yet when it is issued — it is a credential for one finished game.
+ */
+export function generateClaimToken(): string {
+  return generateAccessToken();
+}
+
+export function hashClaimToken(token: string): string {
+  return hashAccessToken(token);
+}
+
+/** Timing-safe, for the same reason the access-token comparison is. */
+export function claimTokenMatches(token: string, hash: string): boolean {
+  return accessTokenMatches(token, hash);
+}
+
 export function generateSessionSeed(): number {
   return randomBytes(4).readUInt32BE(0) % 2_147_483_647;
 }

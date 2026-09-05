@@ -34,6 +34,7 @@ import { isUuid } from './_lib/players';
 import {
   adminPlayers,
   notifiablePlayer,
+  rankForPlayer,
   rankedPlayers,
   MAX_PAGE_SIZE,
   type AdminRow,
@@ -220,6 +221,12 @@ export default async (request: Request): Promise<Response> => {
          * 'sent' is not in the set it will claim from, so a row that already went out cannot
          * be re-sent from here at all.
          */
+        /**
+         * The retry re-sends the same registration, so it carries the same shape of numbers:
+         * the player's best attempt and their current standing. All server-side values.
+         */
+        const rank = await rankForPlayer(sql, player.player_id);
+
         const outcome = await notifyRegistration(
           sql,
           {
@@ -229,6 +236,10 @@ export default async (request: Request): Promise<Response> => {
             xQuotePostUrl: player.x_quote_post_url,
             xQuotePostId: player.x_quote_post_id,
             registeredAt: new Date(player.created_at).toISOString(),
+            finalScore: Number(player.attempt_score ?? 0),
+            personalBest: Number(player.best_score ?? 0),
+            leaderboardRank: rank,
+            attemptId: player.best_attempt_id ?? '',
           },
           { from: ['pending', 'failed'] },
         );

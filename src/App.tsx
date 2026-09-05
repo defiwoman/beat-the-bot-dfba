@@ -48,7 +48,6 @@ export interface GeneratedRounds {
 function GameRouter({
   rounds,
   onStart,
-  onRegistered,
   onChangePlayer,
   onReplay,
   onOpenLeaderboard,
@@ -58,8 +57,6 @@ function GameRouter({
   rounds: GeneratedRounds;
   /** Starts a game for a player the server has already recognised. */
   onStart: () => void;
-  /** Registration succeeded: open a session, then Level 1. */
-  onRegistered: () => void;
   onChangePlayer: () => void;
   /** TRY AGAIN, from the results screen. Opens a fresh session before replaying. */
   onReplay: () => void;
@@ -110,7 +107,6 @@ function GameRouter({
       return (
         <IntroScreen
           onStart={onStart}
-          onRegistered={onRegistered}
           onChangePlayer={onChangePlayer}
           onOpenLeaderboard={onOpenLeaderboard}
           startError={startError}
@@ -217,7 +213,7 @@ function GameRouter({
 function GameShell() {
   const { state, dispatch } = useGame();
   const { play, toggleMuted } = useSound();
-  const { status, session, beginAttempt, changePlayer, submitAttempt } = usePlayer();
+  const { session, beginAttempt, changePlayer, submitAttempt } = usePlayer();
 
   const [aboutOpen, setAboutOpen] = useState(false);
   const [leaderboardOpen, setLeaderboardOpen] = useState(false);
@@ -257,23 +253,17 @@ function GameShell() {
   /**
    * THE ONLY WAY INTO LEVEL 1.
    *
-   * Every path that starts a game funnels through here, and the gate is `beginAttempt()` — a
-   * request the server has to say yes to.
+   * Every path that starts a game funnels through here, and the one thing it insists on is a
+   * server session.
    *
-   * That is deliberately not a check of the local `status` flag. Two reasons:
+   * Not a registration — anyone may play, and that is the point of this change. What the
+   * session provides is the seed the server will rebuild the rounds from when it scores the
+   * transcript, so a playthrough without one could not be scored at all. `beginAttempt()`
+   * sends credentials when this browser has them and nothing when it does not; both open a
+   * session, and only the first produces one that saves itself.
    *
-   *   1. A flag can be stale. `handleRegistered` fires in the same tick as the state update
-   *      that sets it, so a closure reading `status` there still sees 'anonymous' and would
-   *      lock out the player who just registered.
-   *   2. A flag is local. `beginAttempt()` sends the stored credentials to
-   *      `/api/start-attempt`, which authenticates them against the token hash in the database.
-   *      No credentials, credentials the server does not recognise, or a value someone typed
-   *      into localStorage by hand: all three come back without a session, and none of them
-   *      reaches a level.
-   *
-   * The session it returns carries the seed the server will rebuild the rounds from, so a
-   * playthrough without one could not be scored anyway. This used to be fire-and-forget, with
-   * an unscored fallback game when it failed; that fallback is gone.
+   * This used to be fire-and-forget, with an unscored fallback game when it failed. That
+   * fallback is gone: a game that cannot be recorded is not the game the player asked for.
    *
    * `START_GAME` and `PLAY_AGAIN` are dispatched on the last line here and nowhere else.
    */
@@ -290,7 +280,7 @@ function GameShell() {
     setStarting(false);
 
     if (!opened) {
-      setStartError(copy.player.startError);
+      setStartError(copy.intro.startError);
       return;
     }
 
@@ -299,7 +289,7 @@ function GameShell() {
     dispatch(replay ? { type: 'PLAY_AGAIN' } : { type: 'START_GAME' });
   }, [beginAttempt, dispatch, play]);
 
-  /** PLAY AGAIN, from the intro. Only ever rendered for a recognised player. */
+  /** START GAME, from the intro. Available to everybody. */
   const handleStart = useCallback(() => {
     void enterGame();
   }, [enterGame]);
@@ -313,15 +303,6 @@ function GameShell() {
    */
   const handleReplay = useCallback(() => {
     void enterGame({ replay: true });
-  }, [enterGame]);
-
-  /**
-   * Registration was accepted by the server. `PlayerProvider` has already moved `status` to
-   * 'registered', so the same gate above now lets this through — the two paths into the game
-   * are one function, not two.
-   */
-  const handleRegistered = useCallback(() => {
-    void enterGame();
   }, [enterGame]);
 
   const handleChangePlayer = useCallback(() => {
@@ -367,21 +348,6 @@ function GameShell() {
     submitAttempt,
   ]);
 
-  /**
-   * If the player stops being recognised while a game is running — they pressed CHANGE PLAYER,
-   * or the server rejected the credentials on a later call — the game returns to the opening
-   * screen rather than carrying on unrecorded. `RESTART` lands on the intro phase, which is
-   * where the registration form lives, so the gate is back in front of them.
-   *
-   * 'checking' is not 'anonymous': the first render of a returning visit has neither status,
-   * and this must not fire then.
-   */
-  useEffect(() => {
-    if (status === 'anonymous' && state.phase !== 'intro') {
-      dispatch({ type: 'RESTART' });
-    }
-  }, [dispatch, state.phase, status]);
-
   // Mute is reachable from anywhere on a keyboard, matching the always-visible header control.
   useKeyboard({ m: toggleMuted });
 
@@ -411,7 +377,6 @@ function GameShell() {
                 key={`${state.phase}-${state.roundIndex}-${state.playthrough}-${state.attempt}`}
                 rounds={rounds}
                 onStart={handleStart}
-                onRegistered={handleRegistered}
                 onChangePlayer={handleChangePlayer}
                 onReplay={handleReplay}
                 onOpenLeaderboard={openLeaderboard}
